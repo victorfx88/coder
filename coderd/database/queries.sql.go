@@ -6966,6 +6966,45 @@ func (q *sqlQuerier) UpdateReplica(ctx context.Context, arg UpdateReplicaParams)
 	return i, err
 }
 
+const insertResourcePool = `-- name: InsertResourcePool :one
+INSERT INTO resource_pools (id, name, capacity, template_file_id, user_id, organization_id, created_at, updated_at)
+VALUES ($1::uuid, $2::text, $3::integer, $4::uuid,
+        $5::uuid, $6::uuid, NOW(), NOW())
+RETURNING id, name, capacity, template_file_id, user_id, organization_id, created_at, updated_at
+`
+
+type InsertResourcePoolParams struct {
+	ID             uuid.UUID `db:"id" json:"id"`
+	Name           string    `db:"name" json:"name"`
+	Capacity       int32     `db:"capacity" json:"capacity"`
+	TemplateFileID uuid.UUID `db:"template_file_id" json:"template_file_id"`
+	UserID         uuid.UUID `db:"user_id" json:"user_id"`
+	OrganizationID uuid.UUID `db:"organization_id" json:"organization_id"`
+}
+
+func (q *sqlQuerier) InsertResourcePool(ctx context.Context, arg InsertResourcePoolParams) (ResourcePool, error) {
+	row := q.db.QueryRowContext(ctx, insertResourcePool,
+		arg.ID,
+		arg.Name,
+		arg.Capacity,
+		arg.TemplateFileID,
+		arg.UserID,
+		arg.OrganizationID,
+	)
+	var i ResourcePool
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Capacity,
+		&i.TemplateFileID,
+		&i.UserID,
+		&i.OrganizationID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const customRoles = `-- name: CustomRoles :many
 SELECT
 	name, display_name, site_permissions, org_permissions, user_permissions, created_at, updated_at, organization_id, id

@@ -7574,6 +7574,15 @@ func (q *FakeQuerier) InsertReplica(_ context.Context, arg database.InsertReplic
 	return replica, nil
 }
 
+func (q *FakeQuerier) InsertResourcePool(ctx context.Context, arg database.InsertResourcePoolParams) (database.ResourcePool, error) {
+	err := validateDatabaseType(arg)
+	if err != nil {
+		return database.ResourcePool{}, err
+	}
+
+	panic("not implemented")
+}
+
 func (q *FakeQuerier) InsertTemplate(_ context.Context, arg database.InsertTemplateParams) error {
 	if err := validateDatabaseType(arg); err != nil {
 		return err

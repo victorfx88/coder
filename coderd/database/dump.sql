@@ -938,13 +938,13 @@ SELECT
     NULL::text AS error,
     NULL::text AS error_code,
     NULL::timestamp with time zone AS updated_at,
-    NULL::double precision AS queued_secs,
-    NULL::double precision AS completion_secs,
-    NULL::double precision AS canceled_secs,
-    NULL::double precision AS init_secs,
-    NULL::double precision AS plan_secs,
-    NULL::double precision AS graph_secs,
-    NULL::double precision AS apply_secs;
+    NULL::numeric AS queued_secs,
+    NULL::numeric AS completion_secs,
+    NULL::numeric AS canceled_secs,
+    NULL::numeric AS init_secs,
+    NULL::numeric AS plan_secs,
+    NULL::numeric AS graph_secs,
+    NULL::numeric AS apply_secs;
 
 CREATE TABLE provisioner_job_timings (
     job_id uuid NOT NULL,
@@ -1017,6 +1017,31 @@ CREATE TABLE replicas (
     version text NOT NULL,
     error text DEFAULT ''::text NOT NULL,
     "primary" boolean DEFAULT true NOT NULL
+);
+
+CREATE TABLE resource_pool_claims (
+    id uuid NOT NULL,
+    resource_pool_entry_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    workspace_id uuid NOT NULL
+);
+
+CREATE TABLE resource_pool_entries (
+    id uuid NOT NULL,
+    reference text NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL
+);
+
+CREATE TABLE resource_pools (
+    id uuid NOT NULL,
+    name text NOT NULL,
+    capacity integer NOT NULL,
+    template_file_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    organization_id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL
 );
 
 CREATE TABLE site_configs (
@@ -1206,9 +1231,9 @@ COMMENT ON COLUMN template_versions.external_auth_providers IS 'IDs of External 
 COMMENT ON COLUMN template_versions.message IS 'Message describing the changes in this version of the template, similar to a Git commit message. Like a commit message, this should be a short, high-level description of the changes in this version of the template. This message is immutable and should not be updated after the fact.';
 
 CREATE VIEW visible_users AS
- SELECT users.id,
-    users.username,
-    users.avatar_url
+ SELECT id,
+    username,
+    avatar_url
    FROM users;
 
 COMMENT ON VIEW visible_users IS 'Visible fields of users are allowed to be joined with other tables for including context of other resources.';
@@ -1410,7 +1435,7 @@ CREATE TABLE workspace_agent_scripts (
     id uuid DEFAULT gen_random_uuid() NOT NULL
 );
 
-CREATE SEQUENCE workspace_agent_startup_logs_id_seq
+CREATE UNLOGGED SEQUENCE workspace_agent_startup_logs_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -1875,6 +1900,15 @@ ALTER TABLE ONLY provisioner_jobs
 ALTER TABLE ONLY provisioner_keys
     ADD CONSTRAINT provisioner_keys_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY resource_pool_claims
+    ADD CONSTRAINT resource_pool_claims_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY resource_pool_entries
+    ADD CONSTRAINT resource_pool_entries_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY resource_pools
+    ADD CONSTRAINT resource_pools_pkey PRIMARY KEY (id);
+
 ALTER TABLE ONLY site_configs
     ADD CONSTRAINT site_configs_key_key UNIQUE (key);
 
@@ -2090,10 +2124,10 @@ CREATE OR REPLACE VIEW provisioner_job_stats AS
     pj.error,
     pj.error_code,
     pj.updated_at,
-    GREATEST(date_part('epoch'::text, (pj.started_at - pj.created_at)), (0)::double precision) AS queued_secs,
-    GREATEST(date_part('epoch'::text, (pj.completed_at - pj.started_at)), (0)::double precision) AS completion_secs,
-    GREATEST(date_part('epoch'::text, (pj.canceled_at - pj.started_at)), (0)::double precision) AS canceled_secs,
-    GREATEST(date_part('epoch'::text, (max(
+    GREATEST(EXTRACT(epoch FROM (pj.started_at - pj.created_at)), (0)::numeric) AS queued_secs,
+    GREATEST(EXTRACT(epoch FROM (pj.completed_at - pj.started_at)), (0)::numeric) AS completion_secs,
+    GREATEST(EXTRACT(epoch FROM (pj.canceled_at - pj.started_at)), (0)::numeric) AS canceled_secs,
+    GREATEST(EXTRACT(epoch FROM (max(
         CASE
             WHEN (pjt.stage = 'init'::provisioner_job_timing_stage) THEN pjt.ended_at
             ELSE NULL::timestamp with time zone
@@ -2101,8 +2135,8 @@ CREATE OR REPLACE VIEW provisioner_job_stats AS
         CASE
             WHEN (pjt.stage = 'init'::provisioner_job_timing_stage) THEN pjt.started_at
             ELSE NULL::timestamp with time zone
-        END))), (0)::double precision) AS init_secs,
-    GREATEST(date_part('epoch'::text, (max(
+        END))), (0)::numeric) AS init_secs,
+    GREATEST(EXTRACT(epoch FROM (max(
         CASE
             WHEN (pjt.stage = 'plan'::provisioner_job_timing_stage) THEN pjt.ended_at
             ELSE NULL::timestamp with time zone
@@ -2110,8 +2144,8 @@ CREATE OR REPLACE VIEW provisioner_job_stats AS
         CASE
             WHEN (pjt.stage = 'plan'::provisioner_job_timing_stage) THEN pjt.started_at
             ELSE NULL::timestamp with time zone
-        END))), (0)::double precision) AS plan_secs,
-    GREATEST(date_part('epoch'::text, (max(
+        END))), (0)::numeric) AS plan_secs,
+    GREATEST(EXTRACT(epoch FROM (max(
         CASE
             WHEN (pjt.stage = 'graph'::provisioner_job_timing_stage) THEN pjt.ended_at
             ELSE NULL::timestamp with time zone
@@ -2119,8 +2153,8 @@ CREATE OR REPLACE VIEW provisioner_job_stats AS
         CASE
             WHEN (pjt.stage = 'graph'::provisioner_job_timing_stage) THEN pjt.started_at
             ELSE NULL::timestamp with time zone
-        END))), (0)::double precision) AS graph_secs,
-    GREATEST(date_part('epoch'::text, (max(
+        END))), (0)::numeric) AS graph_secs,
+    GREATEST(EXTRACT(epoch FROM (max(
         CASE
             WHEN (pjt.stage = 'apply'::provisioner_job_timing_stage) THEN pjt.ended_at
             ELSE NULL::timestamp with time zone
@@ -2128,7 +2162,7 @@ CREATE OR REPLACE VIEW provisioner_job_stats AS
         CASE
             WHEN (pjt.stage = 'apply'::provisioner_job_timing_stage) THEN pjt.started_at
             ELSE NULL::timestamp with time zone
-        END))), (0)::double precision) AS apply_secs
+        END))), (0)::numeric) AS apply_secs
    FROM ((provisioner_jobs pj
      JOIN workspace_builds wb ON ((wb.job_id = pj.id)))
      LEFT JOIN provisioner_job_timings pjt ON ((pjt.job_id = pj.id)))
@@ -2247,6 +2281,24 @@ ALTER TABLE ONLY provisioner_jobs
 
 ALTER TABLE ONLY provisioner_keys
     ADD CONSTRAINT provisioner_keys_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY resource_pool_claims
+    ADD CONSTRAINT resource_pool_claims_resource_pool_entry_id_fkey FOREIGN KEY (resource_pool_entry_id) REFERENCES resource_pool_entries(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY resource_pool_claims
+    ADD CONSTRAINT resource_pool_claims_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY resource_pool_claims
+    ADD CONSTRAINT resource_pool_claims_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY resource_pools
+    ADD CONSTRAINT resource_pools_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY resource_pools
+    ADD CONSTRAINT resource_pools_template_file_id_fkey FOREIGN KEY (template_file_id) REFERENCES files(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY resource_pools
+    ADD CONSTRAINT resource_pools_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY tailnet_agents
     ADD CONSTRAINT tailnet_agents_coordinator_id_fkey FOREIGN KEY (coordinator_id) REFERENCES tailnet_coordinators(id) ON DELETE CASCADE;

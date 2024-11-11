@@ -380,6 +380,7 @@ type sqlcQuerier interface {
 	InsertProvisionerJobTimings(ctx context.Context, arg InsertProvisionerJobTimingsParams) ([]ProvisionerJobTiming, error)
 	InsertProvisionerKey(ctx context.Context, arg InsertProvisionerKeyParams) (ProvisionerKey, error)
 	InsertReplica(ctx context.Context, arg InsertReplicaParams) (Replica, error)
+	InsertResourcePool(ctx context.Context, arg InsertResourcePoolParams) (ResourcePool, error)
 	InsertTemplate(ctx context.Context, arg InsertTemplateParams) error
 	InsertTemplateVersion(ctx context.Context, arg InsertTemplateVersionParams) error
 	InsertTemplateVersionParameter(ctx context.Context, arg InsertTemplateVersionParameterParams) (TemplateVersionParameter, error)

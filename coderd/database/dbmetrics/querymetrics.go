@@ -1848,6 +1848,13 @@ func (m queryMetricsStore) InsertReplica(ctx context.Context, arg database.Inser
 	return replica, err
 }
 
+func (m queryMetricsStore) InsertResourcePool(ctx context.Context, arg database.InsertResourcePoolParams) (database.ResourcePool, error) {
+	start := time.Now()
+	r0, r1 := m.s.InsertResourcePool(ctx, arg)
+	m.queryLatencies.WithLabelValues("InsertResourcePool").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
 func (m queryMetricsStore) InsertTemplate(ctx context.Context, arg database.InsertTemplateParams) error {
 	start := time.Now()
 	err := m.s.InsertTemplate(ctx, arg)

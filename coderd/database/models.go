@@ -2607,6 +2607,31 @@ type Replica struct {
 	Primary         bool         `db:"primary" json:"primary"`
 }
 
+type ResourcePool struct {
+	ID             uuid.UUID `db:"id" json:"id"`
+	Name           string    `db:"name" json:"name"`
+	Capacity       int32     `db:"capacity" json:"capacity"`
+	TemplateFileID uuid.UUID `db:"template_file_id" json:"template_file_id"`
+	UserID         uuid.UUID `db:"user_id" json:"user_id"`
+	OrganizationID uuid.UUID `db:"organization_id" json:"organization_id"`
+	CreatedAt      time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt      time.Time `db:"updated_at" json:"updated_at"`
+}
+
+type ResourcePoolClaim struct {
+	ID                  uuid.UUID `db:"id" json:"id"`
+	ResourcePoolEntryID uuid.UUID `db:"resource_pool_entry_id" json:"resource_pool_entry_id"`
+	UserID              uuid.UUID `db:"user_id" json:"user_id"`
+	WorkspaceID         uuid.UUID `db:"workspace_id" json:"workspace_id"`
+}
+
+type ResourcePoolEntry struct {
+	ID        uuid.UUID `db:"id" json:"id"`
+	Reference string    `db:"reference" json:"reference"`
+	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+}
+
 type SiteConfig struct {
 	Key   string `db:"key" json:"key"`
 	Value string `db:"value" json:"value"`

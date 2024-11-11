@@ -985,6 +985,9 @@ func New(options *Options) *API {
 						})
 					})
 				})
+				r.Route("/resourcepools", func(r chi.Router) {
+					r.Post("/", api.postResourcePools)
+				})
 			})
 		})
 		r.Route("/templates", func(r chi.Router) {
