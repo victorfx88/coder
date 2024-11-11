@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS resource_pools
     created_at       timestamp with time zone NOT NULL,
     updated_at       timestamp with time zone NOT NULL,
 
-    PRIMARY KEY (id)
+    PRIMARY KEY (id),
+    UNIQUE (name)
 );
 
 CREATE TABLE IF NOT EXISTS resource_pool_entries
@@ -32,7 +33,6 @@ CREATE TABLE IF NOT EXISTS resource_pool_claims
 --     job_id       uuid NOT NULL REFERENCES provisioner_jobs (id) ON DELETE CASCADE,
 
     PRIMARY KEY (id)
-)
+);
 
--- resource pool created, has template file associated
--- -> pool claim issued, which links user, workspace (build?)
+ALTER TYPE provisioner_job_type ADD VALUE 'resource_pool_entry_build';

@@ -159,7 +159,8 @@ CREATE TYPE provisioner_job_timing_stage AS ENUM (
 CREATE TYPE provisioner_job_type AS ENUM (
     'template_version_import',
     'workspace_build',
-    'template_version_dry_run'
+    'template_version_dry_run',
+    'resource_pool_entry_build'
 );
 
 CREATE TYPE provisioner_storage_method AS ENUM (

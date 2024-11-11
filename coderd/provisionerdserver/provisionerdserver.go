@@ -664,6 +664,22 @@ func (s *server) acquireProtoJob(ctx context.Context, job database.ProvisionerJo
 				},
 			},
 		}
+	case database.ProvisionerJobTypeResourcePoolEntryBuild:
+		var input ResourcePoolBuildJob
+		err = json.Unmarshal(job.Input, &input)
+		if err != nil {
+			return nil, failJob(fmt.Sprintf("unmarshal job input %q: %s", job.Input, err))
+		}
+
+		protoJob.Type = &proto.AcquiredJob_ResourcePoolEntryBuild_{
+			ResourcePoolEntryBuild: &proto.AcquiredJob_ResourcePoolEntryBuild{
+				Metadata: &sdkproto.ResourcePoolMetadata{
+					Id:         input.ID,
+					Name:       input.Name,
+					Transition: input.Transition,
+				},
+			},
+		}
 	}
 	switch job.StorageMethod {
 	case database.ProvisionerStorageMethodFile:
@@ -1667,6 +1683,18 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 			return nil, xerrors.Errorf("update provisioner job: %w", err)
 		}
 		s.Logger.Debug(ctx, "marked template dry-run job as completed", slog.F("job_id", jobID))
+	case *proto.CompletedJob_ResourcePoolEntryBuild_:
+		var input ResourcePoolBuildJob
+		err = json.Unmarshal(job.Input, &input)
+		if err != nil {
+			return nil, xerrors.Errorf("unmarshal job data: %w", err)
+		}
+
+		s.Logger.Info(ctx, "resource pool entry build completed", slog.F("resource_pool_id", input.ID),
+			slog.F("name", input.Name), slog.F("transition", input.Transition.String()), slog.F("job_id", jobID))
+
+		// TODO: handle resource pool entry build completion
+		// TODO: save object ID to db, create pool entry row
 
 	default:
 		if completed.Type == nil {
@@ -2186,6 +2214,13 @@ type TemplateVersionDryRunJob struct {
 	TemplateVersionID   uuid.UUID                          `json:"template_version_id"`
 	WorkspaceName       string                             `json:"workspace_name"`
 	RichParameterValues []database.WorkspaceBuildParameter `json:"rich_parameter_values"`
+}
+
+// ResourcePoolBuildJob TODO
+type ResourcePoolBuildJob struct {
+	ID         string
+	Name       string
+	Transition sdkproto.ResourcePoolEntryTransition
 }
 
 func asVariableValues(templateVariables []database.TemplateVersionVariable) []*sdkproto.VariableValue {

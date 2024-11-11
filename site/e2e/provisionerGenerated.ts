@@ -30,6 +30,13 @@ export enum WorkspaceTransition {
 	UNRECOGNIZED = -1,
 }
 
+export enum ResourcePoolEntryTransition {
+	ALLOCATE = 0,
+	/** DEALLOCATE - CLAIM = 2; ? */
+	DEALLOCATE = 1,
+	UNRECOGNIZED = -1,
+}
+
 export enum TimingState {
 	STARTED = 0,
 	COMPLETED = 1,
@@ -243,6 +250,12 @@ export interface Metadata {
 	workspaceOwnerSshPublicKey: string;
 	workspaceOwnerSshPrivateKey: string;
 	workspaceBuildId: string;
+}
+
+export interface ResourcePoolMetadata {
+	id: string;
+	name: string;
+	transition: ResourcePoolEntryTransition;
 }
 
 /** Config represents execution configuration shared by all subsequent requests in the Session */
@@ -877,6 +890,24 @@ export const Metadata = {
 		}
 		if (message.workspaceBuildId !== "") {
 			writer.uint32(138).string(message.workspaceBuildId);
+		}
+		return writer;
+	},
+};
+
+export const ResourcePoolMetadata = {
+	encode(
+		message: ResourcePoolMetadata,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.id !== "") {
+			writer.uint32(10).string(message.id);
+		}
+		if (message.name !== "") {
+			writer.uint32(18).string(message.name);
+		}
+		if (message.transition !== 0) {
+			writer.uint32(24).int32(message.transition);
 		}
 		return writer;
 	},

@@ -1914,6 +1914,8 @@ func (q *querier) GetProvisionerJobByID(ctx context.Context, id uuid.UUID) (data
 		if err != nil {
 			return database.ProvisionerJob{}, err
 		}
+	case database.ProvisionerJobTypeResourcePoolEntryBuild:
+		// TODO: auth
 	default:
 		return database.ProvisionerJob{}, xerrors.Errorf("unknown job type: %q", job.Type)
 	}
@@ -2753,6 +2755,8 @@ func (q *querier) GetWorkspaceResourcesByJobID(ctx context.Context, jobID uuid.U
 			return nil, err
 		}
 		obj = workspace
+	case database.ProvisionerJobTypeResourcePoolEntryBuild:
+		// TODO: auth
 	default:
 		return nil, xerrors.Errorf("unknown job type: %s", job.Type)
 	}
@@ -3551,6 +3555,8 @@ func (q *querier) UpdateProvisionerJobWithCancelByID(ctx context.Context, arg da
 				return err
 			}
 		}
+	case database.ProvisionerJobTypeResourcePoolEntryBuild:
+		// TODO: auth
 	default:
 		return xerrors.Errorf("unknown job type: %q", job.Type)
 	}

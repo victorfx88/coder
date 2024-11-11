@@ -1350,9 +1350,10 @@ func AllProvisionerJobTimingStageValues() []ProvisionerJobTimingStage {
 type ProvisionerJobType string
 
 const (
-	ProvisionerJobTypeTemplateVersionImport ProvisionerJobType = "template_version_import"
-	ProvisionerJobTypeWorkspaceBuild        ProvisionerJobType = "workspace_build"
-	ProvisionerJobTypeTemplateVersionDryRun ProvisionerJobType = "template_version_dry_run"
+	ProvisionerJobTypeTemplateVersionImport  ProvisionerJobType = "template_version_import"
+	ProvisionerJobTypeWorkspaceBuild         ProvisionerJobType = "workspace_build"
+	ProvisionerJobTypeTemplateVersionDryRun  ProvisionerJobType = "template_version_dry_run"
+	ProvisionerJobTypeResourcePoolEntryBuild ProvisionerJobType = "resource_pool_entry_build"
 )
 
 func (e *ProvisionerJobType) Scan(src interface{}) error {
@@ -1394,7 +1395,8 @@ func (e ProvisionerJobType) Valid() bool {
 	switch e {
 	case ProvisionerJobTypeTemplateVersionImport,
 		ProvisionerJobTypeWorkspaceBuild,
-		ProvisionerJobTypeTemplateVersionDryRun:
+		ProvisionerJobTypeTemplateVersionDryRun,
+		ProvisionerJobTypeResourcePoolEntryBuild:
 		return true
 	}
 	return false
@@ -1405,6 +1407,7 @@ func AllProvisionerJobTypeValues() []ProvisionerJobType {
 		ProvisionerJobTypeTemplateVersionImport,
 		ProvisionerJobTypeWorkspaceBuild,
 		ProvisionerJobTypeTemplateVersionDryRun,
+		ProvisionerJobTypeResourcePoolEntryBuild,
 	}
 }
 

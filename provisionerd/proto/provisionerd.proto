@@ -34,6 +34,11 @@ message AcquiredJob {
         repeated provisioner.VariableValue variable_values = 3;
         provisioner.Metadata metadata = 4;
     }
+    message ResourcePoolEntryBuild {
+        reserved 1;
+
+        provisioner.ResourcePoolMetadata metadata = 2;
+    }
 
     string job_id = 1;
     int64 created_at = 2;
@@ -44,6 +49,7 @@ message AcquiredJob {
         WorkspaceBuild workspace_build = 6;
         TemplateImport template_import = 7;
         TemplateDryRun template_dry_run = 8;
+        ResourcePoolEntryBuild resource_pool_entry_build = 10;
     }
     // trace_metadata is currently used for tracing information only. It allows
     // jobs to be tied to the request that created them.
@@ -57,6 +63,10 @@ message FailedJob {
     }
     message TemplateImport {}
     message TemplateDryRun {}
+    message ResourcePoolEntryBuild {
+        bytes state = 1;
+        repeated provisioner.Timing timings = 2; // TODO: for later
+    }
 
     string job_id = 1;
     string error = 2;
@@ -64,6 +74,7 @@ message FailedJob {
         WorkspaceBuild workspace_build = 3;
         TemplateImport template_import = 4;
         TemplateDryRun template_dry_run = 5;
+        ResourcePoolEntryBuild resource_pool_entry_build = 7;
     }
     string error_code = 6;
 }
@@ -85,12 +96,17 @@ message CompletedJob {
     message TemplateDryRun {
         repeated provisioner.Resource resources = 1;
     }
+    message ResourcePoolEntryBuild {
+        bytes state = 1;
+        repeated provisioner.Timing timings = 2; // TODO: for later
+    }
 
     string job_id = 1;
     oneof type {
         WorkspaceBuild workspace_build = 2;
         TemplateImport template_import = 3;
         TemplateDryRun template_dry_run = 4;
+        ResourcePoolEntryBuild resource_pool_entry_build = 5;
     }
 }
 

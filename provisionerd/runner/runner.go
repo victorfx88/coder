@@ -434,6 +434,13 @@ func (r *Runner) do(ctx context.Context) (*proto.CompletedJob, *proto.FailedJob)
 			slog.F("variable_values", redactVariableValues(jobType.WorkspaceBuild.VariableValues)),
 		)
 		return r.runWorkspaceBuild(ctx)
+	case *proto.AcquiredJob_ResourcePoolEntryBuild_:
+		r.logger.Debug(context.Background(), "acquired job is resource pool entry provision",
+			slog.F("id", jobType.ResourcePoolEntryBuild.Metadata.Id),
+			slog.F("name", jobType.ResourcePoolEntryBuild.Metadata.Name),
+			slog.F("transition", jobType.ResourcePoolEntryBuild.Metadata.Transition.String()),
+		)
+		return r.runResourcePoolEntryBuild(ctx)
 	default:
 		return nil, r.failedJobf("unknown job type %q; ensure your provisioner daemon is up-to-date",
 			reflect.TypeOf(r.job.Type).String())
@@ -1033,6 +1040,31 @@ func (r *Runner) runWorkspaceBuild(ctx context.Context) (*proto.CompletedJob, *p
 				State:     applyComplete.State,
 				Resources: applyComplete.Resources,
 				Timings:   applyComplete.Timings,
+			},
+		},
+	}, nil
+}
+
+func (r *Runner) runResourcePoolEntryBuild(ctx context.Context) (*proto.CompletedJob, *proto.FailedJob) {
+	ctx, span := r.startTrace(ctx, tracing.FuncName())
+	defer span.End()
+
+	var (
+		applyStage  string
+	)
+	switch r.job.GetResourcePoolEntryBuild().Metadata.Transition {
+	case sdkproto.ResourcePoolEntryTransition_ALLOCATE:
+		applyStage = "Allocate pool entry"
+	case sdkproto.ResourcePoolEntryTransition_DEALLOCATE:
+		applyStage = "Deallocate pool entry"
+	}
+
+	_ = applyStage
+
+	return &proto.CompletedJob{
+		JobId: r.job.JobId,
+		Type: &proto.CompletedJob_ResourcePoolEntryBuild_{
+			ResourcePoolEntryBuild: &proto.CompletedJob_ResourcePoolEntryBuild{
 			},
 		},
 	}, nil
