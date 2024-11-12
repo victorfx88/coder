@@ -146,3 +146,13 @@ func (unimplementedServer) Plan(_ *provisionersdk.Session, _ *proto.PlanRequest,
 func (unimplementedServer) Apply(_ *provisionersdk.Session, _ *proto.ApplyRequest, _ <-chan struct{}) *proto.ApplyComplete {
 	return &proto.ApplyComplete{Error: "unimplemented"}
 }
+
+func (unimplementedServer) AllocatePlan(s *provisionersdk.Session, r *proto.AllocatePlanRequest, canceledOrComplete <-chan struct{}) *proto.AllocatePlanComplete {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (unimplementedServer) AllocateApply(s *provisionersdk.Session, r *proto.AllocateApplyRequest, canceledOrComplete <-chan struct{}) *proto.AllocateApplyComplete {
+	// TODO implement me
+	panic("implement me")
+}

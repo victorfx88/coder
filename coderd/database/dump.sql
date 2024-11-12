@@ -1908,6 +1908,9 @@ ALTER TABLE ONLY resource_pool_entries
     ADD CONSTRAINT resource_pool_entries_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY resource_pools
+    ADD CONSTRAINT resource_pools_name_key UNIQUE (name);
+
+ALTER TABLE ONLY resource_pools
     ADD CONSTRAINT resource_pools_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY site_configs

@@ -838,11 +838,21 @@ func (r *Runner) buildWorkspace(ctx context.Context, stage string, req *sdkproto
 		}
 		switch msgType := msg.Type.(type) {
 		case *sdkproto.Response_Log:
-			r.logProvisionerJobLog(context.Background(), msgType.Log.Level, "workspace provisioner job logged",
-				slog.F("level", msgType.Log.Level),
-				slog.F("output", msgType.Log.Output),
-				slog.F("workspace_build_id", r.job.GetWorkspaceBuild().WorkspaceBuildId),
-			)
+			switch {
+			case r.job.GetWorkspaceBuild() != nil:
+				r.logProvisionerJobLog(context.Background(), msgType.Log.Level, "workspace provisioner job logged",
+					slog.F("level", msgType.Log.Level),
+					slog.F("output", msgType.Log.Output),
+					slog.F("workspace_build_id", r.job.GetWorkspaceBuild().WorkspaceBuildId),
+				)
+			case r.job.GetResourcePoolEntryBuild() != nil:
+				r.logProvisionerJobLog(context.Background(), msgType.Log.Level, "resource pool entry provisioner job logged",
+					slog.F("level", msgType.Log.Level),
+					slog.F("output", msgType.Log.Output),
+					slog.F("pool_id", r.job.GetResourcePoolEntryBuild().GetMetadata().Id),
+					slog.F("pool_name", r.job.GetResourcePoolEntryBuild().GetMetadata().Name),
+				)
+			}
 
 			r.queueLog(ctx, &proto.Log{
 				Source:    proto.LogSource_PROVISIONER,
@@ -1050,7 +1060,7 @@ func (r *Runner) runResourcePoolEntryBuild(ctx context.Context) (*proto.Complete
 	defer span.End()
 
 	var (
-		applyStage  string
+		applyStage string
 	)
 	switch r.job.GetResourcePoolEntryBuild().Metadata.Transition {
 	case sdkproto.ResourcePoolEntryTransition_ALLOCATE:
@@ -1061,13 +1071,43 @@ func (r *Runner) runResourcePoolEntryBuild(ctx context.Context) (*proto.Complete
 
 	_ = applyStage
 
+	r.resourcePoolEntryBuild(ctx, r.job.GetResourcePoolEntryBuild())
+
 	return &proto.CompletedJob{
 		JobId: r.job.JobId,
 		Type: &proto.CompletedJob_ResourcePoolEntryBuild_{
-			ResourcePoolEntryBuild: &proto.CompletedJob_ResourcePoolEntryBuild{
-			},
+			ResourcePoolEntryBuild: &proto.CompletedJob_ResourcePoolEntryBuild{},
 		},
 	}, nil
+}
+
+func (r *Runner) resourcePoolEntryBuild(ctx context.Context, build *proto.AcquiredJob_ResourcePoolEntryBuild) (any, *proto.FailedJob) {
+	// TODO: reference buildWorkspace for handling corner-cases (cancellation, etc)
+
+	failedJob := r.configure(&sdkproto.Config{
+		TemplateSourceArchive: r.job.GetTemplateSourceArchive(),
+		// ProvisionerLogLevel:   sdkproto.LogLevel_INFO.String(), // TODO: align with existing approach
+	})
+	if failedJob != nil {
+		return nil, failedJob
+	}
+
+	resp, failed := r.buildWorkspace(ctx, "Allocating resource pool entry", &sdkproto.Request{
+		Type: &sdkproto.Request_AllocatePlan{
+			AllocatePlan: &sdkproto.AllocatePlanRequest{
+				Metadata: build.Metadata,
+			},
+		},
+	})
+	if failed != nil {
+		return nil, failed
+	}
+	planComplete := resp.GetPlan()
+	if planComplete == nil {
+		return nil, r.failedWorkspaceBuildf("invalid message type %T received from provisioner", resp.Type)
+	}
+
+	return nil, nil
 }
 
 func resourceNames(rs []*sdkproto.Resource) []string {

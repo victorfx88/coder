@@ -673,7 +673,7 @@ func (s *server) acquireProtoJob(ctx context.Context, job database.ProvisionerJo
 
 		protoJob.Type = &proto.AcquiredJob_ResourcePoolEntryBuild_{
 			ResourcePoolEntryBuild: &proto.AcquiredJob_ResourcePoolEntryBuild{
-				Metadata: &sdkproto.ResourcePoolMetadata{
+				Metadata: &sdkproto.ResourcePoolEntryMetadata{
 					Id:         input.ID,
 					Name:       input.Name,
 					Transition: input.Transition,

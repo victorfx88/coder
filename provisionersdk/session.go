@@ -177,6 +177,38 @@ func (s *Session) handleRequests() error {
 			}
 			resp.Type = &proto.Response_Apply{Apply: complete}
 		}
+		if allocatePlan := req.GetAllocatePlan(); allocatePlan != nil {
+			r := &request[*proto.AllocatePlanRequest, *proto.AllocatePlanComplete]{
+				req:      allocatePlan,
+				session:  s,
+				serverFn: s.server.AllocatePlan,
+				cancels:  requests,
+			}
+			complete, err := r.do()
+			if err != nil {
+				return err
+			}
+			resp.Type = &proto.Response_AllocatePlan{AllocatePlan: complete}
+			if complete.Error == "" {
+				planned = true
+			}
+		}
+		if apply := req.GetAllocateApply(); apply != nil {
+			if !planned {
+				return xerrors.New("cannot apply before successful plan")
+			}
+			r := &request[*proto.AllocateApplyRequest, *proto.AllocateApplyComplete]{
+				req:      apply,
+				session:  s,
+				serverFn: s.server.AllocateApply,
+				cancels:  requests,
+			}
+			complete, err := r.do()
+			if err != nil {
+				return err
+			}
+			resp.Type = &proto.Response_AllocateApply{AllocateApply: complete}
+		}
 		err := s.stream.Send(resp)
 		if err != nil {
 			return xerrors.Errorf("send response: %w", err)
@@ -301,11 +333,13 @@ func (s *Session) ProvisionLog(level proto.LogLevel, output string) {
 }
 
 type pRequest interface {
-	*proto.ParseRequest | *proto.PlanRequest | *proto.ApplyRequest
+	*proto.ParseRequest | *proto.PlanRequest | *proto.ApplyRequest |
+		*proto.AllocatePlanRequest | *proto.AllocateApplyRequest
 }
 
 type pComplete interface {
-	*proto.ParseComplete | *proto.PlanComplete | *proto.ApplyComplete
+	*proto.ParseComplete | *proto.PlanComplete | *proto.ApplyComplete |
+		*proto.AllocatePlanComplete | *proto.AllocateApplyComplete
 }
 
 // request processes a single request call to the Server and returns its complete result, while also processing cancel

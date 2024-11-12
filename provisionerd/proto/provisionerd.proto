@@ -37,7 +37,7 @@ message AcquiredJob {
     message ResourcePoolEntryBuild {
         reserved 1;
 
-        provisioner.ResourcePoolMetadata metadata = 2;
+        provisioner.ResourcePoolEntryMetadata metadata = 2;
     }
 
     string job_id = 1;

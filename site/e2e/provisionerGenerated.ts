@@ -252,7 +252,7 @@ export interface Metadata {
 	workspaceBuildId: string;
 }
 
-export interface ResourcePoolMetadata {
+export interface ResourcePoolEntryMetadata {
 	id: string;
 	name: string;
 	transition: ResourcePoolEntryTransition;
@@ -331,12 +331,36 @@ export interface Timing {
 /** CancelRequest requests that the previous request be canceled gracefully. */
 export interface CancelRequest {}
 
+/** AllocatePlanRequest asks the provisioner to plan what resources & parameters it will create for resource pool entries */
+export interface AllocatePlanRequest {
+	metadata: ResourcePoolEntryMetadata | undefined;
+}
+
+/** AllocatePlanComplete indicates a request to plan a resource pool entry completed. */
+export interface AllocatePlanComplete {
+	error: string;
+}
+
+/** AllocateApplyRequest asks the provisioner to apply the resources & parameters it will create for resource pool entries */
+export interface AllocateApplyRequest {
+	metadata: ResourcePoolEntryMetadata | undefined;
+}
+
+/** AllocateApplyComplete indicates a request to apply a resource pool entry completed. */
+export interface AllocateApplyComplete {
+	error: string;
+	objectId: string;
+}
+
 export interface Request {
 	config?: Config | undefined;
 	parse?: ParseRequest | undefined;
 	plan?: PlanRequest | undefined;
 	apply?: ApplyRequest | undefined;
 	cancel?: CancelRequest | undefined;
+	/** TODO: merge with Plan/Apply/Cancel */
+	allocatePlan?: AllocatePlanRequest | undefined;
+	allocateApply?: AllocateApplyRequest | undefined;
 }
 
 export interface Response {
@@ -344,6 +368,9 @@ export interface Response {
 	parse?: ParseComplete | undefined;
 	plan?: PlanComplete | undefined;
 	apply?: ApplyComplete | undefined;
+	/** TODO: merge with Plan/Apply/Cancel */
+	allocatePlan?: AllocatePlanComplete | undefined;
+	allocateApply?: AllocateApplyComplete | undefined;
 }
 
 export const Empty = {
@@ -895,9 +922,9 @@ export const Metadata = {
 	},
 };
 
-export const ResourcePoolMetadata = {
+export const ResourcePoolEntryMetadata = {
 	encode(
-		message: ResourcePoolMetadata,
+		message: ResourcePoolEntryMetadata,
 		writer: _m0.Writer = _m0.Writer.create(),
 	): _m0.Writer {
 		if (message.id !== "") {
@@ -1114,6 +1141,63 @@ export const CancelRequest = {
 	},
 };
 
+export const AllocatePlanRequest = {
+	encode(
+		message: AllocatePlanRequest,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.metadata !== undefined) {
+			ResourcePoolEntryMetadata.encode(
+				message.metadata,
+				writer.uint32(10).fork(),
+			).ldelim();
+		}
+		return writer;
+	},
+};
+
+export const AllocatePlanComplete = {
+	encode(
+		message: AllocatePlanComplete,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.error !== "") {
+			writer.uint32(10).string(message.error);
+		}
+		return writer;
+	},
+};
+
+export const AllocateApplyRequest = {
+	encode(
+		message: AllocateApplyRequest,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.metadata !== undefined) {
+			ResourcePoolEntryMetadata.encode(
+				message.metadata,
+				writer.uint32(10).fork(),
+			).ldelim();
+		}
+		return writer;
+	},
+};
+
+export const AllocateApplyComplete = {
+	encode(
+		message: AllocateApplyComplete,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.error !== "") {
+			writer.uint32(10).string(message.error);
+		}
+		if (message.objectId !== "") {
+			writer.uint32(18).string(message.objectId);
+		}
+		return writer;
+	},
+};
+
 export const Request = {
 	encode(
 		message: Request,
@@ -1133,6 +1217,18 @@ export const Request = {
 		}
 		if (message.cancel !== undefined) {
 			CancelRequest.encode(message.cancel, writer.uint32(42).fork()).ldelim();
+		}
+		if (message.allocatePlan !== undefined) {
+			AllocatePlanRequest.encode(
+				message.allocatePlan,
+				writer.uint32(50).fork(),
+			).ldelim();
+		}
+		if (message.allocateApply !== undefined) {
+			AllocateApplyRequest.encode(
+				message.allocateApply,
+				writer.uint32(58).fork(),
+			).ldelim();
 		}
 		return writer;
 	},
@@ -1154,6 +1250,18 @@ export const Response = {
 		}
 		if (message.apply !== undefined) {
 			ApplyComplete.encode(message.apply, writer.uint32(34).fork()).ldelim();
+		}
+		if (message.allocatePlan !== undefined) {
+			AllocatePlanComplete.encode(
+				message.allocatePlan,
+				writer.uint32(42).fork(),
+			).ldelim();
+		}
+		if (message.allocateApply !== undefined) {
+			AllocateApplyComplete.encode(
+				message.allocateApply,
+				writer.uint32(50).fork(),
+			).ldelim();
 		}
 		return writer;
 	},
