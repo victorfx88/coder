@@ -3016,6 +3016,14 @@ func (q *querier) InsertResourcePool(ctx context.Context, arg database.InsertRes
 	return q.db.InsertResourcePool(ctx, arg)
 }
 
+func (q *querier) InsertResourcePoolEntry(ctx context.Context, arg database.InsertResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+		return database.ResourcePoolEntry{}, err
+	}
+	return q.db.InsertResourcePoolEntry(ctx, arg)
+}
+
 func (q *querier) InsertTemplate(ctx context.Context, arg database.InsertTemplateParams) error {
 	obj := rbac.ResourceTemplate.InOrg(arg.OrganizationID)
 	if err := q.authorizeContext(ctx, policy.ActionCreate, obj); err != nil {

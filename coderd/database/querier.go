@@ -381,6 +381,7 @@ type sqlcQuerier interface {
 	InsertProvisionerKey(ctx context.Context, arg InsertProvisionerKeyParams) (ProvisionerKey, error)
 	InsertReplica(ctx context.Context, arg InsertReplicaParams) (Replica, error)
 	InsertResourcePool(ctx context.Context, arg InsertResourcePoolParams) (ResourcePool, error)
+	InsertResourcePoolEntry(ctx context.Context, arg InsertResourcePoolEntryParams) (ResourcePoolEntry, error)
 	InsertTemplate(ctx context.Context, arg InsertTemplateParams) error
 	InsertTemplateVersion(ctx context.Context, arg InsertTemplateVersionParams) error
 	InsertTemplateVersionParameter(ctx context.Context, arg InsertTemplateVersionParameterParams) (TemplateVersionParameter, error)

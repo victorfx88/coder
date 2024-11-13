@@ -98,8 +98,8 @@ func (api *API) postResourcePools(rw http.ResponseWriter, r *http.Request) {
 		logger.Info(ctx, "resource pool created", slog.F("pool_id", pool.ID))
 
 		jobInput, err := json.Marshal(provisionerdserver.ResourcePoolBuildJob{
-			ID:         pool.ID.String(),
-			Name:       pool.Name,
+			PoolID:     pool.ID,
+			PoolName:   pool.Name,
 			Transition: proto.ResourcePoolEntryTransition_ALLOCATE,
 		})
 

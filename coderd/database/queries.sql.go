@@ -7005,6 +7005,38 @@ func (q *sqlQuerier) InsertResourcePool(ctx context.Context, arg InsertResourceP
 	return i, err
 }
 
+const insertResourcePoolEntry = `-- name: InsertResourcePoolEntry :one
+INSERT INTO resource_pool_entries (id, reference, resource_pool_id, job_id, created_at, updated_at)
+VALUES ($1::uuid, $2::text, $3::uuid, $4::uuid, NOW(), NOW())
+RETURNING id, reference, created_at, updated_at, resource_pool_id, job_id
+`
+
+type InsertResourcePoolEntryParams struct {
+	ID       uuid.UUID `db:"id" json:"id"`
+	ObjectID string    `db:"object_id" json:"object_id"`
+	PoolID   uuid.UUID `db:"pool_id" json:"pool_id"`
+	JobID    uuid.UUID `db:"job_id" json:"job_id"`
+}
+
+func (q *sqlQuerier) InsertResourcePoolEntry(ctx context.Context, arg InsertResourcePoolEntryParams) (ResourcePoolEntry, error) {
+	row := q.db.QueryRowContext(ctx, insertResourcePoolEntry,
+		arg.ID,
+		arg.ObjectID,
+		arg.PoolID,
+		arg.JobID,
+	)
+	var i ResourcePoolEntry
+	err := row.Scan(
+		&i.ID,
+		&i.Reference,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ResourcePoolID,
+		&i.JobID,
+	)
+	return i, err
+}
+
 const customRoles = `-- name: CustomRoles :many
 SELECT
 	name, display_name, site_permissions, org_permissions, user_permissions, created_at, updated_at, organization_id, id

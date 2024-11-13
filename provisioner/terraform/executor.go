@@ -466,6 +466,22 @@ func (e *executor) apply(
 	}, nil
 }
 
+func (e *executor) outputs(ctx, killCtx context.Context, logr logSink) (map[string]tfjson.StateOutput, error) {
+	ctx, span := e.server.startTrace(ctx, tracing.FuncName())
+	defer span.End()
+
+	e.mut.Lock()
+	defer e.mut.Unlock()
+
+	args := []string{"output", "-json", "-no-color", "-state=" + getStateFilePath(e.workdir)}
+	var state map[string]tfjson.StateOutput
+	err := e.execParseJSON(ctx, killCtx, args, e.basicEnv(), &state)
+	if err != nil {
+		return nil, xerrors.Errorf("terraform output: %w", err)
+	}
+	return state, nil
+}
+
 // stateResources must only be called while the lock is held.
 func (e *executor) stateResources(ctx, killCtx context.Context) (*State, error) {
 	ctx, span := e.server.startTrace(ctx, tracing.FuncName())

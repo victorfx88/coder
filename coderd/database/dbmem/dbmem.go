@@ -7583,6 +7583,15 @@ func (q *FakeQuerier) InsertResourcePool(ctx context.Context, arg database.Inser
 	panic("not implemented")
 }
 
+func (q *FakeQuerier) InsertResourcePoolEntry(ctx context.Context, arg database.InsertResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	err := validateDatabaseType(arg)
+	if err != nil {
+		return database.ResourcePoolEntry{}, err
+	}
+
+	panic("not implemented")
+}
+
 func (q *FakeQuerier) InsertTemplate(_ context.Context, arg database.InsertTemplateParams) error {
 	if err := validateDatabaseType(arg); err != nil {
 		return err

@@ -1071,18 +1071,23 @@ func (r *Runner) runResourcePoolEntryBuild(ctx context.Context) (*proto.Complete
 
 	_ = applyStage
 
-	r.resourcePoolEntryBuild(ctx, r.job.GetResourcePoolEntryBuild())
+	complete, failed := r.resourcePoolEntryBuild(ctx, r.job.GetResourcePoolEntryBuild())
+	if failed != nil {
+		return nil, failed
+	}
 
 	return &proto.CompletedJob{
 		JobId: r.job.JobId,
 		Type: &proto.CompletedJob_ResourcePoolEntryBuild_{
-			ResourcePoolEntryBuild: &proto.CompletedJob_ResourcePoolEntryBuild{},
+			ResourcePoolEntryBuild: &proto.CompletedJob_ResourcePoolEntryBuild{
+				ObjectId: complete.GetResourcePoolEntryBuild().GetObjectId(),
+			},
 		},
 	}, nil
 }
 
-func (r *Runner) resourcePoolEntryBuild(ctx context.Context, build *proto.AcquiredJob_ResourcePoolEntryBuild) (any, *proto.FailedJob) {
-	// TODO: reference buildWorkspace for handling corner-cases (cancellation, etc)
+func (r *Runner) resourcePoolEntryBuild(ctx context.Context, build *proto.AcquiredJob_ResourcePoolEntryBuild) (*proto.CompletedJob, *proto.FailedJob) {
+	// TODO: rename buildWorkspace since it's handling more than just workspaces now
 
 	failedJob := r.configure(&sdkproto.Config{
 		TemplateSourceArchive: r.job.GetTemplateSourceArchive(),
@@ -1091,6 +1096,13 @@ func (r *Runner) resourcePoolEntryBuild(ctx context.Context, build *proto.Acquir
 	if failedJob != nil {
 		return nil, failedJob
 	}
+
+	r.queueLog(ctx, &proto.Log{
+		Source:    proto.LogSource_PROVISIONER_DAEMON,
+		Level:     sdkproto.LogLevel_INFO,
+		Stage:     "plan",
+		CreatedAt: time.Now().UnixMilli(),
+	})
 
 	resp, failed := r.buildWorkspace(ctx, "plan resource pool entry", &sdkproto.Request{
 		Type: &sdkproto.Request_AllocatePlan{
@@ -1159,7 +1171,8 @@ func (r *Runner) resourcePoolEntryBuild(ctx context.Context, build *proto.Acquir
 		JobId: r.job.JobId,
 		Type: &proto.CompletedJob_ResourcePoolEntryBuild_{
 			ResourcePoolEntryBuild: &proto.CompletedJob_ResourcePoolEntryBuild{
-				// TODO
+				// State: TODO: persist state
+				ObjectId: applyComplete.ObjectId,
 			},
 		},
 	}, nil

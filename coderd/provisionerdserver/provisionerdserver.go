@@ -675,8 +675,8 @@ func (s *server) acquireProtoJob(ctx context.Context, job database.ProvisionerJo
 			ResourcePoolEntryBuild: &proto.AcquiredJob_ResourcePoolEntryBuild{
 				Metadata: &sdkproto.ResourcePoolEntryMetadata{
 					CoderUrl:   s.AccessURL.String(),
-					PoolId:         input.ID,
-					PoolName:       input.Name,
+					PoolId:     input.PoolID.String(),
+					PoolName:   input.PoolName,
 					Transition: input.Transition,
 				},
 			},
@@ -1691,11 +1691,30 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 			return nil, xerrors.Errorf("unmarshal job data: %w", err)
 		}
 
-		s.Logger.Info(ctx, "resource pool entry build completed", slog.F("resource_pool_id", input.ID),
-			slog.F("name", input.Name), slog.F("transition", input.Transition.String()), slog.F("job_id", jobID))
+		s.Logger.Info(ctx, "resource pool entry build completed", slog.F("resource_pool_id", input.PoolID),
+			slog.F("name", input.PoolName), slog.F("transition", input.Transition.String()), slog.F("job_id", jobID))
 
 		// TODO: handle resource pool entry build completion
 		// TODO: save object ID to db, create pool entry row
+		objectId := completed.GetResourcePoolEntryBuild().GetObjectId()
+		if objectId == "" {
+			return nil, xerrors.New("persistent resource pool entry: object_id is empty")
+		}
+
+		entry, err := s.Database.InsertResourcePoolEntry(ctx, database.InsertResourcePoolEntryParams{
+			ID:       uuid.New(),
+			ObjectID: objectId,
+			PoolID:   input.PoolID,
+			JobID:    job.ID,
+		})
+		if err != nil {
+			// TODO: how to handle orphan at this point?
+			return nil, xerrors.Errorf("insert resource pool entry: %w", err)
+		}
+
+		s.Logger.Debug(ctx, "resource pool entry saved", slog.F("resource_pool_id", input.PoolID),
+			slog.F("name", input.PoolName), slog.F("transition", input.Transition.String()),
+			slog.F("job_id", jobID), slog.F("entry_id", entry.ID))
 
 	default:
 		if completed.Type == nil {
@@ -2219,8 +2238,8 @@ type TemplateVersionDryRunJob struct {
 
 // ResourcePoolBuildJob TODO
 type ResourcePoolBuildJob struct {
-	ID         string
-	Name       string
+	PoolID     uuid.UUID
+	PoolName   string
 	Transition sdkproto.ResourcePoolEntryTransition
 }
 

@@ -98,7 +98,7 @@ message CompletedJob {
     }
     message ResourcePoolEntryBuild {
         bytes state = 1;
-        repeated provisioner.Timing timings = 2; // TODO: for later
+        string objectId = 2;
     }
 
     string job_id = 1;

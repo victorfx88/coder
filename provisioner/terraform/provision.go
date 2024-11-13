@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
+	"github.com/zclconf/go-cty/cty"
 	"golang.org/x/xerrors"
 
 	"cdr.dev/slog"
@@ -356,9 +357,39 @@ func (s *server) AllocateApply(sess *provisionersdk.Session, request *proto.Allo
 		}
 	}
 
+	outputs, err := e.outputs(ctx, killCtx, sess)
+	if err != nil {
+		sess.ProvisionLog(
+			proto.LogLevel_ERROR,
+			fmt.Sprintf("could not fetch template outputs: %s", err),
+		)
+		return &proto.AllocateApplyComplete{
+			// State: stateData,
+			Error: err.Error(),
+		}
+	}
+
+	// Validate the template outputs.
+	resourceId, ok := outputs["resource_id"] // TODO: const, TODO handle nil map
+	if !ok {
+		err = xerrors.New("'resource_id' template output must be set")
+		sess.ProvisionLog(proto.LogLevel_ERROR, err.Error())
+		return &proto.AllocateApplyComplete{Error: err.Error()}
+	}
+
+	if resourceId.Type != cty.String {
+		err = xerrors.New("'resource_id' template output must be a string")
+		sess.ProvisionLog(proto.LogLevel_ERROR, err.Error())
+		return &proto.AllocateApplyComplete{Error: err.Error()}
+	}
+
+	// TODO: validate resourceId.Sensitive?
+
 	// TODO: do something with the state
 	_ = resp
-	return &proto.AllocateApplyComplete{}
+	return &proto.AllocateApplyComplete{
+		ObjectId: resourceId.Value.(string),
+	}
 }
 
 func planVars(plan *proto.PlanRequest) ([]string, error) {

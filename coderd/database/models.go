@@ -2626,13 +2626,16 @@ type ResourcePoolClaim struct {
 	ResourcePoolEntryID uuid.UUID `db:"resource_pool_entry_id" json:"resource_pool_entry_id"`
 	UserID              uuid.UUID `db:"user_id" json:"user_id"`
 	WorkspaceID         uuid.UUID `db:"workspace_id" json:"workspace_id"`
+	JobID               uuid.UUID `db:"job_id" json:"job_id"`
 }
 
 type ResourcePoolEntry struct {
-	ID        uuid.UUID `db:"id" json:"id"`
-	Reference string    `db:"reference" json:"reference"`
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
+	ID             uuid.UUID `db:"id" json:"id"`
+	Reference      string    `db:"reference" json:"reference"`
+	CreatedAt      time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt      time.Time `db:"updated_at" json:"updated_at"`
+	ResourcePoolID uuid.UUID `db:"resource_pool_id" json:"resource_pool_id"`
+	JobID          uuid.UUID `db:"job_id" json:"job_id"`
 }
 
 type SiteConfig struct {
