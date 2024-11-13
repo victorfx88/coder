@@ -436,8 +436,8 @@ func (r *Runner) do(ctx context.Context) (*proto.CompletedJob, *proto.FailedJob)
 		return r.runWorkspaceBuild(ctx)
 	case *proto.AcquiredJob_ResourcePoolEntryBuild_:
 		r.logger.Debug(context.Background(), "acquired job is resource pool entry provision",
-			slog.F("id", jobType.ResourcePoolEntryBuild.Metadata.Id),
-			slog.F("name", jobType.ResourcePoolEntryBuild.Metadata.Name),
+			slog.F("pool_id", jobType.ResourcePoolEntryBuild.Metadata.PoolId),
+			slog.F("pool_name", jobType.ResourcePoolEntryBuild.Metadata.PoolName),
 			slog.F("transition", jobType.ResourcePoolEntryBuild.Metadata.Transition.String()),
 		)
 		return r.runResourcePoolEntryBuild(ctx)
@@ -849,8 +849,8 @@ func (r *Runner) buildWorkspace(ctx context.Context, stage string, req *sdkproto
 				r.logProvisionerJobLog(context.Background(), msgType.Log.Level, "resource pool entry provisioner job logged",
 					slog.F("level", msgType.Log.Level),
 					slog.F("output", msgType.Log.Output),
-					slog.F("pool_id", r.job.GetResourcePoolEntryBuild().GetMetadata().Id),
-					slog.F("pool_name", r.job.GetResourcePoolEntryBuild().GetMetadata().Name),
+					slog.F("pool_id", r.job.GetResourcePoolEntryBuild().GetMetadata().PoolId),
+					slog.F("pool_name", r.job.GetResourcePoolEntryBuild().GetMetadata().PoolName),
 				)
 			}
 
@@ -1092,7 +1092,7 @@ func (r *Runner) resourcePoolEntryBuild(ctx context.Context, build *proto.Acquir
 		return nil, failedJob
 	}
 
-	resp, failed := r.buildWorkspace(ctx, "Allocating resource pool entry", &sdkproto.Request{
+	resp, failed := r.buildWorkspace(ctx, "plan resource pool entry", &sdkproto.Request{
 		Type: &sdkproto.Request_AllocatePlan{
 			AllocatePlan: &sdkproto.AllocatePlanRequest{
 				Metadata: build.Metadata,
@@ -1102,12 +1102,67 @@ func (r *Runner) resourcePoolEntryBuild(ctx context.Context, build *proto.Acquir
 	if failed != nil {
 		return nil, failed
 	}
-	planComplete := resp.GetPlan()
+	planComplete := resp.GetAllocatePlan()
 	if planComplete == nil {
 		return nil, r.failedWorkspaceBuildf("invalid message type %T received from provisioner", resp.Type)
 	}
 
-	return nil, nil
+	r.logger.Info(context.Background(), "plan request successful")
+
+	r.flushQueuedLogs(ctx)
+
+	r.queueLog(ctx, &proto.Log{
+		Source:    proto.LogSource_PROVISIONER_DAEMON,
+		Level:     sdkproto.LogLevel_INFO,
+		Stage:     "apply",
+		CreatedAt: time.Now().UnixMilli(),
+	})
+
+	resp, failed = r.buildWorkspace(ctx, "allocate resource pool entry", &sdkproto.Request{
+		Type: &sdkproto.Request_AllocateApply{
+			AllocateApply: &sdkproto.AllocateApplyRequest{
+				Metadata: r.job.GetResourcePoolEntryBuild().GetMetadata(),
+			},
+		},
+	})
+	if failed != nil {
+		return nil, failed
+	}
+	applyComplete := resp.GetAllocateApply()
+	if applyComplete == nil {
+		return nil, r.failedWorkspaceBuildf("invalid message type %T received from provisioner", resp.Type)
+	}
+
+	if applyComplete.Error != "" {
+		r.logger.Warn(context.Background(), "allocate failed",
+			slog.F("error", applyComplete.Error),
+			// slog.F("state_len", len(applyComplete.State)), // TODO: save state
+		)
+
+		return nil, &proto.FailedJob{
+			JobId: r.job.JobId,
+			Error: applyComplete.Error,
+			Type: &proto.FailedJob_ResourcePoolEntryBuild_{
+				ResourcePoolEntryBuild: &proto.FailedJob_ResourcePoolEntryBuild{
+					// TODO
+				},
+			},
+		}
+	}
+
+	r.logger.Info(context.Background(), "allocate successful",
+		slog.F("resource_id", applyComplete.ObjectId),
+	)
+	r.flushQueuedLogs(ctx)
+
+	return &proto.CompletedJob{
+		JobId: r.job.JobId,
+		Type: &proto.CompletedJob_ResourcePoolEntryBuild_{
+			ResourcePoolEntryBuild: &proto.CompletedJob_ResourcePoolEntryBuild{
+				// TODO
+			},
+		},
+	}, nil
 }
 
 func resourceNames(rs []*sdkproto.Resource) []string {

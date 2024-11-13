@@ -674,8 +674,9 @@ func (s *server) acquireProtoJob(ctx context.Context, job database.ProvisionerJo
 		protoJob.Type = &proto.AcquiredJob_ResourcePoolEntryBuild_{
 			ResourcePoolEntryBuild: &proto.AcquiredJob_ResourcePoolEntryBuild{
 				Metadata: &sdkproto.ResourcePoolEntryMetadata{
-					Id:         input.ID,
-					Name:       input.Name,
+					CoderUrl:   s.AccessURL.String(),
+					PoolId:         input.ID,
+					PoolName:       input.Name,
 					Transition: input.Transition,
 				},
 			},

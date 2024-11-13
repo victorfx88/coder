@@ -253,8 +253,9 @@ export interface Metadata {
 }
 
 export interface ResourcePoolEntryMetadata {
-	id: string;
-	name: string;
+	coderUrl: string;
+	poolId: string;
+	poolName: string;
 	transition: ResourcePoolEntryTransition;
 }
 
@@ -927,14 +928,17 @@ export const ResourcePoolEntryMetadata = {
 		message: ResourcePoolEntryMetadata,
 		writer: _m0.Writer = _m0.Writer.create(),
 	): _m0.Writer {
-		if (message.id !== "") {
-			writer.uint32(10).string(message.id);
+		if (message.coderUrl !== "") {
+			writer.uint32(10).string(message.coderUrl);
 		}
-		if (message.name !== "") {
-			writer.uint32(18).string(message.name);
+		if (message.poolId !== "") {
+			writer.uint32(18).string(message.poolId);
+		}
+		if (message.poolName !== "") {
+			writer.uint32(26).string(message.poolName);
 		}
 		if (message.transition !== 0) {
-			writer.uint32(24).int32(message.transition);
+			writer.uint32(32).int32(message.transition);
 		}
 		return writer;
 	},

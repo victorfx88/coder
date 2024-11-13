@@ -293,6 +293,7 @@ func (s *server) AllocatePlan(sess *provisionersdk.Session, request *proto.Alloc
 		return provisionersdk.AllocatePlanErrorf("setup env: %s", err)
 	}
 
+	// TODO: split into own plan func
 	_, err = e.plan(
 		ctx, killCtx, env, []string{}, sess,
 		request.Metadata.GetTransition() == proto.ResourcePoolEntryTransition_DEALLOCATE,
@@ -304,9 +305,60 @@ func (s *server) AllocatePlan(sess *provisionersdk.Session, request *proto.Alloc
 	return &proto.AllocatePlanComplete{}
 }
 
-func (s *server) AllocateApply(sess *provisionersdk.Session, req *proto.AllocateApplyRequest, canceledOrComplete <-chan struct{}) *proto.AllocateApplyComplete {
-	// TODO implement me
-	panic("implement me")
+func (s *server) AllocateApply(sess *provisionersdk.Session, request *proto.AllocateApplyRequest, canceledOrComplete <-chan struct{}) *proto.AllocateApplyComplete {
+	// Copied from Apply
+
+	ctx, span := s.startTrace(sess.Context(), tracing.FuncName())
+	defer span.End()
+	ctx, cancel, killCtx, kill := s.setupContexts(ctx, canceledOrComplete)
+	defer cancel()
+	defer kill()
+
+	e := s.executor(sess.WorkDirectory, database.ProvisionerJobTimingStageApply)
+	if err := e.checkMinVersion(ctx); err != nil {
+		return provisionersdk.AllocateApplyErrorf(err.Error())
+	}
+	logTerraformEnvVars(sess)
+
+	// Exit early if there is no plan file. This is necessary to
+	// avoid any cases where a workspace is "locked out" of terraform due to
+	// e.g. bad template param values and cannot be deleted. This is just for
+	// contingency, in the future we will try harder to prevent workspaces being
+	// broken this hard.
+	if request.Metadata.GetTransition() == proto.ResourcePoolEntryTransition_DEALLOCATE && len(sess.Config.State) == 0 {
+		sess.ProvisionLog(proto.LogLevel_INFO, "The terraform plan does not exist, there is nothing to do")
+		return &proto.AllocateApplyComplete{}
+	}
+
+	// Earlier in the session, Plan() will have written the state file and the plan file.
+	statefilePath := getStateFilePath(sess.WorkDirectory)
+	env, err := allocateEnv(sess.Config, request.Metadata)
+	if err != nil {
+		return provisionersdk.AllocateApplyErrorf("provision env: %s", err)
+	}
+	resp, err := e.apply(
+		ctx, killCtx, env, sess,
+	)
+	if err != nil {
+		errorMessage := err.Error()
+		// Terraform can fail and apply and still need to store it's state.
+		// In this case, we return Complete with an explicit error message.
+		stateData, _ := os.ReadFile(statefilePath)
+		// TODO: do something with the state
+		sess.ProvisionLog(
+			proto.LogLevel_INFO,
+			fmt.Sprintf("state data captured (len: %d)", len(stateData)),
+		)
+
+		return &proto.AllocateApplyComplete{
+			// State: stateData,
+			Error: errorMessage,
+		}
+	}
+
+	// TODO: do something with the state
+	_ = resp
+	return &proto.AllocateApplyComplete{}
 }
 
 func planVars(plan *proto.PlanRequest) ([]string, error) {
@@ -369,6 +421,11 @@ func allocateEnv(
 	config *proto.Config, metadata *proto.ResourcePoolEntryMetadata,
 ) ([]string, error) {
 	env := safeEnviron()
+	env = append(env, "CODER_AGENT_URL="+metadata.GetCoderUrl())
+
+	for key, value := range provisionersdk.AgentScriptEnv() {
+		env = append(env, key+"="+value)
+	}
 
 	if config.ProvisionerLogLevel != "" {
 		// TF_LOG=JSON enables all kind of logging: trace-debug-info-warn-error.

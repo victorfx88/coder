@@ -241,9 +241,10 @@ message Metadata {
 }
 
 message ResourcePoolEntryMetadata {
-    string id = 1;
-    string name = 2;
-    ResourcePoolEntryTransition transition = 3;
+    string coder_url = 1;
+    string pool_id = 2;
+    string pool_name = 3;
+    ResourcePoolEntryTransition transition = 4;
 }
 
 // Config represents execution configuration shared by all subsequent requests in the Session
