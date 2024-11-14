@@ -12,6 +12,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"cdr.dev/slog"
+
 	"github.com/coder/coder/v2/coderd/database"
 	"github.com/coder/coder/v2/coderd/rbac"
 	"github.com/coder/coder/v2/coderd/rbac/policy"
@@ -75,13 +76,6 @@ func (m queryMetricsStore) PGLocks(ctx context.Context) (database.PGLocks, error
 
 func (m queryMetricsStore) InTx(f func(database.Store) error, options *database.TxOptions) error {
 	return m.dbMetrics.InTx(f, options)
-}
-
-func (m queryMetricsStore) GetResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]database.ResourcePoolEntry, error) {
-	start := time.Now()
-	r0, r1 := m.s.GetResourcePoolEntries(ctx, poolID)
-	m.queryLatencies.WithLabelValues("GetResourcePoolEntries").Observe(time.Since(start).Seconds())
-	return r0, r1
 }
 
 func (m queryMetricsStore) AcquireLock(ctx context.Context, pgAdvisoryXactLock int64) error {

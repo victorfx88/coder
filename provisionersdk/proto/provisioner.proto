@@ -337,6 +337,7 @@ message AllocatePlanRequest {
 // AllocatePlanComplete indicates a request to plan a resource pool entry completed.
 message AllocatePlanComplete {
     string error = 1;
+    repeated Resource resources = 2;
 }
 
 // AllocateApplyRequest asks the provisioner to apply the resources & parameters it will create for resource pool entries
@@ -348,6 +349,7 @@ message AllocateApplyRequest {
 message AllocateApplyComplete {
     string error = 1;
     string objectId = 2;
+    repeated Resource resources = 3;
 }
 
 message Request {

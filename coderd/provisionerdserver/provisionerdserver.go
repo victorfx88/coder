@@ -1709,15 +1709,39 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 			return nil, xerrors.New("persistent resource pool entry: object_id is empty")
 		}
 
-		entry, err := s.Database.InsertResourcePoolEntry(ctx, database.InsertResourcePoolEntryParams{
-			ID:       uuid.New(),
-			ObjectID: objectId,
-			PoolID:   input.PoolID,
-			JobID:    job.ID,
-		})
+		var entry database.ResourcePoolEntry
+		err = s.Database.InTx(func(db database.Store) error {
+			entry, err = db.InsertResourcePoolEntry(ctx, database.InsertResourcePoolEntryParams{
+				ID:       uuid.New(),
+				ObjectID: objectId,
+				PoolID:   input.PoolID,
+				JobID:    job.ID,
+			})
+			if err != nil {
+				// TODO: how to handle orphan at this point?
+				return xerrors.Errorf("insert resource pool entry: %w", err)
+			}
+
+			var agents []*sdkproto.Agent
+			for _, protoResource := range jobType.ResourcePoolEntryBuild.Resources {
+				if len(protoResource.Agents) > 0 {
+					agents = append(agents, protoResource.Agents...)
+				}
+			}
+
+			// TODO: somehow determine that IF agents should be set (i.e. in compute resource pool), and there are none, then err.
+			for _, protoResource := range jobType.ResourcePoolEntryBuild.Resources {
+				// TODO: replace "database.WorkspaceTransitionStart" with something more relevant
+				err = InsertWorkspaceResource(ctx, db, job.ID, database.WorkspaceTransitionStart, protoResource, telemetrySnapshot)
+				if err != nil {
+					return xerrors.Errorf("insert provisioner job: %w", err)
+				}
+			}
+
+			return nil
+		}, nil)
 		if err != nil {
-			// TODO: how to handle orphan at this point?
-			return nil, xerrors.Errorf("insert resource pool entry: %w", err)
+			return nil, xerrors.Errorf("complete job: %w", err)
 		}
 
 		s.Logger.Debug(ctx, "resource pool entry saved", slog.F("resource_pool_id", input.PoolID),

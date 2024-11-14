@@ -1085,7 +1085,8 @@ func (r *Runner) runResourcePoolEntryBuild(ctx context.Context) (*proto.Complete
 		JobId: r.job.JobId,
 		Type: &proto.CompletedJob_ResourcePoolEntryBuild_{
 			ResourcePoolEntryBuild: &proto.CompletedJob_ResourcePoolEntryBuild{
-				ObjectId: complete.GetResourcePoolEntryBuild().GetObjectId(),
+				Resources: complete.GetResourcePoolEntryBuild().Resources,
+				ObjectId:  complete.GetResourcePoolEntryBuild().ObjectId,
 			},
 		},
 	}, nil
@@ -1177,7 +1178,8 @@ func (r *Runner) resourcePoolEntryBuild(ctx context.Context, build *proto.Acquir
 		Type: &proto.CompletedJob_ResourcePoolEntryBuild_{
 			ResourcePoolEntryBuild: &proto.CompletedJob_ResourcePoolEntryBuild{
 				// State: TODO: persist state
-				ObjectId: applyComplete.ObjectId,
+				ObjectId:  applyComplete.ObjectId,
+				Resources: applyComplete.Resources,
 			},
 		},
 	}, nil

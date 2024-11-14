@@ -295,7 +295,7 @@ func (s *server) AllocatePlan(sess *provisionersdk.Session, request *proto.Alloc
 	}
 
 	// TODO: split into own plan func
-	_, err = e.plan(
+	planComplete, err := e.plan(
 		ctx, killCtx, env, []string{}, sess,
 		request.Metadata.GetTransition() == proto.ResourcePoolEntryTransition_DEALLOCATE,
 	)
@@ -303,7 +303,9 @@ func (s *server) AllocatePlan(sess *provisionersdk.Session, request *proto.Alloc
 		return provisionersdk.AllocatePlanErrorf(err.Error())
 	}
 
-	return &proto.AllocatePlanComplete{}
+	return &proto.AllocatePlanComplete{
+		Resources: planComplete.Resources,
+	}
 }
 
 func (s *server) AllocateApply(sess *provisionersdk.Session, request *proto.AllocateApplyRequest, canceledOrComplete <-chan struct{}) *proto.AllocateApplyComplete {
@@ -337,7 +339,7 @@ func (s *server) AllocateApply(sess *provisionersdk.Session, request *proto.Allo
 	if err != nil {
 		return provisionersdk.AllocateApplyErrorf("provision env: %s", err)
 	}
-	resp, err := e.apply(
+	applyComplete, err := e.apply(
 		ctx, killCtx, env, sess,
 	)
 	if err != nil {
@@ -386,9 +388,10 @@ func (s *server) AllocateApply(sess *provisionersdk.Session, request *proto.Allo
 	// TODO: validate resourceId.Sensitive?
 
 	// TODO: do something with the state
-	_ = resp
+	_ = applyComplete
 	return &proto.AllocateApplyComplete{
-		ObjectId: resourceId.Value.(string),
+		Resources: applyComplete.Resources,
+		ObjectId:  resourceId.Value.(string),
 	}
 }
 
