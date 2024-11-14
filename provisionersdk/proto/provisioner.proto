@@ -93,6 +93,11 @@ message ExternalAuthProvider {
     string access_token = 2;
 }
 
+message ResourcePoolClaim {
+    string name = 1;
+    string pool_name = 2;
+}
+
 // Agent represents a running agent on the workspace.
 message Agent {
     message Metadata {
@@ -275,6 +280,7 @@ message PlanRequest {
     repeated RichParameterValue rich_parameter_values = 2;
     repeated VariableValue variable_values = 3;
     repeated ExternalAuthProvider external_auth_providers = 4;
+    repeated ResourcePoolClaim resource_pool_claims = 5;
 }
 
 // PlanComplete indicates a request to plan completed.
@@ -283,6 +289,7 @@ message PlanComplete {
     repeated Resource resources = 2;
     repeated RichParameter parameters = 3;
     repeated ExternalAuthProviderResource external_auth_providers = 4;
+    repeated ResourcePoolClaim resource_pool_claims = 5;
     repeated Timing timings = 6;
 }
 
@@ -299,6 +306,7 @@ message ApplyComplete {
     repeated Resource resources = 3;
     repeated RichParameter parameters = 4;
     repeated ExternalAuthProviderResource external_auth_providers = 5;
+    repeated ResourcePoolClaim resource_pool_claims = 7;
     repeated Timing timings = 6;
 }
 

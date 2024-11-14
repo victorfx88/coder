@@ -588,6 +588,7 @@ func (r *Runner) runTemplateImport(ctx context.Context) (*proto.CompletedJob, *p
 				RichParameters:             startProvision.Parameters,
 				ExternalAuthProvidersNames: externalAuthProviderNames,
 				ExternalAuthProviders:      startProvision.ExternalAuthProviders,
+				ResourcePoolClaims:         startProvision.ResourcePoolClaims,
 			},
 		},
 	}, nil
@@ -647,6 +648,7 @@ type templateImportProvision struct {
 	Resources             []*sdkproto.Resource
 	Parameters            []*sdkproto.RichParameter
 	ExternalAuthProviders []*sdkproto.ExternalAuthProviderResource
+	ResourcePoolClaims    []*sdkproto.ResourcePoolClaim
 }
 
 // Performs a dry-run provision when importing a template.
@@ -738,6 +740,7 @@ func (r *Runner) runTemplateImportProvisionWithRichParameters(
 				Resources:             c.Resources,
 				Parameters:            c.Parameters,
 				ExternalAuthProviders: c.ExternalAuthProviders,
+				ResourcePoolClaims:    c.ResourcePoolClaims,
 			}, nil
 		default:
 			return nil, xerrors.Errorf("invalid message type %q received from provisioner",
@@ -799,7 +802,8 @@ func (r *Runner) runTemplateDryRun(ctx context.Context) (*proto.CompletedJob, *p
 		JobId: r.job.JobId,
 		Type: &proto.CompletedJob_TemplateDryRun_{
 			TemplateDryRun: &proto.CompletedJob_TemplateDryRun{
-				Resources: provision.Resources,
+				Resources:          provision.Resources,
+				ResourcePoolClaims: provision.ResourcePoolClaims,
 			},
 		},
 	}, nil
@@ -1047,9 +1051,10 @@ func (r *Runner) runWorkspaceBuild(ctx context.Context) (*proto.CompletedJob, *p
 		JobId: r.job.JobId,
 		Type: &proto.CompletedJob_WorkspaceBuild_{
 			WorkspaceBuild: &proto.CompletedJob_WorkspaceBuild{
-				State:     applyComplete.State,
-				Resources: applyComplete.Resources,
-				Timings:   applyComplete.Timings,
+				State:              applyComplete.State,
+				Resources:          applyComplete.Resources,
+				ResourcePoolClaims: applyComplete.ResourcePoolClaims,
+				Timings:            applyComplete.Timings,
 			},
 		},
 	}, nil

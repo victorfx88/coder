@@ -77,6 +77,13 @@ func (m queryMetricsStore) InTx(f func(database.Store) error, options *database.
 	return m.dbMetrics.InTx(f, options)
 }
 
+func (m queryMetricsStore) GetResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]database.ResourcePoolEntry, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetResourcePoolEntries(ctx, poolID)
+	m.queryLatencies.WithLabelValues("GetResourcePoolEntries").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
 func (m queryMetricsStore) AcquireLock(ctx context.Context, pgAdvisoryXactLock int64) error {
 	start := time.Now()
 	err := m.s.AcquireLock(ctx, pgAdvisoryXactLock)
@@ -137,6 +144,13 @@ func (m queryMetricsStore) BulkMarkNotificationMessagesSent(ctx context.Context,
 	start := time.Now()
 	r0, r1 := m.s.BulkMarkNotificationMessagesSent(ctx, arg)
 	m.queryLatencies.WithLabelValues("BulkMarkNotificationMessagesSent").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
+func (m queryMetricsStore) ClaimResourcePoolEntry(ctx context.Context, arg database.ClaimResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	start := time.Now()
+	r0, r1 := m.s.ClaimResourcePoolEntry(ctx, arg)
+	m.queryLatencies.WithLabelValues("ClaimResourcePoolEntry").Observe(time.Since(start).Seconds())
 	return r0, r1
 }
 
@@ -537,6 +551,13 @@ func (m queryMetricsStore) GetAuthorizationUserRoles(ctx context.Context, userID
 	row, err := m.s.GetAuthorizationUserRoles(ctx, userID)
 	m.queryLatencies.WithLabelValues("GetAuthorizationUserRoles").Observe(time.Since(start).Seconds())
 	return row, err
+}
+
+func (m queryMetricsStore) GetClaimableResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]database.ResourcePoolEntry, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetClaimableResourcePoolEntries(ctx, poolID)
+	m.queryLatencies.WithLabelValues("GetClaimableResourcePoolEntries").Observe(time.Since(start).Seconds())
+	return r0, r1
 }
 
 func (m queryMetricsStore) GetCoordinatorResumeTokenSigningKey(ctx context.Context) (string, error) {
@@ -1055,6 +1076,13 @@ func (m queryMetricsStore) GetReplicasUpdatedAfter(ctx context.Context, updatedA
 	replicas, err := m.s.GetReplicasUpdatedAfter(ctx, updatedAt)
 	m.queryLatencies.WithLabelValues("GetReplicasUpdatedAfter").Observe(time.Since(start).Seconds())
 	return replicas, err
+}
+
+func (m queryMetricsStore) GetResourcePoolByName(ctx context.Context, name string) (database.ResourcePool, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetResourcePoolByName(ctx, name)
+	m.queryLatencies.WithLabelValues("GetResourcePoolByName").Observe(time.Since(start).Seconds())
+	return r0, r1
 }
 
 func (m queryMetricsStore) GetRuntimeConfig(ctx context.Context, key string) (string, error) {

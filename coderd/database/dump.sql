@@ -1020,21 +1020,15 @@ CREATE TABLE replicas (
     "primary" boolean DEFAULT true NOT NULL
 );
 
-CREATE TABLE resource_pool_claims (
-    id uuid NOT NULL,
-    resource_pool_entry_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    workspace_id uuid NOT NULL,
-    job_id uuid NOT NULL
-);
-
 CREATE TABLE resource_pool_entries (
     id uuid NOT NULL,
     reference text NOT NULL,
+    resource_pool_id uuid NOT NULL,
+    job_id uuid NOT NULL,
+    claimant_id uuid,
     created_at timestamp with time zone NOT NULL,
     updated_at timestamp with time zone NOT NULL,
-    resource_pool_id uuid NOT NULL,
-    job_id uuid NOT NULL
+    claimed_at timestamp with time zone
 );
 
 CREATE TABLE resource_pools (
@@ -1904,9 +1898,6 @@ ALTER TABLE ONLY provisioner_jobs
 ALTER TABLE ONLY provisioner_keys
     ADD CONSTRAINT provisioner_keys_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY resource_pool_claims
-    ADD CONSTRAINT resource_pool_claims_pkey PRIMARY KEY (id);
-
 ALTER TABLE ONLY resource_pool_entries
     ADD CONSTRAINT resource_pool_entries_pkey PRIMARY KEY (id);
 
@@ -2289,17 +2280,8 @@ ALTER TABLE ONLY provisioner_jobs
 ALTER TABLE ONLY provisioner_keys
     ADD CONSTRAINT provisioner_keys_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
-ALTER TABLE ONLY resource_pool_claims
-    ADD CONSTRAINT resource_pool_claims_job_id_fkey FOREIGN KEY (job_id) REFERENCES provisioner_jobs(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY resource_pool_claims
-    ADD CONSTRAINT resource_pool_claims_resource_pool_entry_id_fkey FOREIGN KEY (resource_pool_entry_id) REFERENCES resource_pool_entries(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY resource_pool_claims
-    ADD CONSTRAINT resource_pool_claims_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY resource_pool_claims
-    ADD CONSTRAINT resource_pool_claims_workspace_id_fkey FOREIGN KEY (workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE;
+ALTER TABLE ONLY resource_pool_entries
+    ADD CONSTRAINT resource_pool_entries_claimant_id_fkey FOREIGN KEY (claimant_id) REFERENCES workspace_resources(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY resource_pool_entries
     ADD CONSTRAINT resource_pool_entries_job_id_fkey FOREIGN KEY (job_id) REFERENCES provisioner_jobs(id) ON DELETE CASCADE;

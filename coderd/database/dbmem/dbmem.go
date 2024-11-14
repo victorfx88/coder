@@ -1117,6 +1117,10 @@ func (q *FakeQuerier) getWorkspaceAgentScriptsByAgentIDsNoLock(ids []uuid.UUID) 
 	return scripts, nil
 }
 
+func (q *FakeQuerier) GetResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]database.ResourcePoolEntry, error) {
+	panic("not implemented")
+}
+
 func (*FakeQuerier) AcquireLock(_ context.Context, _ int64) error {
 	return xerrors.New("AcquireLock must only be called within a transaction")
 }
@@ -1443,6 +1447,15 @@ func (*FakeQuerier) BulkMarkNotificationMessagesSent(_ context.Context, arg data
 		return 0, err
 	}
 	return int64(len(arg.IDs)), nil
+}
+
+func (q *FakeQuerier) ClaimResourcePoolEntry(ctx context.Context, arg database.ClaimResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	err := validateDatabaseType(arg)
+	if err != nil {
+		return database.ResourcePoolEntry{}, err
+	}
+
+	panic("not implemented")
 }
 
 func (*FakeQuerier) CleanTailnetCoordinators(_ context.Context) error {
@@ -2453,6 +2466,10 @@ func (q *FakeQuerier) GetAuthorizationUserRoles(_ context.Context, userID uuid.U
 		Roles:    roles,
 		Groups:   groups,
 	}, nil
+}
+
+func (q *FakeQuerier) GetClaimableResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]database.ResourcePoolEntry, error) {
+	panic("not implemented")
 }
 
 func (q *FakeQuerier) GetCoordinatorResumeTokenSigningKey(_ context.Context) (string, error) {
@@ -3900,6 +3917,10 @@ func (q *FakeQuerier) GetReplicasUpdatedAfter(_ context.Context, updatedAt time.
 		}
 	}
 	return replicas, nil
+}
+
+func (q *FakeQuerier) GetResourcePoolByName(ctx context.Context, name string) (database.ResourcePool, error) {
+	panic("not implemented")
 }
 
 func (q *FakeQuerier) GetRuntimeConfig(_ context.Context, key string) (string, error) {

@@ -1659,6 +1659,13 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 			return nil, xerrors.Errorf("update workspace: %w", err)
 		}
 	case *proto.CompletedJob_TemplateDryRun_:
+		// Validate that the resource pools exist.
+		for _, claim := range jobType.TemplateDryRun.ResourcePoolClaims {
+			if _, err = s.Database.GetResourcePoolByName(ctx, claim.PoolName); err != nil {
+				return nil, xerrors.Errorf("could not find resource pool by name %q for claim %q: %w", claim.PoolName, claim.Name, err)
+			}
+		}
+
 		for _, resource := range jobType.TemplateDryRun.Resources {
 			s.Logger.Info(ctx, "inserting template dry-run job resource",
 				slog.F("job_id", job.ID.String()),

@@ -16,22 +16,13 @@ CREATE TABLE IF NOT EXISTS resource_pools
 CREATE TABLE IF NOT EXISTS resource_pool_entries
 (
     id               uuid                     NOT NULL,
-    reference        text                     NOT NULL, -- TODO: maybe this can be NULLable while a job executes?
-    created_at       timestamp with time zone NOT NULL,
-    updated_at       timestamp with time zone NOT NULL,
+    reference        text                     NOT NULL,                                                   -- TODO: maybe this can be NULLable while a job executes?
     resource_pool_id uuid                     NOT NULL REFERENCES resource_pools (id) ON DELETE CASCADE,
     job_id           uuid                     NOT NULL REFERENCES provisioner_jobs (id) ON DELETE CASCADE,
-
-    PRIMARY KEY (id)
-);
-
-CREATE TABLE IF NOT EXISTS resource_pool_claims
-(
-    id                     uuid NOT NULL,
-    resource_pool_entry_id uuid NOT NULL REFERENCES resource_pool_entries (id) ON DELETE CASCADE,
-    user_id                uuid NOT NULL REFERENCES users (id) ON DELETE CASCADE,
-    workspace_id           uuid NOT NULL REFERENCES workspaces (id) ON DELETE CASCADE,
-    job_id                 uuid NOT NULL REFERENCES provisioner_jobs (id) ON DELETE CASCADE,
+    claimant_id      uuid                     NULL REFERENCES workspace_resources (id) ON DELETE CASCADE, -- TODO: comment
+    created_at       timestamp with time zone NOT NULL,
+    updated_at       timestamp with time zone NOT NULL,
+    claimed_at       timestamp with time zone NULL,
 
     PRIMARY KEY (id)
 );

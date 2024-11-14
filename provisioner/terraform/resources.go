@@ -127,6 +127,7 @@ type State struct {
 	Resources             []*proto.Resource
 	Parameters            []*proto.RichParameter
 	ExternalAuthProviders []*proto.ExternalAuthProviderResource
+	ResourcePoolClaims    []*proto.ResourcePoolClaim
 }
 
 // ConvertState consumes Terraform state and a GraphViz representation
@@ -144,6 +145,7 @@ func ConvertState(modules []*tfjson.StateModule, rawGraph string) (*State, error
 
 	resources := make([]*proto.Resource, 0)
 	resourceAgents := map[string][]*proto.Agent{}
+	var resourcePoolClaims []*proto.ResourcePoolClaim
 
 	// Indexes Terraform resources by their label.
 	// The label is what "terraform graph" uses to reference nodes.
@@ -151,6 +153,7 @@ func ConvertState(modules []*tfjson.StateModule, rawGraph string) (*State, error
 
 	// Extra array to preserve the order of rich parameters.
 	tfResourcesRichParameters := make([]*tfjson.StateResource, 0)
+	var tfResourcePoolClaims []*tfjson.StateResource
 
 	var findTerraformResources func(mod *tfjson.StateModule)
 	findTerraformResources = func(mod *tfjson.StateModule) {
@@ -158,6 +161,10 @@ func ConvertState(modules []*tfjson.StateModule, rawGraph string) (*State, error
 			findTerraformResources(module)
 		}
 		for _, resource := range mod.Resources {
+			if resource.Type == "coder_pool_resource_claim" {
+				tfResourcePoolClaims = append(tfResourcePoolClaims, resource)
+			}
+
 			if resource.Type == "coder_parameter" {
 				tfResourcesRichParameters = append(tfResourcesRichParameters, resource)
 			}
@@ -732,10 +739,24 @@ func ConvertState(modules []*tfjson.StateModule, rawGraph string) (*State, error
 		externalAuthProviders = append(externalAuthProviders, it)
 	}
 
+	// Track resource pool claims.
+	for _, resource := range tfResourcePoolClaims {
+		poolName, ok := resource.AttributeValues["pool_name"]
+		if !ok {
+			return nil, xerrors.Errorf("could not find 'pool_name' attribute for pool claim resource")
+		}
+
+		resourcePoolClaims = append(resourcePoolClaims, &proto.ResourcePoolClaim{
+			Name:     resource.Name,
+			PoolName: poolName.(string), // TODO: type safety
+		})
+	}
+
 	return &State{
 		Resources:             resources,
 		Parameters:            parameters,
 		ExternalAuthProviders: externalAuthProviders,
+		ResourcePoolClaims:    resourcePoolClaims,
 	}, nil
 }
 

@@ -119,6 +119,11 @@ export interface ExternalAuthProvider {
 	accessToken: string;
 }
 
+export interface ResourcePoolClaim {
+	name: string;
+	poolName: string;
+}
+
 /** Agent represents a running agent on the workspace. */
 export interface Agent {
 	id: string;
@@ -291,6 +296,7 @@ export interface PlanRequest {
 	richParameterValues: RichParameterValue[];
 	variableValues: VariableValue[];
 	externalAuthProviders: ExternalAuthProvider[];
+	resourcePoolClaims: ResourcePoolClaim[];
 }
 
 /** PlanComplete indicates a request to plan completed. */
@@ -299,6 +305,7 @@ export interface PlanComplete {
 	resources: Resource[];
 	parameters: RichParameter[];
 	externalAuthProviders: ExternalAuthProviderResource[];
+	resourcePoolClaims: ResourcePoolClaim[];
 	timings: Timing[];
 }
 
@@ -317,6 +324,7 @@ export interface ApplyComplete {
 	resources: Resource[];
 	parameters: RichParameter[];
 	externalAuthProviders: ExternalAuthProviderResource[];
+	resourcePoolClaims: ResourcePoolClaim[];
 	timings: Timing[];
 }
 
@@ -568,6 +576,21 @@ export const ExternalAuthProvider = {
 		}
 		if (message.accessToken !== "") {
 			writer.uint32(18).string(message.accessToken);
+		}
+		return writer;
+	},
+};
+
+export const ResourcePoolClaim = {
+	encode(
+		message: ResourcePoolClaim,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.name !== "") {
+			writer.uint32(10).string(message.name);
+		}
+		if (message.poolName !== "") {
+			writer.uint32(18).string(message.poolName);
 		}
 		return writer;
 	},
@@ -1031,6 +1054,9 @@ export const PlanRequest = {
 		for (const v of message.externalAuthProviders) {
 			ExternalAuthProvider.encode(v!, writer.uint32(34).fork()).ldelim();
 		}
+		for (const v of message.resourcePoolClaims) {
+			ResourcePoolClaim.encode(v!, writer.uint32(42).fork()).ldelim();
+		}
 		return writer;
 	},
 };
@@ -1054,6 +1080,9 @@ export const PlanComplete = {
 				v!,
 				writer.uint32(34).fork(),
 			).ldelim();
+		}
+		for (const v of message.resourcePoolClaims) {
+			ResourcePoolClaim.encode(v!, writer.uint32(42).fork()).ldelim();
 		}
 		for (const v of message.timings) {
 			Timing.encode(v!, writer.uint32(50).fork()).ldelim();
@@ -1096,6 +1125,9 @@ export const ApplyComplete = {
 				v!,
 				writer.uint32(42).fork(),
 			).ldelim();
+		}
+		for (const v of message.resourcePoolClaims) {
+			ResourcePoolClaim.encode(v!, writer.uint32(58).fork()).ldelim();
 		}
 		for (const v of message.timings) {
 			Timing.encode(v!, writer.uint32(50).fork()).ldelim();

@@ -1044,6 +1044,14 @@ func (q *querier) BulkMarkNotificationMessagesSent(ctx context.Context, arg data
 	return q.db.BulkMarkNotificationMessagesSent(ctx, arg)
 }
 
+func (q *querier) ClaimResourcePoolEntry(ctx context.Context, arg database.ClaimResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+		return database.ResourcePoolEntry{}, err
+	}
+	return q.db.ClaimResourcePoolEntry(ctx, arg)
+}
+
 func (q *querier) CleanTailnetCoordinators(ctx context.Context) error {
 	if err := q.authorizeContext(ctx, policy.ActionDelete, rbac.ResourceTailnetCoordinator); err != nil {
 		return err
@@ -1458,6 +1466,14 @@ func (q *querier) GetAuthorizationUserRoles(ctx context.Context, userID uuid.UUI
 		return database.GetAuthorizationUserRolesRow{}, err
 	}
 	return q.db.GetAuthorizationUserRoles(ctx, userID)
+}
+
+func (q *querier) GetClaimableResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]database.ResourcePoolEntry, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+		return []database.ResourcePoolEntry{}, err
+	}
+	return q.db.GetClaimableResourcePoolEntries(ctx, poolID)
 }
 
 func (q *querier) GetCoordinatorResumeTokenSigningKey(ctx context.Context) (string, error) {
@@ -2001,6 +2017,14 @@ func (q *querier) GetReplicasUpdatedAfter(ctx context.Context, updatedAt time.Ti
 		return nil, err
 	}
 	return q.db.GetReplicasUpdatedAfter(ctx, updatedAt)
+}
+
+func (q *querier) GetResourcePoolByName(ctx context.Context, name string) (database.ResourcePool, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
+		return database.ResourcePool{}, err
+	}
+	return q.db.GetResourcePoolByName(ctx, name)
 }
 
 func (q *querier) GetRuntimeConfig(ctx context.Context, key string) (string, error) {

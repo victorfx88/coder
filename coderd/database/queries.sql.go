@@ -6966,6 +6966,94 @@ func (q *sqlQuerier) UpdateReplica(ctx context.Context, arg UpdateReplicaParams)
 	return i, err
 }
 
+const claimResourcePoolEntry = `-- name: ClaimResourcePoolEntry :one
+UPDATE resource_pool_entries
+SET claimant_id = $1::uuid,
+    updated_at  = NOW(),
+    claimed_at = NOW()
+WHERE id = $2::uuid
+RETURNING id, reference, resource_pool_id, job_id, claimant_id, created_at, updated_at, claimed_at
+`
+
+type ClaimResourcePoolEntryParams struct {
+	ClaimantID uuid.UUID `db:"claimant_id" json:"claimant_id"`
+	ID         uuid.UUID `db:"id" json:"id"`
+}
+
+func (q *sqlQuerier) ClaimResourcePoolEntry(ctx context.Context, arg ClaimResourcePoolEntryParams) (ResourcePoolEntry, error) {
+	row := q.db.QueryRowContext(ctx, claimResourcePoolEntry, arg.ClaimantID, arg.ID)
+	var i ResourcePoolEntry
+	err := row.Scan(
+		&i.ID,
+		&i.Reference,
+		&i.ResourcePoolID,
+		&i.JobID,
+		&i.ClaimantID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ClaimedAt,
+	)
+	return i, err
+}
+
+const getClaimableResourcePoolEntries = `-- name: GetClaimableResourcePoolEntries :many
+SELECT id, reference, resource_pool_id, job_id, claimant_id, created_at, updated_at, claimed_at FROM resource_pool_entries WHERE resource_pool_id = $1::uuid AND claimant_id IS NULL
+`
+
+func (q *sqlQuerier) GetClaimableResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]ResourcePoolEntry, error) {
+	rows, err := q.db.QueryContext(ctx, getClaimableResourcePoolEntries, poolID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ResourcePoolEntry
+	for rows.Next() {
+		var i ResourcePoolEntry
+		if err := rows.Scan(
+			&i.ID,
+			&i.Reference,
+			&i.ResourcePoolID,
+			&i.JobID,
+			&i.ClaimantID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.ClaimedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getResourcePoolByName = `-- name: GetResourcePoolByName :one
+SELECT id, name, capacity, template_file_id, user_id, organization_id, created_at, updated_at
+FROM resource_pools
+WHERE name = $1::text
+`
+
+func (q *sqlQuerier) GetResourcePoolByName(ctx context.Context, name string) (ResourcePool, error) {
+	row := q.db.QueryRowContext(ctx, getResourcePoolByName, name)
+	var i ResourcePool
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Capacity,
+		&i.TemplateFileID,
+		&i.UserID,
+		&i.OrganizationID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const insertResourcePool = `-- name: InsertResourcePool :one
 INSERT INTO resource_pools (id, name, capacity, template_file_id, user_id, organization_id, created_at, updated_at)
 VALUES ($1::uuid, $2::text, $3::integer, $4::uuid,
@@ -7008,7 +7096,7 @@ func (q *sqlQuerier) InsertResourcePool(ctx context.Context, arg InsertResourceP
 const insertResourcePoolEntry = `-- name: InsertResourcePoolEntry :one
 INSERT INTO resource_pool_entries (id, reference, resource_pool_id, job_id, created_at, updated_at)
 VALUES ($1::uuid, $2::text, $3::uuid, $4::uuid, NOW(), NOW())
-RETURNING id, reference, created_at, updated_at, resource_pool_id, job_id
+RETURNING id, reference, resource_pool_id, job_id, claimant_id, created_at, updated_at, claimed_at
 `
 
 type InsertResourcePoolEntryParams struct {
@@ -7029,10 +7117,12 @@ func (q *sqlQuerier) InsertResourcePoolEntry(ctx context.Context, arg InsertReso
 	err := row.Scan(
 		&i.ID,
 		&i.Reference,
-		&i.CreatedAt,
-		&i.UpdatedAt,
 		&i.ResourcePoolID,
 		&i.JobID,
+		&i.ClaimantID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ClaimedAt,
 	)
 	return i, err
 }

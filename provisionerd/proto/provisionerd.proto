@@ -85,6 +85,7 @@ message CompletedJob {
         bytes state = 1;
         repeated provisioner.Resource resources = 2;
         repeated provisioner.Timing timings = 3;
+        repeated provisioner.ResourcePoolClaim resource_pool_claims = 4;
     }
     message TemplateImport {
         repeated provisioner.Resource start_resources = 1;
@@ -92,9 +93,11 @@ message CompletedJob {
         repeated provisioner.RichParameter rich_parameters = 3;
         repeated string external_auth_providers_names = 4;
         repeated provisioner.ExternalAuthProviderResource external_auth_providers = 5;
+        repeated provisioner.ResourcePoolClaim resource_pool_claims = 6;
     }
     message TemplateDryRun {
         repeated provisioner.Resource resources = 1;
+        repeated provisioner.ResourcePoolClaim resource_pool_claims = 2;
     }
     message ResourcePoolEntryBuild {
         bytes state = 1;

@@ -59,6 +59,7 @@ type sqlcQuerier interface {
 	BatchUpdateWorkspaceLastUsedAt(ctx context.Context, arg BatchUpdateWorkspaceLastUsedAtParams) error
 	BulkMarkNotificationMessagesFailed(ctx context.Context, arg BulkMarkNotificationMessagesFailedParams) (int64, error)
 	BulkMarkNotificationMessagesSent(ctx context.Context, arg BulkMarkNotificationMessagesSentParams) (int64, error)
+	ClaimResourcePoolEntry(ctx context.Context, arg ClaimResourcePoolEntryParams) (ResourcePoolEntry, error)
 	CleanTailnetCoordinators(ctx context.Context) error
 	CleanTailnetLostPeers(ctx context.Context) error
 	CleanTailnetTunnels(ctx context.Context) error
@@ -131,6 +132,7 @@ type sqlcQuerier interface {
 	// This function returns roles for authorization purposes. Implied member roles
 	// are included.
 	GetAuthorizationUserRoles(ctx context.Context, userID uuid.UUID) (GetAuthorizationUserRolesRow, error)
+	GetClaimableResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]ResourcePoolEntry, error)
 	GetCoordinatorResumeTokenSigningKey(ctx context.Context) (string, error)
 	GetCryptoKeyByFeatureAndSequence(ctx context.Context, arg GetCryptoKeyByFeatureAndSequenceParams) (CryptoKey, error)
 	GetCryptoKeys(ctx context.Context) ([]CryptoKey, error)
@@ -210,6 +212,7 @@ type sqlcQuerier interface {
 	GetQuotaConsumedForUser(ctx context.Context, arg GetQuotaConsumedForUserParams) (int64, error)
 	GetReplicaByID(ctx context.Context, id uuid.UUID) (Replica, error)
 	GetReplicasUpdatedAfter(ctx context.Context, updatedAt time.Time) ([]Replica, error)
+	GetResourcePoolByName(ctx context.Context, name string) (ResourcePool, error)
 	GetRuntimeConfig(ctx context.Context, key string) (string, error)
 	GetTailnetAgents(ctx context.Context, id uuid.UUID) ([]TailnetAgent, error)
 	GetTailnetClientsForAgent(ctx context.Context, agentID uuid.UUID) ([]TailnetClient, error)
