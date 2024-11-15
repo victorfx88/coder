@@ -3353,6 +3353,14 @@ func (q *querier) RevokeDBCryptKey(ctx context.Context, activeKeyDigest string) 
 	return q.db.RevokeDBCryptKey(ctx, activeKeyDigest)
 }
 
+func (q *querier) TransferWorkspaceAgentOwnership(ctx context.Context, arg database.TransferWorkspaceAgentOwnershipParams) (database.WorkspaceResource, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionUpdate, rbac.ResourceSystem); err != nil {
+		return database.WorkspaceResource{}, err
+	}
+	return q.db.TransferWorkspaceAgentOwnership(ctx, arg)
+}
+
 func (q *querier) TryAcquireLock(ctx context.Context, id int64) (bool, error) {
 	return q.db.TryAcquireLock(ctx, id)
 }

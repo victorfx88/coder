@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -1488,6 +1487,48 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 				err = InsertWorkspaceResource(ctx, db, job.ID, workspaceBuild.Transition, protoResource, telemetrySnapshot)
 				if err != nil {
 					return xerrors.Errorf("insert provisioner job: %w", err)
+				}
+			}
+
+			// Validate that the resource pools exist & create claims.
+			// TODO: implement locking for atomicity
+			for _, claim := range jobType.WorkspaceBuild.ResourcePoolClaims {
+				pool, err := db.GetResourcePoolByName(ctx, claim.PoolName)
+				if err != nil {
+					return xerrors.Errorf("could not find resource pool by name %q for claim %q: %w", claim.PoolName, claim.Name, err)
+				}
+
+				// TODO: have this return a non-nullable value for instance/agent ID (i.e. validate)
+				claimable, err := db.GetClaimableResourcePoolEntries(ctx, pool.ID)
+				if err != nil {
+					return xerrors.Errorf("could not find resource pool by name %q for claim %q: %w", claim.PoolName, claim.Name, err)
+				}
+
+				if len(claimable) == 0 {
+					// TODO: create entry and block until ready
+					return xerrors.Errorf("resource pool %q has no claimable entries :(", claim.PoolName)
+				}
+
+				// TODO: maybe just return one entry from the db with some locking associated,
+				//	     and randomise them so we don't always pick first/last
+				entry, err := db.ClaimResourcePoolEntry(ctx, database.ClaimResourcePoolEntryParams{
+					ClaimantJobID: jobID,
+					ID:            claimable[0].ID,
+				})
+				if err != nil {
+					return xerrors.Errorf("claim resource pool %q entry: %w", claim.PoolName, err)
+				}
+
+				// Now that we have the claimed resource pool entry, we need to associate the workspace_resource entry
+				// (of the compute instance for which an agent is already present) with THIS provisioner job,
+				// so that the query in GetWorkspaceAgentAndLatestBuildByAuthToken succeeds
+				// TODO: fix query name, it's misleading...
+				_, err = db.TransferWorkspaceAgentOwnership(ctx, database.TransferWorkspaceAgentOwnershipParams{
+					ClaimantJobID:    jobID,
+					WorkspaceAgentID: entry.WorkspaceAgentID.UUID,
+				})
+				if err != nil {
+					return xerrors.Errorf("transfer resource pool %q entry %q: %w", claim.PoolName, entry.ID, err)
 				}
 			}
 

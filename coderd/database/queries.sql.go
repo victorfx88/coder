@@ -7003,7 +7003,7 @@ func (q *sqlQuerier) ClaimResourcePoolEntry(ctx context.Context, arg ClaimResour
 }
 
 const getClaimableResourcePoolEntries = `-- name: GetClaimableResourcePoolEntries :many
-SELECT id, reference, workspace_agent_id, resource_pool_id, provision_job_id, claimant_job_id, created_at, updated_at, claimed_at FROM resource_pool_entries WHERE resource_pool_id = $1::uuid AND claimant_id IS NULL
+SELECT id, reference, workspace_agent_id, resource_pool_id, provision_job_id, claimant_job_id, created_at, updated_at, claimed_at FROM resource_pool_entries WHERE resource_pool_id = $1::uuid AND claimant_job_id IS NULL
 `
 
 func (q *sqlQuerier) GetClaimableResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]ResourcePoolEntry, error) {
@@ -7133,6 +7133,39 @@ func (q *sqlQuerier) InsertResourcePoolEntry(ctx context.Context, arg InsertReso
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.ClaimedAt,
+	)
+	return i, err
+}
+
+const transferWorkspaceAgentOwnership = `-- name: TransferWorkspaceAgentOwnership :one
+UPDATE workspace_resources wr
+SET job_id = $1::uuid
+FROM workspace_agents wa
+WHERE wa.id = $2::uuid
+  AND wa.resource_id = wr.id
+RETURNING wr.id, wr.created_at, wr.job_id, wr.transition, wr.type, wr.name, wr.hide, wr.icon, wr.instance_type, wr.daily_cost
+`
+
+type TransferWorkspaceAgentOwnershipParams struct {
+	ClaimantJobID    uuid.UUID `db:"claimant_job_id" json:"claimant_job_id"`
+	WorkspaceAgentID uuid.UUID `db:"workspace_agent_id" json:"workspace_agent_id"`
+}
+
+// TODO: move to workspaceresources.sql?
+func (q *sqlQuerier) TransferWorkspaceAgentOwnership(ctx context.Context, arg TransferWorkspaceAgentOwnershipParams) (WorkspaceResource, error) {
+	row := q.db.QueryRowContext(ctx, transferWorkspaceAgentOwnership, arg.ClaimantJobID, arg.WorkspaceAgentID)
+	var i WorkspaceResource
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.JobID,
+		&i.Transition,
+		&i.Type,
+		&i.Name,
+		&i.Hide,
+		&i.Icon,
+		&i.InstanceType,
+		&i.DailyCost,
 	)
 	return i, err
 }

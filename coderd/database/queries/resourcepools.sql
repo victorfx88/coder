@@ -10,7 +10,7 @@ VALUES (@id::uuid, @object_id::text, @pool_id::uuid, @workspace_agent_id::uuid, 
 RETURNING *;
 
 -- name: GetClaimableResourcePoolEntries :many
-SELECT * FROM resource_pool_entries WHERE resource_pool_id = @pool_id::uuid AND claimant_id IS NULL;
+SELECT * FROM resource_pool_entries WHERE resource_pool_id = @pool_id::uuid AND claimant_job_id IS NULL;
 
 -- name: ClaimResourcePoolEntry :one
 UPDATE resource_pool_entries
@@ -19,6 +19,15 @@ SET claimant_job_id = @claimant_job_id::uuid,
     claimed_at = NOW()
 WHERE id = @id::uuid
 RETURNING *;
+
+-- TODO: move to workspaceresources.sql?
+-- name: TransferWorkspaceAgentOwnership :one
+UPDATE workspace_resources wr
+SET job_id = @claimant_job_id::uuid
+FROM workspace_agents wa
+WHERE wa.id = @workspace_agent_id::uuid
+  AND wa.resource_id = wr.id
+RETURNING wr.*;
 
 -- name: GetResourcePoolByName :one
 SELECT *

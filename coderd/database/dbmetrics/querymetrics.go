@@ -2115,6 +2115,13 @@ func (m queryMetricsStore) RevokeDBCryptKey(ctx context.Context, activeKeyDigest
 	return r0
 }
 
+func (m queryMetricsStore) TransferWorkspaceAgentOwnership(ctx context.Context, arg database.TransferWorkspaceAgentOwnershipParams) (database.WorkspaceResource, error) {
+	start := time.Now()
+	r0, r1 := m.s.TransferWorkspaceAgentOwnership(ctx, arg)
+	m.queryLatencies.WithLabelValues("TransferWorkspaceAgentOwnership").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
 func (m queryMetricsStore) TryAcquireLock(ctx context.Context, pgTryAdvisoryXactLock int64) (bool, error) {
 	start := time.Now()
 	ok, err := m.s.TryAcquireLock(ctx, pgTryAdvisoryXactLock)

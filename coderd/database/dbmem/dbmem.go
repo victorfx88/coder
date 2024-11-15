@@ -8563,6 +8563,15 @@ func (q *FakeQuerier) RevokeDBCryptKey(_ context.Context, activeKeyDigest string
 	return sql.ErrNoRows
 }
 
+func (q *FakeQuerier) TransferWorkspaceAgentOwnership(ctx context.Context, arg database.TransferWorkspaceAgentOwnershipParams) (database.WorkspaceResource, error) {
+	err := validateDatabaseType(arg)
+	if err != nil {
+		return database.WorkspaceResource{}, err
+	}
+
+	panic("not implemented")
+}
+
 func (*FakeQuerier) TryAcquireLock(_ context.Context, _ int64) (bool, error) {
 	return false, xerrors.New("TryAcquireLock must only be called within a transaction")
 }

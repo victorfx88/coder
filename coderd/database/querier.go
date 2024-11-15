@@ -425,6 +425,8 @@ type sqlcQuerier interface {
 	RemoveUserFromAllGroups(ctx context.Context, userID uuid.UUID) error
 	RemoveUserFromGroups(ctx context.Context, arg RemoveUserFromGroupsParams) ([]uuid.UUID, error)
 	RevokeDBCryptKey(ctx context.Context, activeKeyDigest string) error
+	// TODO: move to workspaceresources.sql?
+	TransferWorkspaceAgentOwnership(ctx context.Context, arg TransferWorkspaceAgentOwnershipParams) (WorkspaceResource, error)
 	// Non blocking lock. Returns true if the lock was acquired, false otherwise.
 	//
 	// This must be called from within a transaction. The lock will be automatically
