@@ -103,7 +103,6 @@ message CompletedJob {
         bytes state = 1;
         repeated provisioner.Resource resources = 2;
         repeated provisioner.ResourcePoolClaimable resource_pool_claimables = 3;
-        string objectId = 4;
     }
 
     string job_id = 1;

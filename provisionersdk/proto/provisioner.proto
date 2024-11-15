@@ -362,9 +362,8 @@ message AllocateApplyRequest {
 // AllocateApplyComplete indicates a request to apply a resource pool entry completed.
 message AllocateApplyComplete {
     string error = 1;
-    string objectId = 2;
-    repeated Resource resources = 3;
-    repeated ResourcePoolClaimable resource_pool_claimables = 4;
+    repeated Resource resources = 2;
+    repeated ResourcePoolClaimable resource_pool_claimables = 3;
 }
 
 message Request {

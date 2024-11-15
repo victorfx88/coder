@@ -1160,9 +1160,7 @@ func (r *Runner) resourcePoolEntryBuild(ctx context.Context, build *proto.Acquir
 		}
 	}
 
-	r.logger.Info(context.Background(), "allocate successful",
-		slog.F("resource_id", applyComplete.ObjectId),
-	)
+	r.logger.Info(context.Background(), "allocate successful")
 	r.flushQueuedLogs(ctx)
 
 	return &proto.CompletedJob{
@@ -1170,7 +1168,6 @@ func (r *Runner) resourcePoolEntryBuild(ctx context.Context, build *proto.Acquir
 		Type: &proto.CompletedJob_ResourcePoolEntryBuild_{
 			ResourcePoolEntryBuild: &proto.CompletedJob_ResourcePoolEntryBuild{
 				// State: TODO: persist state
-				ObjectId:               applyComplete.ObjectId,
 				Resources:              applyComplete.Resources,
 				ResourcePoolClaimables: applyComplete.ResourcePoolClaimables,
 			},

@@ -374,7 +374,6 @@ export interface AllocateApplyRequest {
 /** AllocateApplyComplete indicates a request to apply a resource pool entry completed. */
 export interface AllocateApplyComplete {
 	error: string;
-	objectId: string;
 	resources: Resource[];
 	resourcePoolClaimables: ResourcePoolClaimable[];
 }
@@ -1302,14 +1301,11 @@ export const AllocateApplyComplete = {
 		if (message.error !== "") {
 			writer.uint32(10).string(message.error);
 		}
-		if (message.objectId !== "") {
-			writer.uint32(18).string(message.objectId);
-		}
 		for (const v of message.resources) {
-			Resource.encode(v!, writer.uint32(26).fork()).ldelim();
+			Resource.encode(v!, writer.uint32(18).fork()).ldelim();
 		}
 		for (const v of message.resourcePoolClaimables) {
-			ResourcePoolClaimable.encode(v!, writer.uint32(34).fork()).ldelim();
+			ResourcePoolClaimable.encode(v!, writer.uint32(26).fork()).ldelim();
 		}
 		return writer;
 	},
