@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"reflect"
@@ -1702,26 +1703,14 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 		s.Logger.Info(ctx, "resource pool entry build completed", slog.F("resource_pool_id", input.PoolID),
 			slog.F("name", input.PoolName), slog.F("transition", input.Transition.String()), slog.F("job_id", jobID))
 
-		// TODO: handle resource pool entry build completion
-		// TODO: save object ID to db, create pool entry row
-		objectId := completed.GetResourcePoolEntryBuild().GetObjectId()
-		if objectId == "" {
-			return nil, xerrors.New("persistent resource pool entry: object_id is empty")
-		}
+		// TODO: get rid of object_id, obviated by claimables
+		// objectId := completed.GetResourcePoolEntryBuild().GetObjectId()
+		// if objectId == "" {
+		// 	return nil, xerrors.New("persistent resource pool entry: object_id is empty")
+		// }
 
 		var entry database.ResourcePoolEntry
 		err = s.Database.InTx(func(db database.Store) error {
-			entry, err = db.InsertResourcePoolEntry(ctx, database.InsertResourcePoolEntryParams{
-				ID:       uuid.New(),
-				ObjectID: objectId,
-				PoolID:   input.PoolID,
-				JobID:    job.ID,
-			})
-			if err != nil {
-				// TODO: how to handle orphan at this point?
-				return xerrors.Errorf("insert resource pool entry: %w", err)
-			}
-
 			var agents []*sdkproto.Agent
 			for _, protoResource := range jobType.ResourcePoolEntryBuild.Resources {
 				if len(protoResource.Agents) > 0 {
@@ -1735,6 +1724,20 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 				err = InsertWorkspaceResource(ctx, db, job.ID, database.WorkspaceTransitionStart, protoResource, telemetrySnapshot)
 				if err != nil {
 					return xerrors.Errorf("insert provisioner job: %w", err)
+				}
+			}
+
+			for _, claimable := range completed.GetResourcePoolEntryBuild().ResourcePoolClaimables {
+				entry, err = db.InsertResourcePoolEntry(ctx, database.InsertResourcePoolEntryParams{
+					ID:               uuid.New(),
+					ObjectID:         claimable.Compute.InstanceId,
+					WorkspaceAgentID: uuid.MustParse(claimable.Compute.AgentId), // TODO: don't panic
+					PoolID:           input.PoolID,
+					ProvisionJobID:   job.ID,
+				})
+				if err != nil {
+					// TODO: how to handle orphan at this point?
+					return xerrors.Errorf("insert resource pool entry: %w", err)
 				}
 			}
 
@@ -1884,7 +1887,21 @@ func InsertWorkspaceResource(ctx context.Context, db database.Store, jobID uuid.
 			}
 		}
 
-		agentID := uuid.New()
+		// agentID := uuid.New()
+		//
+		//
+		//
+		//
+		// BEHAVIOUR CHANGE:
+		//
+		// TODO: decide on this; had to use a well-known agent ID so that we can associate resource pool compute entries
+		//		 with their running agent
+		//
+		//
+		//
+		//
+		agentID := uuid.MustParse(prAgent.Id)
+
 		dbAgent, err := db.InsertWorkspaceAgent(ctx, database.InsertWorkspaceAgentParams{
 			ID:                       agentID,
 			CreatedAt:                dbtime.Now(),

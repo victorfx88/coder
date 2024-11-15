@@ -1081,15 +1081,7 @@ func (r *Runner) runResourcePoolEntryBuild(ctx context.Context) (*proto.Complete
 		return nil, failed
 	}
 
-	return &proto.CompletedJob{
-		JobId: r.job.JobId,
-		Type: &proto.CompletedJob_ResourcePoolEntryBuild_{
-			ResourcePoolEntryBuild: &proto.CompletedJob_ResourcePoolEntryBuild{
-				Resources: complete.GetResourcePoolEntryBuild().Resources,
-				ObjectId:  complete.GetResourcePoolEntryBuild().ObjectId,
-			},
-		},
-	}, nil
+	return complete, nil
 }
 
 func (r *Runner) resourcePoolEntryBuild(ctx context.Context, build *proto.AcquiredJob_ResourcePoolEntryBuild) (*proto.CompletedJob, *proto.FailedJob) {
@@ -1178,8 +1170,9 @@ func (r *Runner) resourcePoolEntryBuild(ctx context.Context, build *proto.Acquir
 		Type: &proto.CompletedJob_ResourcePoolEntryBuild_{
 			ResourcePoolEntryBuild: &proto.CompletedJob_ResourcePoolEntryBuild{
 				// State: TODO: persist state
-				ObjectId:  applyComplete.ObjectId,
-				Resources: applyComplete.Resources,
+				ObjectId:               applyComplete.ObjectId,
+				Resources:              applyComplete.Resources,
+				ResourcePoolClaimables: applyComplete.ResourcePoolClaimables,
 			},
 		},
 	}, nil

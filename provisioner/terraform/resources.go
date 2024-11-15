@@ -124,10 +124,11 @@ type resourceMetadataItem struct {
 }
 
 type State struct {
-	Resources             []*proto.Resource
-	Parameters            []*proto.RichParameter
-	ExternalAuthProviders []*proto.ExternalAuthProviderResource
-	ResourcePoolClaims    []*proto.ResourcePoolClaim
+	Resources              []*proto.Resource
+	Parameters             []*proto.RichParameter
+	ExternalAuthProviders  []*proto.ExternalAuthProviderResource
+	ResourcePoolClaimables []*proto.ResourcePoolClaimable
+	ResourcePoolClaims     []*proto.ResourcePoolClaim
 }
 
 // ConvertState consumes Terraform state and a GraphViz representation
@@ -146,6 +147,7 @@ func ConvertState(modules []*tfjson.StateModule, rawGraph string) (*State, error
 	resources := make([]*proto.Resource, 0)
 	resourceAgents := map[string][]*proto.Agent{}
 	var resourcePoolClaims []*proto.ResourcePoolClaim
+	var resourcePoolClaimables []*proto.ResourcePoolClaimable
 
 	// Indexes Terraform resources by their label.
 	// The label is what "terraform graph" uses to reference nodes.
@@ -154,6 +156,7 @@ func ConvertState(modules []*tfjson.StateModule, rawGraph string) (*State, error
 	// Extra array to preserve the order of rich parameters.
 	tfResourcesRichParameters := make([]*tfjson.StateResource, 0)
 	var tfResourcePoolClaims []*tfjson.StateResource
+	var tfResourcePoolClaimables []*tfjson.StateResource
 
 	var findTerraformResources func(mod *tfjson.StateModule)
 	findTerraformResources = func(mod *tfjson.StateModule) {
@@ -163,6 +166,9 @@ func ConvertState(modules []*tfjson.StateModule, rawGraph string) (*State, error
 		for _, resource := range mod.Resources {
 			if resource.Type == "coder_pool_resource_claim" {
 				tfResourcePoolClaims = append(tfResourcePoolClaims, resource)
+			}
+			if resource.Type == "coder_pool_resource_claimable" {
+				tfResourcePoolClaimables = append(tfResourcePoolClaimables, resource)
 			}
 
 			if resource.Type == "coder_parameter" {
@@ -752,11 +758,47 @@ func ConvertState(modules []*tfjson.StateModule, rawGraph string) (*State, error
 		})
 	}
 
+	// TODO: move structs out
+	type resourcePoolClaimableComputeType struct {
+		InstanceId string `mapstructure:"instance_id"`
+		AgentId    string `mapstructure:"agent_id"`
+	}
+	type resourcePoolClaimableOtherType struct {
+	}
+	type resourcePoolClaimableType struct {
+		Compute []resourcePoolClaimableComputeType `mapstructure:"compute"`
+		Other   []resourcePoolClaimableOtherType   `mapstructure:"other"`
+	}
+
+	// Track resource pool claimables.
+	for _, resource := range tfResourcePoolClaimables {
+		var attrs resourcePoolClaimableType
+		err = mapstructure.Decode(resource.AttributeValues, &attrs)
+		if err != nil {
+			return nil, xerrors.Errorf("decode pool resource claimable attributes: %w", err)
+		}
+
+		switch {
+		// TODO: harden this; how do we handle this func getting called from Plan when these IDs are not yet known?
+		case attrs.Compute[0].InstanceId != "" && attrs.Compute[0].AgentId != "":
+			resourcePoolClaimables = append(resourcePoolClaimables, &proto.ResourcePoolClaimable{
+				Name: resource.Name,
+				Compute: &proto.ResourcePoolClaimableCompute{
+					InstanceId: attrs.Compute[0].InstanceId,
+					AgentId:    attrs.Compute[0].AgentId,
+				},
+			})
+		default:
+			// TODO: handle other cases...
+		}
+	}
+
 	return &State{
-		Resources:             resources,
-		Parameters:            parameters,
-		ExternalAuthProviders: externalAuthProviders,
-		ResourcePoolClaims:    resourcePoolClaims,
+		Resources:              resources,
+		Parameters:             parameters,
+		ExternalAuthProviders:  externalAuthProviders,
+		ResourcePoolClaimables: resourcePoolClaimables,
+		ResourcePoolClaims:     resourcePoolClaims,
 	}, nil
 }
 

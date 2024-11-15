@@ -98,6 +98,19 @@ message ResourcePoolClaim {
     string pool_name = 2;
 }
 
+message ResourcePoolClaimableCompute {
+    string instance_id = 1;
+    string agent_id = 2;
+}
+
+message ResourcePoolClaimableOther {}
+
+message ResourcePoolClaimable {
+    string name = 1;
+    ResourcePoolClaimableCompute compute = 2;
+    ResourcePoolClaimableOther other = 3;
+}
+
 // Agent represents a running agent on the workspace.
 message Agent {
     message Metadata {
@@ -307,6 +320,7 @@ message ApplyComplete {
     repeated RichParameter parameters = 4;
     repeated ExternalAuthProviderResource external_auth_providers = 5;
     repeated ResourcePoolClaim resource_pool_claims = 7;
+    repeated ResourcePoolClaimable resource_pool_claimables = 8;
     repeated Timing timings = 6;
 }
 
@@ -350,6 +364,7 @@ message AllocateApplyComplete {
     string error = 1;
     string objectId = 2;
     repeated Resource resources = 3;
+    repeated ResourcePoolClaimable resource_pool_claimables = 4;
 }
 
 message Request {

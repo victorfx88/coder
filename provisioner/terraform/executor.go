@@ -459,12 +459,13 @@ func (e *executor) apply(
 	}
 
 	return &proto.ApplyComplete{
-		Parameters:            state.Parameters,
-		Resources:             state.Resources,
-		ExternalAuthProviders: state.ExternalAuthProviders,
-		ResourcePoolClaims:    state.ResourcePoolClaims,
-		State:                 stateContent,
-		Timings:               e.timings.aggregate(),
+		Parameters:             state.Parameters,
+		Resources:              state.Resources,
+		ExternalAuthProviders:  state.ExternalAuthProviders,
+		ResourcePoolClaims:     state.ResourcePoolClaims,
+		ResourcePoolClaimables: state.ResourcePoolClaimables,
+		State:                  stateContent,
+		Timings:                e.timings.aggregate(),
 	}, nil
 }
 

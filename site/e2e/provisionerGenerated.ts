@@ -124,6 +124,19 @@ export interface ResourcePoolClaim {
 	poolName: string;
 }
 
+export interface ResourcePoolClaimableCompute {
+	instanceId: string;
+	agentId: string;
+}
+
+export interface ResourcePoolClaimableOther {}
+
+export interface ResourcePoolClaimable {
+	name: string;
+	compute: ResourcePoolClaimableCompute | undefined;
+	other: ResourcePoolClaimableOther | undefined;
+}
+
 /** Agent represents a running agent on the workspace. */
 export interface Agent {
 	id: string;
@@ -325,6 +338,7 @@ export interface ApplyComplete {
 	parameters: RichParameter[];
 	externalAuthProviders: ExternalAuthProviderResource[];
 	resourcePoolClaims: ResourcePoolClaim[];
+	resourcePoolClaimables: ResourcePoolClaimable[];
 	timings: Timing[];
 }
 
@@ -349,6 +363,7 @@ export interface AllocatePlanRequest {
 /** AllocatePlanComplete indicates a request to plan a resource pool entry completed. */
 export interface AllocatePlanComplete {
 	error: string;
+	resources: Resource[];
 }
 
 /** AllocateApplyRequest asks the provisioner to apply the resources & parameters it will create for resource pool entries */
@@ -360,6 +375,8 @@ export interface AllocateApplyRequest {
 export interface AllocateApplyComplete {
 	error: string;
 	objectId: string;
+	resources: Resource[];
+	resourcePoolClaimables: ResourcePoolClaimable[];
 }
 
 export interface Request {
@@ -591,6 +608,54 @@ export const ResourcePoolClaim = {
 		}
 		if (message.poolName !== "") {
 			writer.uint32(18).string(message.poolName);
+		}
+		return writer;
+	},
+};
+
+export const ResourcePoolClaimableCompute = {
+	encode(
+		message: ResourcePoolClaimableCompute,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.instanceId !== "") {
+			writer.uint32(10).string(message.instanceId);
+		}
+		if (message.agentId !== "") {
+			writer.uint32(18).string(message.agentId);
+		}
+		return writer;
+	},
+};
+
+export const ResourcePoolClaimableOther = {
+	encode(
+		_: ResourcePoolClaimableOther,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		return writer;
+	},
+};
+
+export const ResourcePoolClaimable = {
+	encode(
+		message: ResourcePoolClaimable,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.name !== "") {
+			writer.uint32(10).string(message.name);
+		}
+		if (message.compute !== undefined) {
+			ResourcePoolClaimableCompute.encode(
+				message.compute,
+				writer.uint32(18).fork(),
+			).ldelim();
+		}
+		if (message.other !== undefined) {
+			ResourcePoolClaimableOther.encode(
+				message.other,
+				writer.uint32(26).fork(),
+			).ldelim();
 		}
 		return writer;
 	},
@@ -1129,6 +1194,9 @@ export const ApplyComplete = {
 		for (const v of message.resourcePoolClaims) {
 			ResourcePoolClaim.encode(v!, writer.uint32(58).fork()).ldelim();
 		}
+		for (const v of message.resourcePoolClaimables) {
+			ResourcePoolClaimable.encode(v!, writer.uint32(66).fork()).ldelim();
+		}
 		for (const v of message.timings) {
 			Timing.encode(v!, writer.uint32(50).fork()).ldelim();
 		}
@@ -1204,6 +1272,9 @@ export const AllocatePlanComplete = {
 		if (message.error !== "") {
 			writer.uint32(10).string(message.error);
 		}
+		for (const v of message.resources) {
+			Resource.encode(v!, writer.uint32(18).fork()).ldelim();
+		}
 		return writer;
 	},
 };
@@ -1233,6 +1304,12 @@ export const AllocateApplyComplete = {
 		}
 		if (message.objectId !== "") {
 			writer.uint32(18).string(message.objectId);
+		}
+		for (const v of message.resources) {
+			Resource.encode(v!, writer.uint32(26).fork()).ldelim();
+		}
+		for (const v of message.resourcePoolClaimables) {
+			ResourcePoolClaimable.encode(v!, writer.uint32(34).fork()).ldelim();
 		}
 		return writer;
 	},

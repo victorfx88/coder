@@ -386,12 +386,11 @@ func (s *server) AllocateApply(sess *provisionersdk.Session, request *proto.Allo
 	}
 
 	// TODO: validate resourceId.Sensitive?
-
 	// TODO: do something with the state
-	_ = applyComplete
 	return &proto.AllocateApplyComplete{
-		Resources: applyComplete.Resources,
-		ObjectId:  resourceId.Value.(string),
+		Resources:              applyComplete.Resources,
+		ResourcePoolClaimables: applyComplete.ResourcePoolClaimables,
+		ObjectId:               resourceId.Value.(string),
 	}
 }
 

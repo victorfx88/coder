@@ -1042,9 +1042,10 @@ CREATE TABLE replicas (
 CREATE TABLE resource_pool_entries (
     id uuid NOT NULL,
     reference text NOT NULL,
+    workspace_agent_id uuid,
     resource_pool_id uuid NOT NULL,
-    job_id uuid NOT NULL,
-    claimant_id uuid,
+    provision_job_id uuid NOT NULL,
+    claimant_job_id uuid,
     created_at timestamp with time zone NOT NULL,
     updated_at timestamp with time zone NOT NULL,
     claimed_at timestamp with time zone
@@ -2300,13 +2301,16 @@ ALTER TABLE ONLY provisioner_keys
     ADD CONSTRAINT provisioner_keys_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY resource_pool_entries
-    ADD CONSTRAINT resource_pool_entries_claimant_id_fkey FOREIGN KEY (claimant_id) REFERENCES workspace_resources(id) ON DELETE CASCADE;
+    ADD CONSTRAINT resource_pool_entries_claimant_job_id_fkey FOREIGN KEY (claimant_job_id) REFERENCES provisioner_jobs(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY resource_pool_entries
-    ADD CONSTRAINT resource_pool_entries_job_id_fkey FOREIGN KEY (job_id) REFERENCES provisioner_jobs(id) ON DELETE CASCADE;
+    ADD CONSTRAINT resource_pool_entries_provision_job_id_fkey FOREIGN KEY (provision_job_id) REFERENCES provisioner_jobs(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY resource_pool_entries
     ADD CONSTRAINT resource_pool_entries_resource_pool_id_fkey FOREIGN KEY (resource_pool_id) REFERENCES resource_pools(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY resource_pool_entries
+    ADD CONSTRAINT resource_pool_entries_workspace_agent_id_fkey FOREIGN KEY (workspace_agent_id) REFERENCES workspace_agents(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY resource_pools
     ADD CONSTRAINT resource_pools_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;

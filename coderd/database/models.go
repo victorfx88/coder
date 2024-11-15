@@ -2622,14 +2622,15 @@ type ResourcePool struct {
 }
 
 type ResourcePoolEntry struct {
-	ID             uuid.UUID     `db:"id" json:"id"`
-	Reference      string        `db:"reference" json:"reference"`
-	ResourcePoolID uuid.UUID     `db:"resource_pool_id" json:"resource_pool_id"`
-	JobID          uuid.UUID     `db:"job_id" json:"job_id"`
-	ClaimantID     uuid.NullUUID `db:"claimant_id" json:"claimant_id"`
-	CreatedAt      time.Time     `db:"created_at" json:"created_at"`
-	UpdatedAt      time.Time     `db:"updated_at" json:"updated_at"`
-	ClaimedAt      sql.NullTime  `db:"claimed_at" json:"claimed_at"`
+	ID               uuid.UUID     `db:"id" json:"id"`
+	Reference        string        `db:"reference" json:"reference"`
+	WorkspaceAgentID uuid.NullUUID `db:"workspace_agent_id" json:"workspace_agent_id"`
+	ResourcePoolID   uuid.UUID     `db:"resource_pool_id" json:"resource_pool_id"`
+	ProvisionJobID   uuid.UUID     `db:"provision_job_id" json:"provision_job_id"`
+	ClaimantJobID    uuid.NullUUID `db:"claimant_job_id" json:"claimant_job_id"`
+	CreatedAt        time.Time     `db:"created_at" json:"created_at"`
+	UpdatedAt        time.Time     `db:"updated_at" json:"updated_at"`
+	ClaimedAt        sql.NullTime  `db:"claimed_at" json:"claimed_at"`
 }
 
 type SiteConfig struct {

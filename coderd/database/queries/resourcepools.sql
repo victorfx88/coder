@@ -5,8 +5,8 @@ VALUES (@id::uuid, @name::text, @capacity::integer, @template_file_id::uuid,
 RETURNING *;
 
 -- name: InsertResourcePoolEntry :one
-INSERT INTO resource_pool_entries (id, reference, resource_pool_id, job_id, created_at, updated_at)
-VALUES (@id::uuid, @object_id::text, @pool_id::uuid, @job_id::uuid, NOW(), NOW())
+INSERT INTO resource_pool_entries (id, reference, resource_pool_id, workspace_agent_id, provision_job_id, created_at, updated_at)
+VALUES (@id::uuid, @object_id::text, @pool_id::uuid, @workspace_agent_id::uuid, @provision_job_id::uuid, NOW(), NOW())
 RETURNING *;
 
 -- name: GetClaimableResourcePoolEntries :many
@@ -14,7 +14,7 @@ SELECT * FROM resource_pool_entries WHERE resource_pool_id = @pool_id::uuid AND 
 
 -- name: ClaimResourcePoolEntry :one
 UPDATE resource_pool_entries
-SET claimant_id = @claimant_id::uuid,
+SET claimant_job_id = @claimant_job_id::uuid,
     updated_at  = NOW(),
     claimed_at = NOW()
 WHERE id = @id::uuid
