@@ -116,35 +116,37 @@ func (api *API) postResourcePools(rw http.ResponseWriter, r *http.Request) {
 			return err
 		}
 
-		job, err = tx.InsertProvisionerJob(ctx, database.InsertProvisionerJobParams{
-			ID:             uuid.New(),
-			CreatedAt:      dbtime.Now(),
-			UpdatedAt:      dbtime.Now(),
-			OrganizationID: org.ID,
-			InitiatorID:    apiKey.UserID,
-			Provisioner:    database.ProvisionerTypeTerraform, // TODO: dynamic
-			StorageMethod:  database.ProvisionerStorageMethodFile,
-			FileID:         tmplFile.ID,
-			Type:           database.ProvisionerJobTypeResourcePoolEntryBuild,
-			Input:          jobInput,
-			Tags:           tags,
-			TraceMetadata: pqtype.NullRawMessage{
-				RawMessage: traceMetadataRaw,
-				Valid:      true,
-			},
-		})
-		if err != nil {
-			return xerrors.Errorf("insert provisioner job: %w", err)
-		}
-		logger.Debug(ctx, "provisioner job created", slog.F("job_id", job.ID))
+		for i := 0; i < int(poolReq.Capacity); i++ {
+			job, err = tx.InsertProvisionerJob(ctx, database.InsertProvisionerJobParams{
+				ID:             uuid.New(),
+				CreatedAt:      dbtime.Now(),
+				UpdatedAt:      dbtime.Now(),
+				OrganizationID: org.ID,
+				InitiatorID:    apiKey.UserID,
+				Provisioner:    database.ProvisionerTypeTerraform, // TODO: dynamic
+				StorageMethod:  database.ProvisionerStorageMethodFile,
+				FileID:         tmplFile.ID,
+				Type:           database.ProvisionerJobTypeResourcePoolEntryBuild,
+				Input:          jobInput,
+				Tags:           tags,
+				TraceMetadata: pqtype.NullRawMessage{
+					RawMessage: traceMetadataRaw,
+					Valid:      true,
+				},
+			})
+			if err != nil {
+				return xerrors.Errorf("insert provisioner job: %w", err)
+			}
+			logger.Debug(ctx, "provisioner job created", slog.F("job_id", job.ID))
 
-		err = provisionerjobs.PostJob(api.Pubsub, job)
-		if err != nil {
-			// Client probably doesn't care about this error, so just log it.
-			logger.Error(ctx, "failed to post provisioner job to pubsub", slog.Error(err))
-		}
+			err = provisionerjobs.PostJob(api.Pubsub, job)
+			if err != nil {
+				// Client probably doesn't care about this error, so just log it.
+				logger.Error(ctx, "failed to post provisioner job to pubsub", slog.Error(err))
+			}
 
-		logger.Debug(ctx, "posted provisioner job to pubsub", slog.F("job_id", job.ID))
+			logger.Debug(ctx, "posted provisioner job to pubsub", slog.F("job_id", job.ID))
+		}
 
 		return nil
 	}, nil)
