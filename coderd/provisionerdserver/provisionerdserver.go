@@ -1983,18 +1983,13 @@ func InsertWorkspaceResource(ctx context.Context, db database.Store, jobID uuid.
 
 		// agentID := uuid.New()
 		//
-		//
-		//
-		//
 		// BEHAVIOUR CHANGE:
 		//
-		// TODO: decide on this; had to use a well-known agent ID so that we can associate resource pool compute entries
-		//		 with their running agent
-		//
-		//
-		//
-		//
-		agentID := uuid.MustParse(prAgent.Id)
+		agentID, err := uuid.Parse(prAgent.Id)
+		if err != nil {
+			fmt.Printf("%+v\n", prAgent)
+			return xerrors.Errorf("parse agent ID %q: %w", prAgent.Id, err)
+		}
 
 		dbAgent, err := db.InsertWorkspaceAgent(ctx, database.InsertWorkspaceAgentParams{
 			ID:                       agentID,
