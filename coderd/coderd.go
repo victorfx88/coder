@@ -467,7 +467,7 @@ func New(options *Options) *API {
 			codersdk.CryptoKeyFeatureOIDCConvert,
 		)
 		if err != nil {
-			options.Logger.Critical(ctx, "failed to properly instantiate oidc convert signing cache", slog.Error(err))
+			options.Logger.Fatal(ctx, "failed to properly instantiate oidc convert signing cache", slog.Error(err))
 		}
 	}
 
@@ -478,7 +478,7 @@ func New(options *Options) *API {
 			codersdk.CryptoKeyFeatureWorkspaceAppsToken,
 		)
 		if err != nil {
-			options.Logger.Critical(ctx, "failed to properly instantiate app signing key cache", slog.Error(err))
+			options.Logger.Fatal(ctx, "failed to properly instantiate app signing key cache", slog.Error(err))
 		}
 	}
 
@@ -489,8 +489,28 @@ func New(options *Options) *API {
 			codersdk.CryptoKeyFeatureWorkspaceAppsAPIKey,
 		)
 		if err != nil {
-			options.Logger.Critical(ctx, "failed to properly instantiate app encryption key cache", slog.Error(err))
+			options.Logger.Fatal(ctx, "failed to properly instantiate app encryption key cache", slog.Error(err))
 		}
+	}
+
+	if options.CoordinatorResumeTokenProvider == nil {
+		fetcher := &cryptokeys.DBFetcher{
+			DB: options.Database,
+		}
+
+		resumeKeycache, err := cryptokeys.NewSigningCache(ctx,
+			options.Logger,
+			fetcher,
+			codersdk.CryptoKeyFeatureTailnetResume,
+		)
+		if err != nil {
+			options.Logger.Fatal(ctx, "failed to properly instantiate tailnet resume signing cache", slog.Error(err))
+		}
+		options.CoordinatorResumeTokenProvider = tailnet.NewResumeTokenKeyProvider(
+			resumeKeycache,
+			options.Clock,
+			tailnet.DefaultResumeTokenExpiry,
+		)
 	}
 
 	updatesProvider := NewUpdatesProvider(options.Logger.Named("workspace_updates"), options.Pubsub, options.Database, options.Authorizer)
@@ -1468,9 +1488,6 @@ func (api *API) Close() error {
 	default:
 		api.cancel()
 	}
-	if api.derpCloseFunc != nil {
-		api.derpCloseFunc()
-	}
 
 	wsDone := make(chan struct{})
 	timer := time.NewTimer(10 * time.Second)
@@ -1496,11 +1513,16 @@ func (api *API) Close() error {
 		api.updateChecker.Close()
 	}
 	_ = api.workspaceAppServer.Close()
+	_ = api.agentProvider.Close()
+	if api.derpCloseFunc != nil {
+		api.derpCloseFunc()
+	}
+	// The coordinator should be closed after the agent provider, and the DERP
+	// handler.
 	coordinator := api.TailnetCoordinator.Load()
 	if coordinator != nil {
 		_ = (*coordinator).Close()
 	}
-	_ = api.agentProvider.Close()
 	_ = api.statsReporter.Close()
 	_ = api.NetworkTelemetryBatcher.Close()
 	_ = api.OIDCConvertKeyCache.Close()
