@@ -31,6 +31,8 @@ import (
 
 	"github.com/coder/pretty"
 
+	"github.com/coder/serpent"
+
 	"github.com/coder/coder/v2/buildinfo"
 	"github.com/coder/coder/v2/cli/cliui"
 	"github.com/coder/coder/v2/cli/config"
@@ -38,7 +40,6 @@ import (
 	"github.com/coder/coder/v2/cli/telemetry"
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/codersdk/agentsdk"
-	"github.com/coder/serpent"
 )
 
 var (
@@ -91,6 +92,7 @@ func (r *RootCmd) CoreSubcommands() []*serpent.Command {
 		r.notifications(),
 		r.organizations(),
 		r.portForward(),
+		r.prebuilds(),
 		r.publickey(),
 		r.resetPassword(),
 		r.state(),
