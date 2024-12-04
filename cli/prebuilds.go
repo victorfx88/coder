@@ -1,18 +1,20 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
-	"fmt"
 	"os"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
 
+	"cdr.dev/slog"
+	"cdr.dev/slog/sloggers/sloghuman"
 	"github.com/awalterschulze/gographviz"
 	"github.com/coder/serpent"
 	"golang.org/x/xerrors"
 
+	"github.com/coder/coder/v2/cli/cliui"
 	"github.com/coder/coder/v2/codersdk"
 )
 
@@ -32,24 +34,17 @@ func (r *RootCmd) prebuilds() *serpent.Command {
 			initAppearance(client, &appearanceConfig),
 		),
 		Handler: func(inv *serpent.Invocation) error {
-			// ctx, cancel := context.WithCancel(inv.Context())
-			// defer cancel()
+			ctx, cancel := context.WithCancel(inv.Context())
+			defer cancel()
 
 			// notifyCtx, notifyCancel := inv.SignalNotifyContext(ctx, StopSignals...)
 			// defer notifyCancel()
 
-			wd, err := os.Getwd()
+			f, err := os.ReadFile(inv.Args[0])
 			if err != nil {
 				panic(err)
 			}
-
-			path := filepath.Join(wd, "scratch", "tf.graph")
-
-			f, err := os.ReadFile(path)
-			if err != nil {
-				panic(err)
-			}
-			analyze(f)
+			analyze(ctx, inv, f)
 
 			return nil
 		},
@@ -58,7 +53,9 @@ func (r *RootCmd) prebuilds() *serpent.Command {
 	return cmd
 }
 
-func analyze(in []byte) {
+func analyze(ctx context.Context, inv *serpent.Invocation, in []byte) {
+	logger := inv.Logger.AppendSinks(sloghuman.Sink(inv.Stderr)).Leveled(slog.LevelInfo)
+
 	// Parse the DOT data
 	graphAst, err := gographviz.ParseString(string(in))
 	if err != nil {
@@ -70,49 +67,108 @@ func analyze(in []byte) {
 		panic(err)
 	}
 
-	for name, edges := range graph.Edges.SrcToDsts {
-		// if strings.Contains(name, "aws_instance.workspace") {
+	adjacencies := make(map[string][]*gographviz.Node)
+
+	var nodes []string
+	for name := range graph.Edges.SrcToDsts {
+		nodes = append(nodes, name)
+	}
+	slices.Sort(nodes)
+
+	// Find resources which are eligible to be prebuilt
+	var eligible []string
+	for _, name := range nodes {
+		resource, err := parseName(name)
+		if err != nil {
+			logger.Warn(ctx, "failed to parse node name", slog.F("name", name), slog.Error(err))
+			continue
+		}
+
+		switch {
+		// Datasources cannot be prebuilt
+		case resource.Provider == "data",
+			strings.Index(resource.Provider, "coder_") == 0:
+			continue
+		default:
+			eligible = append(eligible, resource.String())
+		}
+	}
+
+	// Iterate over all nodes to build up adjacency list
+	for _, node := range nodes {
+		edges, ok := graph.Edges.SrcToDsts[node]
+		if !ok {
+			continue
+		}
+
+		resource, err := parseName(node)
+		if err != nil {
+			continue
+		}
 
 		visited := make(map[string]struct{})
 		deps := make([]*gographviz.Node, 0)
 
-		nn, err := normalizeName(name)
-		if err != nil {
-			// fmt.Printf("%q: %w", name, err)
-			continue
-		}
-		for en, _ := range edges {
-			// fmt.Printf("\t->%s\n", en)
+		for en := range edges {
 			deps = visit(visited, graph, graph.Nodes.Lookup[en], deps)
 		}
 
-		slices.SortFunc(deps, func(a, b *gographviz.Node) int {
-			if a == nil || b == nil {
-				return 0
-			}
-			return strings.Compare(a.Name, b.Name)
-		})
+		slices.SortFunc(deps, sortNodes)
+		adjacencies[resource.String()] = deps
+	}
 
-		if len(deps) == 0 {
+	selected, err := cliui.MultiSelect(inv, cliui.MultiSelectOptions{
+		Message:  "Choose which resources you would like to prebuild",
+		Options:  eligible,
+		Defaults: []string{"aws_instance.workspace"},
+	})
+	if err != nil {
+		logger.Error(ctx, "Error choosing resources to evaluate for prebuildability", slog.Error(err))
+		return
+	}
+
+	// O=1 lookup
+	eligibleMap := make(map[string]struct{}, len(selected))
+	for _, node := range selected {
+		eligibleMap[node] = struct{}{}
+	}
+
+	// Determine eligibility of all resources
+	for name, deps := range adjacencies {
+		if _, ok := eligibleMap[name]; !ok {
+			logger.Debug(ctx, "skipping, not eligible", slog.F("resource", name))
 			continue
 		}
 
-		fmt.Printf("%s:\n", nn)
+		var ineligibleDeps []*resourceDesc
 		for _, dep := range deps {
-			depName, err := normalizeName(dep.Name)
+			resource, err := parseName(dep.Name)
 			if err != nil {
-				// fmt.Printf("ERR (%q): %s\n", dep.Name, err)
+				logger.Error(ctx, "failed to parse node name", slog.F("name", dep.Name), slog.Error(err))
 				continue
 			}
 
-			fmt.Printf("---%s\n", depName)
+			switch {
+			case (strings.Index(resource.Provider, "coder_") == 0 || strings.Index(resource.Resource, "coder_") == 0) &&
+				resource.Resource != "coder_provisioner": // Exception, this is fine to use.
+				ineligibleDeps = append(ineligibleDeps, resource)
+			}
 		}
-		// }
+		prebuildable := len(ineligibleDeps) == 0
 
-		fmt.Println()
+		logger.Info(ctx, "outcome", slog.F("resource", name),
+			slog.F("dep_count", len(deps)),
+			slog.F("prebuildable", prebuildable))
+		if !prebuildable {
+			logger.Info(ctx, "ineligible due to these dependencies", slog.F("count", len(ineligibleDeps)))
+			for _, res := range ineligibleDeps {
+				logger.Info(ctx, "\t", slog.F("dependency", res.String()))
+			}
+		}
 	}
 }
 
+// visit performs a depth-first search to find all connected nodes
 func visit(visited map[string]struct{}, graph *gographviz.Graph, node *gographviz.Node, list []*gographviz.Node) []*gographviz.Node {
 	if _, ok := visited[node.Name]; ok {
 		return list
@@ -126,21 +182,26 @@ func visit(visited map[string]struct{}, graph *gographviz.Graph, node *gographvi
 		return list
 	}
 
-	for name, _ := range neighbours {
+	for name := range neighbours {
 		if !isValid(name) {
 			continue
 		}
 
-		// fmt.Printf(">>>>>%s\n", name)
-		return visit(visited, graph, graph.Nodes.Lookup[name], list)
+		list = visit(visited, graph, graph.Nodes.Lookup[name], list)
 	}
 
 	return list
 }
 
-var isProvider = regexp.MustCompile(`\bprovider\[`)
+func sortNodes(a *gographviz.Node, b *gographviz.Node) int {
+	if a == nil || b == nil {
+		return 0
+	}
+	return strings.Compare(a.Name, b.Name)
+}
 
 func isValid(name string) bool {
+	var isProvider = regexp.MustCompile(`\bprovider\b`)
 	if isProvider.MatchString(name) {
 		return false
 	}
@@ -148,16 +209,15 @@ func isValid(name string) bool {
 	return true
 }
 
-type resource struct {
+type resourceDesc struct {
 	Graph     string `json:"graph,omitempty"`
 	Provider  string `json:"prov,omitempty"`
 	Resource  string `json:"res,omitempty"`
 	Attribute string `json:"attr,omitempty"`
 }
 
-var parser = regexp.MustCompile(`(?P<graph>^[^\]]+]\s+)?(?P<prov>\w+)\.(?P<res>\w+)(?:\.(?P<attr>\w+))?\s*\(expand\)`)
-
-func normalizeName(name string) (*resource, error) {
+func parseName(name string) (*resourceDesc, error) {
+	var parser = regexp.MustCompile(`"?(?P<graph>^[^\]]+]\s+)?(?P<prov>\w+)\.(?P<res>\w+)(?:\.(?P<attr>\w+))?"?.+`)
 	names := parser.SubexpNames()
 
 	matches := parser.FindStringSubmatch(name)
@@ -167,7 +227,11 @@ func normalizeName(name string) (*resource, error) {
 		return nil, xerrors.Errorf("%q: no matches", name)
 	}
 
-	for i := range names[1:] {
+	for i := range names {
+		// Group 0 always captures full match.
+		if i == 0 {
+			continue
+		}
 		res[names[i]] = matches[i]
 	}
 
@@ -176,7 +240,7 @@ func normalizeName(name string) (*resource, error) {
 		return nil, err
 	}
 
-	var blah resource
+	var blah resourceDesc
 	if err := json.Unmarshal(out, &blah); err != nil {
 		return nil, err
 	}
@@ -184,7 +248,7 @@ func normalizeName(name string) (*resource, error) {
 	return &blah, nil
 }
 
-func (r resource) String() string {
+func (r resourceDesc) String() string {
 	var segs []string
 	if r.Provider != "" {
 		segs = append(segs, r.Provider)
