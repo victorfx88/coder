@@ -53,6 +53,8 @@ func (r *RootCmd) prebuilds() *serpent.Command {
 	return cmd
 }
 
+type adjacencyList map[string][]*gographviz.Node
+
 func analyze(ctx context.Context, inv *serpent.Invocation, in []byte) {
 	logger := inv.Logger.AppendSinks(sloghuman.Sink(inv.Stderr)).Leveled(slog.LevelInfo)
 
@@ -67,15 +69,21 @@ func analyze(ctx context.Context, inv *serpent.Invocation, in []byte) {
 		panic(err)
 	}
 
-	adjacencies := make(map[string][]*gographviz.Node)
+	adjList := make(adjacencyList)
 
 	var nodes []string
-	for name := range graph.Edges.SrcToDsts {
-		nodes = append(nodes, name)
+	seen := make(map[string]struct{}, len(graph.Nodes.Nodes))
+	for _, node := range graph.Nodes.Nodes {
+		if _, ok := seen[node.Name]; ok {
+			continue
+		}
+		seen[node.Name] = struct{}{}
+
+		nodes = append(nodes, node.Name)
 	}
 	slices.Sort(nodes)
 
-	// Find resources which are eligible to be prebuilt
+	// Find resources which are eligible to be prebuilt.
 	var eligible []string
 	for _, name := range nodes {
 		resource, err := parseName(name)
@@ -85,42 +93,45 @@ func analyze(ctx context.Context, inv *serpent.Invocation, in []byte) {
 		}
 
 		switch {
-		// Datasources cannot be prebuilt
+		// Datasources cannot be prebuilt.
 		case resource.Provider == "data",
 			strings.Index(resource.Provider, "coder_") == 0:
 			continue
 		default:
-			eligible = append(eligible, resource.String())
+			eligible = append(eligible, resource.Name())
 		}
 	}
 
 	// Iterate over all nodes to build up adjacency list
 	for _, node := range nodes {
-		edges, ok := graph.Edges.SrcToDsts[node]
-		if !ok {
-			continue
-		}
+		var deps []*gographviz.Node
 
 		resource, err := parseName(node)
 		if err != nil {
 			continue
 		}
 
-		visited := make(map[string]struct{})
-		deps := make([]*gographviz.Node, 0)
+		edges, ok := graph.Edges.SrcToDsts[node]
+		if !ok {
+			// No dependencies, no problem!
+			adjList[resource.Name()] = deps
+			continue
+		}
 
-		for en := range edges {
-			deps = visit(visited, graph, graph.Nodes.Lookup[en], deps)
+		visited := make(map[string]struct{})
+
+		for name := range edges {
+			deps = visit(visited, graph, graph.Nodes.Lookup[name], deps)
 		}
 
 		slices.SortFunc(deps, sortNodes)
-		adjacencies[resource.String()] = deps
+		adjList[resource.Name()] = deps
 	}
 
 	selected, err := cliui.MultiSelect(inv, cliui.MultiSelectOptions{
 		Message:  "Choose which resources you would like to prebuild",
 		Options:  eligible,
-		Defaults: []string{"aws_instance.workspace"},
+		Defaults: eligible, // []string{"aws_instance.workspace"},
 	})
 	if err != nil {
 		logger.Error(ctx, "Error choosing resources to evaluate for prebuildability", slog.Error(err))
@@ -133,42 +144,114 @@ func analyze(ctx context.Context, inv *serpent.Invocation, in []byte) {
 		eligibleMap[node] = struct{}{}
 	}
 
-	// Determine eligibility of all resources
-	for name, deps := range adjacencies {
+	// Determine eligibility of all resources.
+	for name, deps := range adjList {
 		if _, ok := eligibleMap[name]; !ok {
 			logger.Debug(ctx, "skipping, not eligible", slog.F("resource", name))
 			continue
 		}
 
-		var ineligibleDeps []*resourceDesc
-		for _, dep := range deps {
-			resource, err := parseName(dep.Name)
-			if err != nil {
-				logger.Error(ctx, "failed to parse node name", slog.F("name", dep.Name), slog.Error(err))
-				continue
-			}
-
-			switch {
-			case (strings.Index(resource.Provider, "coder_") == 0 || strings.Index(resource.Resource, "coder_") == 0) &&
-				resource.Resource != "coder_provisioner": // Exception, this is fine to use.
-				ineligibleDeps = append(ineligibleDeps, resource)
-			}
-		}
+		eligibleDeps, ineligibleDeps := buildEligibilityLists(ctx, logger, adjList, deps)
 		prebuildable := len(ineligibleDeps) == 0
 
 		logger.Info(ctx, "outcome", slog.F("resource", name),
 			slog.F("dep_count", len(deps)),
 			slog.F("prebuildable", prebuildable))
+		logger.Info(ctx, "dependencies")
+		for _, res := range eligibleDeps {
+			logger.Info(ctx, "eligible", slog.F("dependency", res.Name()))
+		}
 		if !prebuildable {
-			logger.Info(ctx, "ineligible due to these dependencies", slog.F("count", len(ineligibleDeps)))
 			for _, res := range ineligibleDeps {
-				logger.Info(ctx, "\t", slog.F("dependency", res.String()))
+				logger.Info(ctx, "ineligible", slog.F("dependency", res.Name()))
 			}
 		}
 	}
 }
 
-// visit performs a depth-first search to find all connected nodes
+func buildEligibilityLists(ctx context.Context, logger slog.Logger, adjList adjacencyList, deps []*gographviz.Node) (map[string]*resourceDesc, map[string]*resourceDesc) {
+	ineligibleDeps := make(map[string]*resourceDesc, len(deps))
+	eligibleDeps := make(map[string]*resourceDesc, len(deps))
+
+	for _, dep := range deps {
+		node, err := parseName(dep.Name)
+		if err != nil {
+			logger.Error(ctx, "failed to parse node name", slog.F("name", dep.Name), slog.Error(err))
+			continue
+		}
+
+		switch {
+		case strings.Index(node.Provider, "coder_") == 0 || strings.Index(node.Resource, "coder_") == 0:
+			ineligibleDeps[node.Name()] = node
+		default:
+			eligibleDeps[node.Name()] = node
+		}
+
+		// Recurse to determine if any dependencies' transitive dependencies are ineligible.
+		nodes, ok := adjList[node.Name()]
+		if !ok {
+			// Exception: if this node matches any of the follow clauses and itself has no dependencies, then it will
+			// not be included in the adjacency list. If it has no dependencies then it is safe to use.
+			if node.Provider == "coder_agent" || node.Resource == "coder_provisioner" {
+				if _, ok := ineligibleDeps[node.Name()]; ok {
+					logger.Debug(ctx, "marking resource as safe to use since absent from adjacency list", slog.F("name", node.Name()))
+					delete(ineligibleDeps, node.Name())
+					eligibleDeps[node.Name()] = node
+					continue
+				}
+			}
+
+			// This should only occur when this node is not a Terraform resource.
+			logger.Debug(ctx, "failed to lookup node in adjacency list", slog.F("name", node.Name()))
+			continue
+		}
+
+		el, inel := buildEligibilityLists(ctx, logger, adjList, nodes)
+
+		// Exceptions: if coder_provisioner or coder_agent are used and do not have any ineligible dependencies
+		// then can be referenced.
+		if _, ok := ineligibleDeps[node.Name()]; ok {
+			if node.Provider == "coder_agent" || node.Resource == "coder_provisioner" {
+				// If the resource has been marked ineligible BUT has no ineligible transitive dependencies, then it is safe.
+				if len(inel) == 0 {
+					delete(ineligibleDeps, node.Name())
+					eligibleDeps[node.Name()] = node
+				}
+			}
+		}
+
+		if _, ok := eligibleDeps[node.Name()]; ok && len(inel) > 0 {
+			delete(eligibleDeps, node.Name())
+			ineligibleDeps[node.Name()] = node
+		}
+
+		// TODO: check this logic
+		for k, v := range inel {
+			if _, ok := eligibleDeps[k]; ok {
+				delete(eligibleDeps, k)
+				continue
+			}
+			if _, ok := ineligibleDeps[k]; ok {
+				continue
+			}
+			ineligibleDeps[k] = v
+			continue
+		}
+		for k, v := range el {
+			if _, ok := eligibleDeps[k]; ok {
+				continue
+			}
+			if _, ok := ineligibleDeps[k]; ok {
+				continue
+			}
+			eligibleDeps[k] = v
+			continue
+		}
+	}
+	return eligibleDeps, ineligibleDeps
+}
+
+// visit performs a depth-first search to find all connected nodes.
 func visit(visited map[string]struct{}, graph *gographviz.Graph, node *gographviz.Node, list []*gographviz.Node) []*gographviz.Node {
 	if _, ok := visited[node.Name]; ok {
 		return list
@@ -210,6 +293,7 @@ func isValid(name string) bool {
 }
 
 type resourceDesc struct {
+	Original  string
 	Graph     string `json:"graph,omitempty"`
 	Provider  string `json:"prov,omitempty"`
 	Resource  string `json:"res,omitempty"`
@@ -217,7 +301,7 @@ type resourceDesc struct {
 }
 
 func parseName(name string) (*resourceDesc, error) {
-	var parser = regexp.MustCompile(`"?(?P<graph>^[^\]]+]\s+)?(?P<prov>\w+)\.(?P<res>\w+)(?:\.(?P<attr>\w+))?"?.+`)
+	var parser = regexp.MustCompile(`"?(?P<graph>^[^\]]+]\s+)?(?P<prov>[^\.]+)\.(?P<res>[^\.]+)(?:\.(?P<attr>[^\.]+))?"?.+`)
 	names := parser.SubexpNames()
 
 	matches := parser.FindStringSubmatch(name)
@@ -245,10 +329,12 @@ func parseName(name string) (*resourceDesc, error) {
 		return nil, err
 	}
 
+	blah.Original = name
+
 	return &blah, nil
 }
 
-func (r resourceDesc) String() string {
+func (r resourceDesc) Name() string {
 	var segs []string
 	if r.Provider != "" {
 		segs = append(segs, r.Provider)
