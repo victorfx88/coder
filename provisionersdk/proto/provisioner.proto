@@ -129,6 +129,7 @@ message Agent {
 	repeated Script scripts = 21;
 	repeated Env extra_envs = 22;
 	int64 order = 23;
+	repeated Monitor monitors = 24;
 }
 
 enum AppSharingLevel {
@@ -143,6 +144,17 @@ message DisplayApps {
     bool web_terminal = 3;
     bool ssh_helper = 4;
     bool port_forwarding_helper = 5;
+}
+
+enum MonitoredComponent {
+	MEMORY = 0;
+	DISK = 1;
+}
+
+message Monitor {
+	MonitoredComponent component = 1;
+	int32 threshold = 2;
+	bool active = 3;
 }
 
 message Env {

@@ -22,6 +22,12 @@ export enum AppSharingLevel {
 	UNRECOGNIZED = -1,
 }
 
+export enum MonitoredComponent {
+	MEMORY = 0,
+	DISK = 1,
+	UNRECOGNIZED = -1,
+}
+
 /** WorkspaceTransition is the desired outcome of a build */
 export enum WorkspaceTransition {
 	START = 0,
@@ -137,6 +143,7 @@ export interface Agent {
 	scripts: Script[];
 	extraEnvs: Env[];
 	order: number;
+	monitors: Monitor[];
 }
 
 export interface Agent_Metadata {
@@ -159,6 +166,12 @@ export interface DisplayApps {
 	webTerminal: boolean;
 	sshHelper: boolean;
 	portForwardingHelper: boolean;
+}
+
+export interface Monitor {
+	component: MonitoredComponent;
+	threshold: number;
+	active: boolean;
 }
 
 export interface Env {
@@ -599,6 +612,9 @@ export const Agent = {
 		if (message.order !== 0) {
 			writer.uint32(184).int64(message.order);
 		}
+		for (const v of message.monitors) {
+			Monitor.encode(v!, writer.uint32(194).fork()).ldelim();
+		}
 		return writer;
 	},
 };
@@ -664,6 +680,24 @@ export const DisplayApps = {
 		}
 		if (message.portForwardingHelper === true) {
 			writer.uint32(40).bool(message.portForwardingHelper);
+		}
+		return writer;
+	},
+};
+
+export const Monitor = {
+	encode(
+		message: Monitor,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.component !== 0) {
+			writer.uint32(8).int32(message.component);
+		}
+		if (message.threshold !== 0) {
+			writer.uint32(16).int32(message.threshold);
+		}
+		if (message.active === true) {
+			writer.uint32(24).bool(message.active);
 		}
 		return writer;
 	},
