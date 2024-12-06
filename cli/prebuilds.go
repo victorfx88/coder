@@ -18,6 +18,10 @@ import (
 	"github.com/coder/coder/v2/codersdk"
 )
 
+var (
+	preselection string
+)
+
 func (r *RootCmd) prebuilds() *serpent.Command {
 	var (
 		appearanceConfig codersdk.AppearanceConfig
@@ -50,10 +54,26 @@ func (r *RootCmd) prebuilds() *serpent.Command {
 		},
 	}
 
+	cmd.Options = serpent.OptionSet{
+		{
+			Flag:          "selections",
+			FlagShorthand: "s",
+			Description:   "Pre-selected resources in CSV format.",
+			Value:         serpent.StringOf(&preselection),
+		},
+	}
+
 	return cmd
 }
 
 type adjacencyList map[string][]*gographviz.Node
+
+type ineligibilityReason string
+
+var (
+	reasonDatasourceDisallowed ineligibilityReason = "datasource is disallowed"
+	reasonDependencyDisallowed ineligibilityReason = "resource depends on disallowed entity"
+)
 
 func analyze(ctx context.Context, inv *serpent.Invocation, in []byte) {
 	logger := inv.Logger.AppendSinks(sloghuman.Sink(inv.Stderr)).Leveled(slog.LevelInfo)
@@ -86,7 +106,9 @@ func analyze(ctx context.Context, inv *serpent.Invocation, in []byte) {
 	// Find resources which are eligible to be prebuilt.
 	var eligible []string
 	for _, name := range nodes {
-		resource, err := parseName(name)
+		node := graph.Nodes.Lookup[name]
+
+		resource, err := parseName(node)
 		if err != nil {
 			logger.Warn(ctx, "failed to parse node name", slog.F("name", name), slog.Error(err))
 			continue
@@ -103,15 +125,17 @@ func analyze(ctx context.Context, inv *serpent.Invocation, in []byte) {
 	}
 
 	// Iterate over all nodes to build up adjacency list
-	for _, node := range nodes {
+	for _, name := range nodes {
 		var deps []*gographviz.Node
+
+		node := graph.Nodes.Lookup[name]
 
 		resource, err := parseName(node)
 		if err != nil {
 			continue
 		}
 
-		edges, ok := graph.Edges.SrcToDsts[node]
+		edges, ok := graph.Edges.SrcToDsts[name]
 		if !ok {
 			// No dependencies, no problem!
 			adjList[resource.Name()] = deps
@@ -128,14 +152,19 @@ func analyze(ctx context.Context, inv *serpent.Invocation, in []byte) {
 		adjList[resource.Name()] = deps
 	}
 
-	selected, err := cliui.MultiSelect(inv, cliui.MultiSelectOptions{
-		Message:  "Choose which resources you would like to prebuild",
-		Options:  eligible,
-		Defaults: eligible, // []string{"aws_instance.workspace"},
-	})
-	if err != nil {
-		logger.Error(ctx, "Error choosing resources to evaluate for prebuildability", slog.Error(err))
-		return
+	var selected []string
+	if preselection == "" {
+		selected, err = cliui.MultiSelect(inv, cliui.MultiSelectOptions{
+			Message:  "Choose which resources you would like to prebuild",
+			Options:  eligible,
+			Defaults: eligible, // []string{"aws_instance.workspace"},
+		})
+		if err != nil {
+			logger.Error(ctx, "Error choosing resources to evaluate for prebuildability", slog.Error(err))
+			return
+		}
+	} else {
+		selected = strings.Split(preselection, ",")
 	}
 
 	// O=1 lookup
@@ -163,26 +192,43 @@ func analyze(ctx context.Context, inv *serpent.Invocation, in []byte) {
 		}
 		if !prebuildable {
 			for _, res := range ineligibleDeps {
-				logger.Info(ctx, "ineligible", slog.F("dependency", res.Name()))
+				var culprits []string
+				for _, n := range res.nodes {
+					culprits = append(culprits, n.Name())
+				}
+
+				var fields = []any{slog.F("dependency", res.Name()), slog.F("reason", res.reason)}
+				if len(culprits) > 0 {
+					fields = append(fields, slog.F("culprits", strings.Join(culprits, ", ")))
+				}
+
+				logger.Info(ctx, "ineligible", fields...)
 			}
 		}
 	}
 }
 
-func buildEligibilityLists(ctx context.Context, logger slog.Logger, adjList adjacencyList, deps []*gographviz.Node) (map[string]*resourceDesc, map[string]*resourceDesc) {
-	ineligibleDeps := make(map[string]*resourceDesc, len(deps))
+type ineligibleResource struct {
+	*resourceDesc
+
+	reason ineligibilityReason
+	nodes  []*resourceDesc
+}
+
+func buildEligibilityLists(ctx context.Context, logger slog.Logger, adjList adjacencyList, deps []*gographviz.Node) (map[string]*resourceDesc, map[string]*ineligibleResource) {
+	ineligibleDeps := make(map[string]*ineligibleResource, len(deps))
 	eligibleDeps := make(map[string]*resourceDesc, len(deps))
 
 	for _, dep := range deps {
-		node, err := parseName(dep.Name)
+		node, err := parseName(dep)
 		if err != nil {
 			logger.Error(ctx, "failed to parse node name", slog.F("name", dep.Name), slog.Error(err))
 			continue
 		}
 
 		switch {
-		case strings.Index(node.Provider, "coder_") == 0 || strings.Index(node.Resource, "coder_") == 0:
-			ineligibleDeps[node.Name()] = node
+		case node.Provider == "data" && strings.Index(node.Resource, "coder_") == 0:
+			ineligibleDeps[node.Name()] = &ineligibleResource{resourceDesc: node, reason: reasonDatasourceDisallowed}
 		default:
 			eligibleDeps[node.Name()] = node
 		}
@@ -222,7 +268,11 @@ func buildEligibilityLists(ctx context.Context, logger slog.Logger, adjList adja
 
 		if _, ok := eligibleDeps[node.Name()]; ok && len(inel) > 0 {
 			delete(eligibleDeps, node.Name())
-			ineligibleDeps[node.Name()] = node
+			var list []*resourceDesc
+			for _, v := range inel {
+				list = append(list, v.resourceDesc)
+			}
+			ineligibleDeps[node.Name()] = &ineligibleResource{resourceDesc: node, reason: reasonDependencyDisallowed, nodes: list}
 		}
 
 		// TODO: check this logic
@@ -293,22 +343,22 @@ func isValid(name string) bool {
 }
 
 type resourceDesc struct {
-	Original  string
+	Original  *gographviz.Node
 	Graph     string `json:"graph,omitempty"`
 	Provider  string `json:"prov,omitempty"`
 	Resource  string `json:"res,omitempty"`
 	Attribute string `json:"attr,omitempty"`
 }
 
-func parseName(name string) (*resourceDesc, error) {
+func parseName(node *gographviz.Node) (*resourceDesc, error) {
 	var parser = regexp.MustCompile(`"?(?P<graph>^[^\]]+]\s+)?(?P<prov>[^\.]+)\.(?P<res>[^\.]+)(?:\.(?P<attr>[^\.]+))?"?.+`)
 	names := parser.SubexpNames()
 
-	matches := parser.FindStringSubmatch(name)
+	matches := parser.FindStringSubmatch(node.Name)
 	res := make(map[string]string)
 
 	if len(matches) != len(names) {
-		return nil, xerrors.Errorf("%q: no matches", name)
+		return nil, xerrors.Errorf("%q: no matches", node.Name)
 	}
 
 	for i := range names {
@@ -324,14 +374,14 @@ func parseName(name string) (*resourceDesc, error) {
 		return nil, err
 	}
 
-	var blah resourceDesc
-	if err := json.Unmarshal(out, &blah); err != nil {
+	var desc resourceDesc
+	if err := json.Unmarshal(out, &desc); err != nil {
 		return nil, err
 	}
 
-	blah.Original = name
+	desc.Original = node
 
-	return &blah, nil
+	return &desc, nil
 }
 
 func (r resourceDesc) Name() string {
