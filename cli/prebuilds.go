@@ -116,8 +116,7 @@ func analyze(ctx context.Context, inv *serpent.Invocation, in []byte) {
 
 		switch {
 		// Datasources cannot be prebuilt.
-		case resource.Provider == "data",
-			strings.Index(resource.Provider, "coder_") == 0:
+		case resource.Type == "data":
 			continue
 		default:
 			eligible = append(eligible, resource.Name())
@@ -227,7 +226,7 @@ func buildEligibilityLists(ctx context.Context, logger slog.Logger, adjList adja
 		}
 
 		switch {
-		case node.Provider == "data" && strings.Index(node.Resource, "coder_") == 0:
+		case node.Type == "data" && strings.Index(node.Resource, "coder_") == 0:
 			ineligibleDeps[node.Name()] = &ineligibleResource{resourceDesc: node, reason: reasonDatasourceDisallowed}
 		default:
 			eligibleDeps[node.Name()] = node
@@ -238,7 +237,7 @@ func buildEligibilityLists(ctx context.Context, logger slog.Logger, adjList adja
 		if !ok {
 			// Exception: if this node matches any of the follow clauses and itself has no dependencies, then it will
 			// not be included in the adjacency list. If it has no dependencies then it is safe to use.
-			if node.Provider == "coder_agent" || node.Resource == "coder_provisioner" {
+			if node.Type == "coder_agent" || node.Resource == "coder_provisioner" {
 				if _, ok := ineligibleDeps[node.Name()]; ok {
 					logger.Debug(ctx, "marking resource as safe to use since absent from adjacency list", slog.F("name", node.Name()))
 					delete(ineligibleDeps, node.Name())
@@ -257,7 +256,7 @@ func buildEligibilityLists(ctx context.Context, logger slog.Logger, adjList adja
 		// Exceptions: if coder_provisioner or coder_agent are used and do not have any ineligible dependencies
 		// then can be referenced.
 		if _, ok := ineligibleDeps[node.Name()]; ok {
-			if node.Provider == "coder_agent" || node.Resource == "coder_provisioner" {
+			if node.Type == "coder_agent" || node.Resource == "coder_provisioner" {
 				// If the resource has been marked ineligible BUT has no ineligible transitive dependencies, then it is safe.
 				if len(inel) == 0 {
 					delete(ineligibleDeps, node.Name())
@@ -343,24 +342,31 @@ func isValid(name string) bool {
 }
 
 type resourceDesc struct {
-	Original  *gographviz.Node
-	Graph     string `json:"graph,omitempty"`
-	Provider  string `json:"prov,omitempty"`
-	Resource  string `json:"res,omitempty"`
-	Attribute string `json:"attr,omitempty"`
+	Original     *gographviz.Node
+	ModuleName   string
+	Graph        string `json:"graph,omitempty"`
+	Type         string `json:"type,omitempty"`
+	Resource     string `json:"name,omitempty"`
+	Attribute    string `json:"attr,omitempty"`
+	Subattribute string `json:"subattr,omitempty"`
 }
 
 func parseName(node *gographviz.Node) (*resourceDesc, error) {
-	var parser = regexp.MustCompile(`"?(?P<graph>^[^\]]+]\s+)?(?P<prov>[^\.]+)\.(?P<res>[^\.]+)(?:\.(?P<attr>[^\.]+))?"?.+`)
-	names := parser.SubexpNames()
+	name := strings.Trim(node.Name, `"`)
 
-	matches := parser.FindStringSubmatch(node.Name)
-	res := make(map[string]string)
-
-	if len(matches) != len(names) {
-		return nil, xerrors.Errorf("%q: no matches", node.Name)
+	modName, newName, err := checkModule(name)
+	if modName != "" && err == nil {
+		name = newName
 	}
 
+	resPattern := regexp.MustCompile(`(?P<type>[^\.]+)\.(?P<name>[^\.]+)(?:\.(?P<attr>[^\.]+))?(?:\.(?P<subattr>[^\.]+)?)?.*`)
+	names := resPattern.SubexpNames()
+	matches := resPattern.FindStringSubmatch(name)
+	if len(matches) != len(names) {
+		return nil, xerrors.Errorf("%q: no matches", name)
+	}
+
+	res := make(map[string]string)
 	for i := range names {
 		// Group 0 always captures full match.
 		if i == 0 {
@@ -380,20 +386,46 @@ func parseName(node *gographviz.Node) (*resourceDesc, error) {
 	}
 
 	desc.Original = node
+	desc.ModuleName = modName
 
 	return &desc, nil
 }
 
+// checkModule takes a given resource name and determines if it belongs to a module.
+// If it does, return true and trim the module prefix of the resource name.
+func checkModule(name string) (string, string, error) {
+	modPattern := regexp.MustCompile(`(?P<module>(?P<type>[^\.]+)\.(?P<name>[^\.]+)\.)(?P<rest>.*)`)
+	names := modPattern.SubexpNames()
+	matches := modPattern.FindStringSubmatch(name)
+	if len(matches) != len(names) {
+		return "", "", xerrors.Errorf("%q: no matches", name)
+	}
+
+	// 2=type
+	if matches[2] != "module" {
+		return "", "", nil
+	}
+
+	// 3=name
+	return matches[3], modPattern.ReplaceAllString(name, `$rest`), nil
+}
+
 func (r resourceDesc) Name() string {
 	var segs []string
-	if r.Provider != "" {
-		segs = append(segs, r.Provider)
+	if r.ModuleName != "" {
+		segs = append(segs, []string{"module", r.ModuleName}...)
+	}
+	if r.Type != "" {
+		segs = append(segs, r.Type)
 	}
 	if r.Resource != "" {
 		segs = append(segs, r.Resource)
 	}
 	if r.Attribute != "" {
 		segs = append(segs, r.Attribute)
+	}
+	if r.Subattribute != "" {
+		segs = append(segs, r.Subattribute)
 	}
 
 	return strings.Join(segs, ".")
