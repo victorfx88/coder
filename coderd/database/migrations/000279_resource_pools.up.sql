@@ -28,4 +28,14 @@ CREATE TABLE IF NOT EXISTS resource_pool_entries
     PRIMARY KEY (id)
 );
 
+CREATE TABLE IF NOT EXISTS template_version_resource_pool_claims
+(
+    id                  uuid NOT NULL,
+    template_version_id uuid NOT NULL REFERENCES template_versions (id) ON DELETE CASCADE,
+    resource_pool_id    uuid NOT NULL REFERENCES resource_pools (id) ON DELETE CASCADE,
+    name                text NOT NULL,
+
+    PRIMARY KEY (id)
+);
+
 ALTER TYPE provisioner_job_type ADD VALUE IF NOT EXISTS 'resource_pool_entry_build';

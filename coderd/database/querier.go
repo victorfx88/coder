@@ -134,6 +134,7 @@ type sqlcQuerier interface {
 	// are included.
 	GetAuthorizationUserRoles(ctx context.Context, userID uuid.UUID) (GetAuthorizationUserRolesRow, error)
 	GetClaimableResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]ResourcePoolEntry, error)
+	GetClaimedResourcePoolEntry(ctx context.Context, arg GetClaimedResourcePoolEntryParams) (ResourcePoolEntry, error)
 	GetCoordinatorResumeTokenSigningKey(ctx context.Context) (string, error)
 	GetCryptoKeyByFeatureAndSequence(ctx context.Context, arg GetCryptoKeyByFeatureAndSequenceParams) (CryptoKey, error)
 	GetCryptoKeys(ctx context.Context) ([]CryptoKey, error)
@@ -259,6 +260,7 @@ type sqlcQuerier interface {
 	GetTemplateVersionByJobID(ctx context.Context, jobID uuid.UUID) (TemplateVersion, error)
 	GetTemplateVersionByTemplateIDAndName(ctx context.Context, arg GetTemplateVersionByTemplateIDAndNameParams) (TemplateVersion, error)
 	GetTemplateVersionParameters(ctx context.Context, templateVersionID uuid.UUID) ([]TemplateVersionParameter, error)
+	GetTemplateVersionResourcePoolClaims(ctx context.Context, templateVersionID uuid.UUID) ([]GetTemplateVersionResourcePoolClaimsRow, error)
 	GetTemplateVersionVariables(ctx context.Context, templateVersionID uuid.UUID) ([]TemplateVersionVariable, error)
 	GetTemplateVersionWorkspaceTags(ctx context.Context, templateVersionID uuid.UUID) ([]TemplateVersionWorkspaceTag, error)
 	GetTemplateVersionsByIDs(ctx context.Context, ids []uuid.UUID) ([]TemplateVersion, error)
@@ -392,6 +394,7 @@ type sqlcQuerier interface {
 	InsertTemplate(ctx context.Context, arg InsertTemplateParams) error
 	InsertTemplateVersion(ctx context.Context, arg InsertTemplateVersionParams) error
 	InsertTemplateVersionParameter(ctx context.Context, arg InsertTemplateVersionParameterParams) (TemplateVersionParameter, error)
+	InsertTemplateVersionResourcePoolClaim(ctx context.Context, arg InsertTemplateVersionResourcePoolClaimParams) (TemplateVersionResourcePoolClaim, error)
 	InsertTemplateVersionVariable(ctx context.Context, arg InsertTemplateVersionVariableParams) (TemplateVersionVariable, error)
 	InsertTemplateVersionWorkspaceTag(ctx context.Context, arg InsertTemplateVersionWorkspaceTagParams) (TemplateVersionWorkspaceTag, error)
 	InsertUser(ctx context.Context, arg InsertUserParams) (User, error)

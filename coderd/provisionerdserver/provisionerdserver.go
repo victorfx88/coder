@@ -27,6 +27,8 @@ import (
 
 	"cdr.dev/slog"
 
+	"github.com/coder/quartz"
+
 	"github.com/coder/coder/v2/coderd/apikey"
 	"github.com/coder/coder/v2/coderd/audit"
 	"github.com/coder/coder/v2/coderd/database"
@@ -46,7 +48,6 @@ import (
 	"github.com/coder/coder/v2/provisionerd/proto"
 	"github.com/coder/coder/v2/provisionersdk"
 	sdkproto "github.com/coder/coder/v2/provisionersdk/proto"
-	"github.com/coder/quartz"
 )
 
 const (
@@ -451,6 +452,7 @@ func (s *server) acquireProtoJob(ctx context.Context, job database.ProvisionerJo
 
 	switch job.Type {
 	case database.ProvisionerJobTypeWorkspaceBuild:
+		// TODO: why is this not all in a transaction?
 		var input WorkspaceProvisionJob
 		err = json.Unmarshal(job.Input, &input)
 		if err != nil {
@@ -594,6 +596,58 @@ func (s *server) acquireProtoJob(ctx context.Context, job database.ProvisionerJo
 			})
 		}
 
+		// TODO: we should probably not do this here, but rather only when we're running the actual terraform plan
+		//		 maybe a separate provisionerjob to do the claiming?
+		//	 	 why plan and not apply? if the plan doesn't have the claimed resource yet, it will fail
+		var claims []*sdkproto.ResourcePoolClaim
+		resourcePoolClaims, err := s.Database.GetTemplateVersionResourcePoolClaims(ctx, templateVersion.ID)
+		if err != nil {
+			return nil, failJob(fmt.Sprintf("load resource pool claims: %s", err))
+		}
+		for _, claim := range resourcePoolClaims {
+
+			var entry database.ResourcePoolEntry
+			err = s.Database.InTx(func(store database.Store) error {
+				pool, err := store.GetResourcePoolByName(ctx, claim.PoolName)
+				if err != nil {
+					return xerrors.Errorf("could not find resource pool by name %q for claim %q: %w", claim.PoolName, claim.Name, err)
+				}
+
+				// TODO: have this return a non-nullable value for instance/agent ID (i.e. validate)
+				claimable, err := store.GetClaimableResourcePoolEntries(ctx, pool.ID)
+				if err != nil {
+					return xerrors.Errorf("could not find resource pool by name %q for claim %q: %w", claim.PoolName, claim.Name, err)
+				}
+
+				if len(claimable) == 0 {
+					// TODO: create entry and block until ready
+					return xerrors.Errorf("resource pool %q has no claimable entries :(", claim.PoolName)
+				}
+
+				// TODO: atomically reserve this and unlink if the apply fails
+				entry, err = store.ClaimResourcePoolEntry(ctx, database.ClaimResourcePoolEntryParams{
+					ClaimantJobID: job.ID,
+					ID:            claimable[0].ID,
+				})
+				if err != nil {
+					return xerrors.Errorf("could not claim resource pool entry: %w", err)
+				}
+
+				return nil
+			}, nil)
+			if err != nil {
+				return nil, failJob(fmt.Sprintf("claim resource pool %q entry: %s", claim.PoolName, err))
+			}
+
+			if entry.ID != uuid.Nil {
+				claims = append(claims, &sdkproto.ResourcePoolClaim{
+					Name:       claim.Name,
+					PoolName:   claim.PoolName,
+					InstanceId: entry.Reference,
+				})
+			}
+		}
+
 		protoJob.Type = &proto.AcquiredJob_WorkspaceBuild_{
 			WorkspaceBuild: &proto.AcquiredJob_WorkspaceBuild{
 				WorkspaceBuildId:      workspaceBuild.ID.String(),
@@ -621,6 +675,7 @@ func (s *server) acquireProtoJob(ctx context.Context, job database.ProvisionerJo
 					WorkspaceOwnerSshPrivateKey:   ownerSSHPrivateKey,
 					WorkspaceBuildId:              workspaceBuild.ID.String(),
 					WorkspaceOwnerLoginType:       string(owner.LoginType),
+					ResourcePoolClaims:            claims,
 				},
 				LogLevel: input.LogLevel,
 			},
@@ -1267,6 +1322,7 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 
 	switch jobType := completed.Type.(type) {
 	case *proto.CompletedJob_TemplateImport_:
+		// TODO: why isn't this all in a transaction?
 		var input TemplateVersionImportJob
 		err = json.Unmarshal(job.Input, &input)
 		if err != nil {
@@ -1411,6 +1467,32 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 			return nil, xerrors.Errorf("update template version external auth providers: %w", err)
 		}
 
+		err = s.Database.InTx(func(store database.Store) error {
+			for _, claim := range jobType.TemplateImport.ResourcePoolClaims {
+				rp, err := s.Database.GetResourcePoolByName(ctx, claim.PoolName)
+				if err != nil {
+					return xerrors.Errorf("find resource pool by name %q: %w", claim.PoolName, err)
+				}
+
+				tempClaim, err := s.Database.InsertTemplateVersionResourcePoolClaim(ctx, database.InsertTemplateVersionResourcePoolClaimParams{
+					ID:                uuid.New(),
+					ResourcePoolID:    rp.ID,
+					TemplateVersionID: input.TemplateVersionID,
+					Name:              claim.Name,
+				})
+				if err != nil {
+					return xerrors.Errorf("insert template resourecepool claim: %w", err)
+				}
+
+				s.Logger.Debug(ctx, "inserted template resourcepool claim", slog.F("id", tempClaim.ID))
+			}
+
+			return nil
+		}, nil)
+		if err != nil {
+			return nil, xerrors.Errorf("template resourcepool claims: %w", err)
+		}
+
 		err = s.Database.UpdateProvisionerJobWithCompleteByID(ctx, database.UpdateProvisionerJobWithCompleteByIDParams{
 			ID:        jobID,
 			UpdatedAt: s.timeNow(),
@@ -1537,45 +1619,40 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 				}
 			}
 
-			// Validate that the resource pools exist & create claims.
+			// Validate that the resource pools exist & transfer workspace ownership.
 			// TODO: implement locking for atomicity
+			// TODO: move into own func
 			for _, claim := range jobType.WorkspaceBuild.ResourcePoolClaims {
+
 				pool, err := db.GetResourcePoolByName(ctx, claim.PoolName)
 				if err != nil {
 					return xerrors.Errorf("could not find resource pool by name %q for claim %q: %w", claim.PoolName, claim.Name, err)
 				}
 
-				// TODO: have this return a non-nullable value for instance/agent ID (i.e. validate)
-				claimable, err := db.GetClaimableResourcePoolEntries(ctx, pool.ID)
-				if err != nil {
-					return xerrors.Errorf("could not find resource pool by name %q for claim %q: %w", claim.PoolName, claim.Name, err)
-				}
-
-				if len(claimable) == 0 {
-					// TODO: create entry and block until ready
-					return xerrors.Errorf("resource pool %q has no claimable entries :(", claim.PoolName)
-				}
-
-				// TODO: maybe just return one entry from the db with some locking associated,
-				//	     and randomise them so we don't always pick first/last
-				entry, err := db.ClaimResourcePoolEntry(ctx, database.ClaimResourcePoolEntryParams{
+				claimed, err := s.Database.GetClaimedResourcePoolEntry(ctx, database.GetClaimedResourcePoolEntryParams{
+					ResourcePoolID: pool.ID,
 					ClaimantJobID: jobID,
-					ID:            claimable[0].ID,
 				})
 				if err != nil {
-					return xerrors.Errorf("claim resource pool %q entry: %w", claim.PoolName, err)
+					return xerrors.Errorf("could not find claimed entry %q for job %q: %w", claim.Name, jobID, err)
 				}
 
-				// Now that we have the claimed resource pool entry, we need to associate the workspace_resource entry
-				// (of the compute instance for which an agent is already present) with THIS provisioner job,
-				// so that the query in GetWorkspaceAgentAndLatestBuildByAuthToken succeeds
-				// TODO: fix query name, it's misleading...
-				_, err = db.TransferWorkspaceAgentOwnership(ctx, database.TransferWorkspaceAgentOwnershipParams{
-					ClaimantJobID:    jobID,
-					WorkspaceAgentID: entry.WorkspaceAgentID.UUID,
-				})
-				if err != nil {
-					return xerrors.Errorf("transfer resource pool %q entry %q: %w", claim.PoolName, entry.ID, err)
+				// TODO: add types to resource_pool_entries table to switch on
+				switch {
+				case claimed.WorkspaceAgentID.UUID != uuid.Nil:
+					// Now that we have the claimed resource pool entry, we need to associate the workspace_resource entry
+					// (of the compute instance for which an agent is already present) with THIS provisioner job,
+					// so that the query in GetWorkspaceAgentAndLatestBuildByAuthToken succeeds
+					// TODO: fix query name, it's misleading...
+					_, err = db.TransferWorkspaceAgentOwnership(ctx, database.TransferWorkspaceAgentOwnershipParams{
+						ClaimantJobID:    jobID,
+						WorkspaceAgentID: claimed.WorkspaceAgentID.UUID,
+					})
+					if err != nil {
+						return xerrors.Errorf("transfer resource pool %q entry %q: %w", claim.PoolName, claimed.ID, err)
+					}
+				default:
+					// Nothing to do for non-compute resource types.
 				}
 			}
 
@@ -1826,13 +1903,28 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 			}
 
 			for _, claimable := range completed.GetResourcePoolEntryBuild().ResourcePoolClaimables {
-				entry, err = db.InsertResourcePoolEntry(ctx, database.InsertResourcePoolEntryParams{
-					ID:               uuid.New(),
-					ObjectID:         claimable.Compute.InstanceId,
-					WorkspaceAgentID: uuid.MustParse(claimable.Compute.AgentId), // TODO: don't panic
-					PoolID:           input.PoolID,
-					ProvisionJobID:   job.ID,
-				})
+				// TODO: handle "other" type
+				switch {
+				case claimable.Compute != nil:
+					entry, err = db.InsertResourcePoolEntry(ctx, database.InsertResourcePoolEntryParams{
+						ID:       uuid.New(),
+						ObjectID: claimable.Compute.InstanceId,
+						WorkspaceAgentID: uuid.NullUUID{
+							UUID:  uuid.MustParse(claimable.Compute.AgentId),
+							Valid: true,
+						}, // TODO: don't panic
+						PoolID:         input.PoolID,
+						ProvisionJobID: job.ID,
+					})
+				case claimable.Other != nil:
+					entry, err = db.InsertResourcePoolEntry(ctx, database.InsertResourcePoolEntryParams{
+						ID:             uuid.New(),
+						ObjectID:       claimable.Other.InstanceId,
+						PoolID:         input.PoolID,
+						ProvisionJobID: job.ID,
+					})
+				}
+
 				if err != nil {
 					// TODO: how to handle orphan at this point?
 					return xerrors.Errorf("insert resource pool entry: %w", err)

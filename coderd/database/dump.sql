@@ -1223,6 +1223,13 @@ COMMENT ON COLUMN template_version_parameters.display_order IS 'Specifies the or
 
 COMMENT ON COLUMN template_version_parameters.ephemeral IS 'The value of an ephemeral parameter will not be preserved between consecutive workspace builds.';
 
+CREATE TABLE template_version_resource_pool_claims (
+    id uuid NOT NULL,
+    template_version_id uuid NOT NULL,
+    resource_pool_id uuid NOT NULL,
+    name text NOT NULL
+);
+
 CREATE TABLE template_version_variables (
     template_version_id uuid NOT NULL,
     name text NOT NULL,
@@ -1988,6 +1995,9 @@ ALTER TABLE ONLY template_usage_stats
 ALTER TABLE ONLY template_version_parameters
     ADD CONSTRAINT template_version_parameters_template_version_id_name_key UNIQUE (template_version_id, name);
 
+ALTER TABLE ONLY template_version_resource_pool_claims
+    ADD CONSTRAINT template_version_resource_pool_claims_pkey PRIMARY KEY (id);
+
 ALTER TABLE ONLY template_version_variables
     ADD CONSTRAINT template_version_variables_template_version_id_name_key UNIQUE (template_version_id, name);
 
@@ -2380,6 +2390,12 @@ ALTER TABLE ONLY tailnet_tunnels
 
 ALTER TABLE ONLY template_version_parameters
     ADD CONSTRAINT template_version_parameters_template_version_id_fkey FOREIGN KEY (template_version_id) REFERENCES template_versions(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY template_version_resource_pool_claims
+    ADD CONSTRAINT template_version_resource_pool_claims_resource_pool_id_fkey FOREIGN KEY (resource_pool_id) REFERENCES resource_pools(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY template_version_resource_pool_claims
+    ADD CONSTRAINT template_version_resource_pool_claims_template_version_id_fkey FOREIGN KEY (template_version_id) REFERENCES template_versions(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY template_version_variables
     ADD CONSTRAINT template_version_variables_template_version_id_fkey FOREIGN KEY (template_version_id) REFERENCES template_versions(id) ON DELETE CASCADE;

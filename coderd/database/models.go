@@ -2840,6 +2840,13 @@ type TemplateVersionParameter struct {
 	Ephemeral bool `db:"ephemeral" json:"ephemeral"`
 }
 
+type TemplateVersionResourcePoolClaim struct {
+	ID                uuid.UUID `db:"id" json:"id"`
+	TemplateVersionID uuid.UUID `db:"template_version_id" json:"template_version_id"`
+	ResourcePoolID    uuid.UUID `db:"resource_pool_id" json:"resource_pool_id"`
+	Name              string    `db:"name" json:"name"`
+}
+
 type TemplateVersionTable struct {
 	ID             uuid.UUID     `db:"id" json:"id"`
 	TemplateID     uuid.NullUUID `db:"template_id" json:"template_id"`

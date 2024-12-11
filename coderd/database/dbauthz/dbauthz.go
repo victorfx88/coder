@@ -1506,6 +1506,14 @@ func (q *querier) GetClaimableResourcePoolEntries(ctx context.Context, poolID uu
 	return q.db.GetClaimableResourcePoolEntries(ctx, poolID)
 }
 
+func (q *querier) GetClaimedResourcePoolEntry(ctx context.Context, arg database.GetClaimedResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
+		return database.ResourcePoolEntry{}, err
+	}
+	return q.db.GetClaimedResourcePoolEntry(ctx, arg)
+}
+
 func (q *querier) GetCoordinatorResumeTokenSigningKey(ctx context.Context) (string, error) {
 	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
 		return "", err
@@ -2247,6 +2255,14 @@ func (q *querier) GetTemplateVersionParameters(ctx context.Context, templateVers
 		return nil, err
 	}
 	return q.db.GetTemplateVersionParameters(ctx, templateVersionID)
+}
+
+func (q *querier) GetTemplateVersionResourcePoolClaims(ctx context.Context, templateVersionID uuid.UUID) ([]database.GetTemplateVersionResourcePoolClaimsRow, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
+		return nil, err
+	}
+	return q.db.GetTemplateVersionResourcePoolClaims(ctx, templateVersionID)
 }
 
 func (q *querier) GetTemplateVersionVariables(ctx context.Context, templateVersionID uuid.UUID) ([]database.TemplateVersionVariable, error) {
@@ -3135,6 +3151,14 @@ func (q *querier) InsertTemplateVersionParameter(ctx context.Context, arg databa
 		return database.TemplateVersionParameter{}, err
 	}
 	return q.db.InsertTemplateVersionParameter(ctx, arg)
+}
+
+func (q *querier) InsertTemplateVersionResourcePoolClaim(ctx context.Context, arg database.InsertTemplateVersionResourcePoolClaimParams) (database.TemplateVersionResourcePoolClaim, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+		return database.TemplateVersionResourcePoolClaim{}, err
+	}
+	return q.db.InsertTemplateVersionResourcePoolClaim(ctx, arg)
 }
 
 func (q *querier) InsertTemplateVersionVariable(ctx context.Context, arg database.InsertTemplateVersionVariableParams) (database.TemplateVersionVariable, error) {

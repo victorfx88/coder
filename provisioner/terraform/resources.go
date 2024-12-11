@@ -786,6 +786,7 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 		AgentId    string `mapstructure:"agent_id"`
 	}
 	type resourcePoolClaimableOtherType struct {
+		InstanceId string `mapstructure:"instance_id"`
 	}
 	type resourcePoolClaimableType struct {
 		Compute []resourcePoolClaimableComputeType `mapstructure:"compute"`
@@ -802,7 +803,7 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 
 		switch {
 		// TODO: harden this; how do we handle this func getting called from Plan when these IDs are not yet known?
-		case attrs.Compute[0].InstanceId != "" && attrs.Compute[0].AgentId != "":
+		case len(attrs.Compute) > 0 && (attrs.Compute[0].InstanceId != "" && attrs.Compute[0].AgentId != ""):
 			resourcePoolClaimables = append(resourcePoolClaimables, &proto.ResourcePoolClaimable{
 				Name: resource.Name,
 				Compute: &proto.ResourcePoolClaimableCompute{
@@ -810,8 +811,13 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 					AgentId:    attrs.Compute[0].AgentId,
 				},
 			})
-		default:
-			// TODO: handle other cases...
+		case len(attrs.Other) > 0 && attrs.Other[0].InstanceId != "":
+			resourcePoolClaimables = append(resourcePoolClaimables, &proto.ResourcePoolClaimable{
+				Name: resource.Name,
+				Other: &proto.ResourcePoolClaimableOther{
+					InstanceId: attrs.Other[0].InstanceId,
+				},
+			})
 		}
 	}
 

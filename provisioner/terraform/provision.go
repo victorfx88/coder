@@ -2,6 +2,8 @@ package terraform
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/base32"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -220,8 +222,13 @@ func (s *server) Apply(
 		return &proto.ApplyComplete{
 			State: stateData,
 			Error: errorMessage,
+			ResourcePoolClaims: request.Metadata.ResourcePoolClaims,
 		}
 	}
+
+	// TODO: figure out a better way to do this; the instanceID is not available from the graph output
+	resp.ResourcePoolClaims = request.Metadata.ResourcePoolClaims
+
 	return resp
 }
 
@@ -382,10 +389,7 @@ func planVars(plan *proto.PlanRequest) ([]string, error) {
 	return vars, nil
 }
 
-func provisionEnv(
-	config *proto.Config, metadata *proto.Metadata,
-	richParams []*proto.RichParameterValue, externalAuth []*proto.ExternalAuthProvider,
-) ([]string, error) {
+func provisionEnv(config *proto.Config, metadata *proto.Metadata, richParams []*proto.RichParameterValue, externalAuth []*proto.ExternalAuthProvider) ([]string, error) {
 	env := safeEnviron()
 	ownerGroups, err := json.Marshal(metadata.GetWorkspaceOwnerGroups())
 	if err != nil {
@@ -428,6 +432,14 @@ func provisionEnv(
 		// The idea behind using TF_LOG=JSON instead of TF_LOG=debug is ensuring the proper log format.
 		env = append(env, "TF_LOG=JSON")
 	}
+
+	for _, claim := range metadata.ResourcePoolClaims {
+		sha1Pool := sha1.Sum([]byte(claim.PoolName))
+		b64InstID := base32.StdEncoding.EncodeToString([]byte(claim.InstanceId))
+		// TODO: maybe also pass resource claim name?
+		env = append(env, fmt.Sprintf("CODER_RESOURCEPOOL_%x_ENTRY_INSTANCE_ID=%s", sha1Pool, b64InstID))
+	}
+
 	return env, nil
 }
 

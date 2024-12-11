@@ -2504,6 +2504,10 @@ func (q *FakeQuerier) GetClaimableResourcePoolEntries(ctx context.Context, poolI
 	panic("not implemented")
 }
 
+func (q *FakeQuerier) GetClaimedResourcePoolEntry(ctx context.Context, claimantJobID database.GetClaimedResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	panic("not implemented")
+}
+
 func (q *FakeQuerier) GetCoordinatorResumeTokenSigningKey(_ context.Context) (string, error) {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
@@ -5075,6 +5079,10 @@ func (q *FakeQuerier) GetTemplateVersionParameters(_ context.Context, templateVe
 		return strings.ToLower(parameters[i].Name) < strings.ToLower(parameters[j].Name)
 	})
 	return parameters, nil
+}
+
+func (q *FakeQuerier) GetTemplateVersionResourcePoolClaims(ctx context.Context, templateVersionID uuid.UUID) ([]database.GetTemplateVersionResourcePoolClaimsRow, error) {
+	panic("not implemented")
 }
 
 func (q *FakeQuerier) GetTemplateVersionVariables(_ context.Context, templateVersionID uuid.UUID) ([]database.TemplateVersionVariable, error) {
@@ -7834,6 +7842,15 @@ func (q *FakeQuerier) InsertTemplateVersionParameter(_ context.Context, arg data
 	}
 	q.templateVersionParameters = append(q.templateVersionParameters, param)
 	return param, nil
+}
+
+func (q *FakeQuerier) InsertTemplateVersionResourcePoolClaim(ctx context.Context, arg database.InsertTemplateVersionResourcePoolClaimParams) (database.TemplateVersionResourcePoolClaim, error) {
+	err := validateDatabaseType(arg)
+	if err != nil {
+		return database.TemplateVersionResourcePoolClaim{}, err
+	}
+
+	panic("not implemented")
 }
 
 func (q *FakeQuerier) InsertTemplateVersionVariable(_ context.Context, arg database.InsertTemplateVersionVariableParams) (database.TemplateVersionVariable, error) {

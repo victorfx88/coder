@@ -122,6 +122,7 @@ export interface ExternalAuthProvider {
 export interface ResourcePoolClaim {
 	name: string;
 	poolName: string;
+	instanceId: string;
 }
 
 export interface ResourcePoolClaimableCompute {
@@ -129,7 +130,9 @@ export interface ResourcePoolClaimableCompute {
 	agentId: string;
 }
 
-export interface ResourcePoolClaimableOther {}
+export interface ResourcePoolClaimableOther {
+	instanceId: string;
+}
 
 export interface ResourcePoolClaimable {
 	name: string;
@@ -276,6 +279,7 @@ export interface Metadata {
 	workspaceOwnerSshPrivateKey: string;
 	workspaceBuildId: string;
 	workspaceOwnerLoginType: string;
+	resourcePoolClaims: ResourcePoolClaim[];
 }
 
 export interface ResourcePoolEntryMetadata {
@@ -316,7 +320,6 @@ export interface PlanRequest {
 	richParameterValues: RichParameterValue[];
 	variableValues: VariableValue[];
 	externalAuthProviders: ExternalAuthProvider[];
-	resourcePoolClaims: ResourcePoolClaim[];
 }
 
 /** PlanComplete indicates a request to plan completed. */
@@ -616,6 +619,9 @@ export const ResourcePoolClaim = {
 		if (message.poolName !== "") {
 			writer.uint32(18).string(message.poolName);
 		}
+		if (message.instanceId !== "") {
+			writer.uint32(26).string(message.instanceId);
+		}
 		return writer;
 	},
 };
@@ -637,9 +643,12 @@ export const ResourcePoolClaimableCompute = {
 
 export const ResourcePoolClaimableOther = {
 	encode(
-		_: ResourcePoolClaimableOther,
+		message: ResourcePoolClaimableOther,
 		writer: _m0.Writer = _m0.Writer.create(),
 	): _m0.Writer {
+		if (message.instanceId !== "") {
+			writer.uint32(10).string(message.instanceId);
+		}
 		return writer;
 	},
 };
@@ -1039,6 +1048,9 @@ export const Metadata = {
 		if (message.workspaceOwnerLoginType !== "") {
 			writer.uint32(146).string(message.workspaceOwnerLoginType);
 		}
+		for (const v of message.resourcePoolClaims) {
+			ResourcePoolClaim.encode(v!, writer.uint32(154).fork()).ldelim();
+		}
 		return writer;
 	},
 };
@@ -1146,9 +1158,6 @@ export const PlanRequest = {
 		}
 		for (const v of message.externalAuthProviders) {
 			ExternalAuthProvider.encode(v!, writer.uint32(34).fork()).ldelim();
-		}
-		for (const v of message.resourcePoolClaims) {
-			ResourcePoolClaim.encode(v!, writer.uint32(42).fork()).ldelim();
 		}
 		return writer;
 	},

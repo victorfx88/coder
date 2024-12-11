@@ -7073,6 +7073,35 @@ func (q *sqlQuerier) GetClaimableResourcePoolEntries(ctx context.Context, poolID
 	return items, nil
 }
 
+const getClaimedResourcePoolEntry = `-- name: GetClaimedResourcePoolEntry :one
+SELECT rpe.id, rpe.reference, rpe.workspace_agent_id, rpe.resource_pool_id, rpe.provision_job_id, rpe.claimant_job_id, rpe.created_at, rpe.updated_at, rpe.claimed_at FROM resource_pool_entries rpe
+INNER JOIN provisioner_jobs pj ON rpe.claimant_job_id = pj.id
+INNER JOIN resource_pools rp ON rpe.resource_pool_id = rp.id
+WHERE pj.id = $1::uuid AND rp.id = $2::uuid
+`
+
+type GetClaimedResourcePoolEntryParams struct {
+	ClaimantJobID  uuid.UUID `db:"claimant_job_id" json:"claimant_job_id"`
+	ResourcePoolID uuid.UUID `db:"resource_pool_id" json:"resource_pool_id"`
+}
+
+func (q *sqlQuerier) GetClaimedResourcePoolEntry(ctx context.Context, arg GetClaimedResourcePoolEntryParams) (ResourcePoolEntry, error) {
+	row := q.db.QueryRowContext(ctx, getClaimedResourcePoolEntry, arg.ClaimantJobID, arg.ResourcePoolID)
+	var i ResourcePoolEntry
+	err := row.Scan(
+		&i.ID,
+		&i.Reference,
+		&i.WorkspaceAgentID,
+		&i.ResourcePoolID,
+		&i.ProvisionJobID,
+		&i.ClaimantJobID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.ClaimedAt,
+	)
+	return i, err
+}
+
 const getResourcePoolByName = `-- name: GetResourcePoolByName :one
 SELECT id, name, capacity, template_file_id, user_id, organization_id, created_at, updated_at
 FROM resource_pools
@@ -7093,6 +7122,49 @@ func (q *sqlQuerier) GetResourcePoolByName(ctx context.Context, name string) (Re
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getTemplateVersionResourcePoolClaims = `-- name: GetTemplateVersionResourcePoolClaims :many
+SELECT tv.id, tv.template_version_id, tv.resource_pool_id, tv.name, rp.name AS pool_name FROM template_version_resource_pool_claims tv
+INNER JOIN resource_pools rp ON tv.resource_pool_id = rp.id
+WHERE template_version_id = $1::uuid
+`
+
+type GetTemplateVersionResourcePoolClaimsRow struct {
+	ID                uuid.UUID `db:"id" json:"id"`
+	TemplateVersionID uuid.UUID `db:"template_version_id" json:"template_version_id"`
+	ResourcePoolID    uuid.UUID `db:"resource_pool_id" json:"resource_pool_id"`
+	Name              string    `db:"name" json:"name"`
+	PoolName          string    `db:"pool_name" json:"pool_name"`
+}
+
+func (q *sqlQuerier) GetTemplateVersionResourcePoolClaims(ctx context.Context, templateVersionID uuid.UUID) ([]GetTemplateVersionResourcePoolClaimsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getTemplateVersionResourcePoolClaims, templateVersionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetTemplateVersionResourcePoolClaimsRow
+	for rows.Next() {
+		var i GetTemplateVersionResourcePoolClaimsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.TemplateVersionID,
+			&i.ResourcePoolID,
+			&i.Name,
+			&i.PoolName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const insertResourcePool = `-- name: InsertResourcePool :one
@@ -7136,16 +7208,16 @@ func (q *sqlQuerier) InsertResourcePool(ctx context.Context, arg InsertResourceP
 
 const insertResourcePoolEntry = `-- name: InsertResourcePoolEntry :one
 INSERT INTO resource_pool_entries (id, reference, resource_pool_id, workspace_agent_id, provision_job_id, created_at, updated_at)
-VALUES ($1::uuid, $2::text, $3::uuid, $4::uuid, $5::uuid, NOW(), NOW())
+VALUES ($1::uuid, $2::text, $3::uuid, $4, $5::uuid, NOW(), NOW())
 RETURNING id, reference, workspace_agent_id, resource_pool_id, provision_job_id, claimant_job_id, created_at, updated_at, claimed_at
 `
 
 type InsertResourcePoolEntryParams struct {
-	ID               uuid.UUID `db:"id" json:"id"`
-	ObjectID         string    `db:"object_id" json:"object_id"`
-	PoolID           uuid.UUID `db:"pool_id" json:"pool_id"`
-	WorkspaceAgentID uuid.UUID `db:"workspace_agent_id" json:"workspace_agent_id"`
-	ProvisionJobID   uuid.UUID `db:"provision_job_id" json:"provision_job_id"`
+	ID               uuid.UUID     `db:"id" json:"id"`
+	ObjectID         string        `db:"object_id" json:"object_id"`
+	PoolID           uuid.UUID     `db:"pool_id" json:"pool_id"`
+	WorkspaceAgentID uuid.NullUUID `db:"workspace_agent_id" json:"workspace_agent_id"`
+	ProvisionJobID   uuid.UUID     `db:"provision_job_id" json:"provision_job_id"`
 }
 
 func (q *sqlQuerier) InsertResourcePoolEntry(ctx context.Context, arg InsertResourcePoolEntryParams) (ResourcePoolEntry, error) {
@@ -7171,13 +7243,43 @@ func (q *sqlQuerier) InsertResourcePoolEntry(ctx context.Context, arg InsertReso
 	return i, err
 }
 
+const insertTemplateVersionResourcePoolClaim = `-- name: InsertTemplateVersionResourcePoolClaim :one
+INSERT INTO template_version_resource_pool_claims (id, template_version_id, resource_pool_id, name)
+VALUES ($1::uuid, $2::uuid, $3::uuid, $4::text)
+RETURNING id, template_version_id, resource_pool_id, name
+`
+
+type InsertTemplateVersionResourcePoolClaimParams struct {
+	ID                uuid.UUID `db:"id" json:"id"`
+	TemplateVersionID uuid.UUID `db:"template_version_id" json:"template_version_id"`
+	ResourcePoolID    uuid.UUID `db:"resource_pool_id" json:"resource_pool_id"`
+	Name              string    `db:"name" json:"name"`
+}
+
+func (q *sqlQuerier) InsertTemplateVersionResourcePoolClaim(ctx context.Context, arg InsertTemplateVersionResourcePoolClaimParams) (TemplateVersionResourcePoolClaim, error) {
+	row := q.db.QueryRowContext(ctx, insertTemplateVersionResourcePoolClaim,
+		arg.ID,
+		arg.TemplateVersionID,
+		arg.ResourcePoolID,
+		arg.Name,
+	)
+	var i TemplateVersionResourcePoolClaim
+	err := row.Scan(
+		&i.ID,
+		&i.TemplateVersionID,
+		&i.ResourcePoolID,
+		&i.Name,
+	)
+	return i, err
+}
+
 const transferWorkspaceAgentOwnership = `-- name: TransferWorkspaceAgentOwnership :one
 UPDATE workspace_resources wr
 SET job_id = $1::uuid
 FROM workspace_agents wa
 WHERE wa.id = $2::uuid
   AND wa.resource_id = wr.id
-RETURNING wr.id, wr.created_at, wr.job_id, wr.transition, wr.type, wr.name, wr.hide, wr.icon, wr.instance_type, wr.daily_cost
+RETURNING wr.id, wr.created_at, wr.job_id, wr.transition, wr.type, wr.name, wr.hide, wr.icon, wr.instance_type, wr.daily_cost, wr.module_path
 `
 
 type TransferWorkspaceAgentOwnershipParams struct {
@@ -7200,6 +7302,7 @@ func (q *sqlQuerier) TransferWorkspaceAgentOwnership(ctx context.Context, arg Tr
 		&i.Icon,
 		&i.InstanceType,
 		&i.DailyCost,
+		&i.ModulePath,
 	)
 	return i, err
 }

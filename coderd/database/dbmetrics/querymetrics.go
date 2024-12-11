@@ -561,6 +561,13 @@ func (m queryMetricsStore) GetClaimableResourcePoolEntries(ctx context.Context, 
 	return r0, r1
 }
 
+func (m queryMetricsStore) GetClaimedResourcePoolEntry(ctx context.Context, claimantJobID database.GetClaimedResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetClaimedResourcePoolEntry(ctx, claimantJobID)
+	m.queryLatencies.WithLabelValues("GetClaimedResourcePoolEntry").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
 func (m queryMetricsStore) GetCoordinatorResumeTokenSigningKey(ctx context.Context) (string, error) {
 	start := time.Now()
 	r0, r1 := m.s.GetCoordinatorResumeTokenSigningKey(ctx)
@@ -1231,6 +1238,13 @@ func (m queryMetricsStore) GetTemplateVersionParameters(ctx context.Context, tem
 	parameters, err := m.s.GetTemplateVersionParameters(ctx, templateVersionID)
 	m.queryLatencies.WithLabelValues("GetTemplateVersionParameters").Observe(time.Since(start).Seconds())
 	return parameters, err
+}
+
+func (m queryMetricsStore) GetTemplateVersionResourcePoolClaims(ctx context.Context, templateVersionID uuid.UUID) ([]database.GetTemplateVersionResourcePoolClaimsRow, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetTemplateVersionResourcePoolClaims(ctx, templateVersionID)
+	m.queryLatencies.WithLabelValues("GetTemplateVersionResourcePoolClaims").Observe(time.Since(start).Seconds())
+	return r0, r1
 }
 
 func (m queryMetricsStore) GetTemplateVersionVariables(ctx context.Context, templateVersionID uuid.UUID) ([]database.TemplateVersionVariable, error) {
@@ -1931,6 +1945,13 @@ func (m queryMetricsStore) InsertTemplateVersionParameter(ctx context.Context, a
 	parameter, err := m.s.InsertTemplateVersionParameter(ctx, arg)
 	m.queryLatencies.WithLabelValues("InsertTemplateVersionParameter").Observe(time.Since(start).Seconds())
 	return parameter, err
+}
+
+func (m queryMetricsStore) InsertTemplateVersionResourcePoolClaim(ctx context.Context, arg database.InsertTemplateVersionResourcePoolClaimParams) (database.TemplateVersionResourcePoolClaim, error) {
+	start := time.Now()
+	r0, r1 := m.s.InsertTemplateVersionResourcePoolClaim(ctx, arg)
+	m.queryLatencies.WithLabelValues("InsertTemplateVersionResourcePoolClaim").Observe(time.Since(start).Seconds())
+	return r0, r1
 }
 
 func (m queryMetricsStore) InsertTemplateVersionVariable(ctx context.Context, arg database.InsertTemplateVersionVariableParams) (database.TemplateVersionVariable, error) {
