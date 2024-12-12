@@ -1134,6 +1134,11 @@
 							"path": "reference/cli/port-forward.md"
 						},
 						{
+							"title": "prebuilds",
+							"description": "Prepare a template for prebuilds",
+							"path": "reference/cli/prebuilds.md"
+						},
+						{
 							"title": "provisioner",
 							"description": "Manage provisioner daemons",
 							"path": "reference/cli/provisioner.md"
@@ -1177,6 +1182,11 @@
 							"title": "reset-password",
 							"description": "Directly connect to the database to reset a user's password",
 							"path": "reference/cli/reset-password.md"
+						},
+						{
+							"title": "resourcepool",
+							"description": "Create a resource pool",
+							"path": "reference/cli/resourcepool.md"
 						},
 						{
 							"title": "restart",

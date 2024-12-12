@@ -354,6 +354,13 @@ export interface CreateProvisionerKeyResponse {
 	readonly key: string;
 }
 
+// From codersdk/resourcepools.go
+export interface CreateResourcePoolRequest {
+	readonly name: string;
+	readonly template: string;
+	readonly capacity: number;
+}
+
 // From codersdk/organizations.go
 export interface CreateTemplateRequest {
 	readonly name: string;
@@ -1852,13 +1859,6 @@ export interface ResourcePoolEntry {
 	readonly reference: string;
 	readonly created_at: string;
 	readonly updated_at: string;
-}
-
-// From codersdk/resourcepools.go
-export interface ResourcePoolRequest {
-	readonly name: string;
-	readonly capacity: number;
-	readonly template: string;
 }
 
 // From codersdk/audit.go

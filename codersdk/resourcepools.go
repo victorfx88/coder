@@ -1,6 +1,12 @@
 package codersdk
 
 import (
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"golang.org/x/xerrors"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,8 +37,29 @@ type ResourcePoolEntry struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-type ResourcePoolRequest struct {
+type CreateResourcePoolRequest struct {
 	Name     string `json:"name"`
-	Capacity int32  `json:"capacity"`
 	Template string `json:"template"`
+	Capacity int    `json:"capacity"`
+}
+
+func (c *Client) CreateResourcePool(ctx context.Context, org string, req CreateResourcePoolRequest) (uuid.UUID, error) {
+	req.Template = base64.StdEncoding.EncodeToString([]byte(req.Template))
+
+	res, err := c.Request(ctx, http.MethodPost, fmt.Sprintf("/api/v2/organizations/%s/resourcepools", org), req)
+	if err != nil {
+		return uuid.Nil, xerrors.Errorf("execute request: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		return uuid.Nil, ReadBodyAsError(res)
+	}
+
+	var id string
+	err = json.NewDecoder(res.Body).Decode(&id)
+	if err != nil {
+		return uuid.Nil, xerrors.Errorf("decode body: %w", err)
+	}
+	return uuid.Parse(id)
 }

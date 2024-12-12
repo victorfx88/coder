@@ -42,19 +42,21 @@ func (api *API) postResourcePools(rw http.ResponseWriter, r *http.Request) {
 	apiKey := httpmw.APIKey(r)
 	org := httpmw.OrganizationParam(r)
 
-	logger := api.Logger.With(slog.F("component", "resoucepools"))
+	logger := api.Logger.With(slog.F("component", "resourcepools"))
 
-	var poolReq codersdk.ResourcePoolRequest
+	var poolReq codersdk.CreateResourcePoolRequest
 	if !httpapi.Read(ctx, rw, r, &poolReq) {
 		return
 	}
 
-	template, err := base64.StdEncoding.DecodeString(poolReq.Template)
-	if len(template) <= 1 {
-		httpapi.Write(ctx, rw, http.StatusBadRequest, "given template is empty")
+	if len(poolReq.Template) == 0 {
+		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+			Message: "given template is empty",
+		})
 		return
 	}
 
+	template, err := base64.StdEncoding.DecodeString(poolReq.Template)
 	if err != nil {
 		httpapi.InternalServerError(rw, fmt.Errorf("decode template base64 error: %w", err))
 		return
@@ -86,7 +88,7 @@ func (api *API) postResourcePools(rw http.ResponseWriter, r *http.Request) {
 		pool, err = tx.InsertResourcePool(ctx, database.InsertResourcePoolParams{
 			ID:             uuid.New(),
 			Name:           poolReq.Name,
-			Capacity:       poolReq.Capacity,
+			Capacity:       int32(poolReq.Capacity),
 			TemplateFileID: tmplFile.ID,
 			UserID:         apiKey.UserID,
 			OrganizationID: org.ID,
