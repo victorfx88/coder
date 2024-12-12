@@ -434,6 +434,13 @@ func (r *Runner) do(ctx context.Context) (*proto.CompletedJob, *proto.FailedJob)
 			slog.F("variable_values", redactVariableValues(jobType.WorkspaceBuild.VariableValues)),
 		)
 		return r.runWorkspaceBuild(ctx)
+	case *proto.AcquiredJob_ResourcePoolEntryBuild_:
+		r.logger.Debug(context.Background(), "acquired job is resource pool entry provision",
+			slog.F("pool_id", jobType.ResourcePoolEntryBuild.Metadata.PoolId),
+			slog.F("pool_name", jobType.ResourcePoolEntryBuild.Metadata.PoolName),
+			slog.F("transition", jobType.ResourcePoolEntryBuild.Metadata.Transition.String()),
+		)
+		return r.runResourcePoolEntryBuild(ctx)
 	default:
 		return nil, r.failedJobf("unknown job type %q; ensure your provisioner daemon is up-to-date",
 			reflect.TypeOf(r.job.Type).String())
@@ -583,6 +590,7 @@ func (r *Runner) runTemplateImport(ctx context.Context) (*proto.CompletedJob, *p
 				ExternalAuthProviders:      startProvision.ExternalAuthProviders,
 				StartModules:               startProvision.Modules,
 				StopModules:                stopProvision.Modules,
+				ResourcePoolClaims:         startProvision.ResourcePoolClaims,
 			},
 		},
 	}, nil
@@ -643,6 +651,7 @@ type templateImportProvision struct {
 	Parameters            []*sdkproto.RichParameter
 	ExternalAuthProviders []*sdkproto.ExternalAuthProviderResource
 	Modules               []*sdkproto.Module
+	ResourcePoolClaims    []*sdkproto.ResourcePoolClaim
 }
 
 // Performs a dry-run provision when importing a template.
@@ -735,6 +744,7 @@ func (r *Runner) runTemplateImportProvisionWithRichParameters(
 				Parameters:            c.Parameters,
 				ExternalAuthProviders: c.ExternalAuthProviders,
 				Modules:               c.Modules,
+				ResourcePoolClaims:    c.ResourcePoolClaims,
 			}, nil
 		default:
 			return nil, xerrors.Errorf("invalid message type %q received from provisioner",
@@ -796,8 +806,9 @@ func (r *Runner) runTemplateDryRun(ctx context.Context) (*proto.CompletedJob, *p
 		JobId: r.job.JobId,
 		Type: &proto.CompletedJob_TemplateDryRun_{
 			TemplateDryRun: &proto.CompletedJob_TemplateDryRun{
-				Resources: provision.Resources,
-				Modules:   provision.Modules,
+				Resources:          provision.Resources,
+				Modules:            provision.Modules,
+				ResourcePoolClaims: provision.ResourcePoolClaims,
 			},
 		},
 	}, nil
@@ -836,11 +847,21 @@ func (r *Runner) buildWorkspace(ctx context.Context, stage string, req *sdkproto
 		}
 		switch msgType := msg.Type.(type) {
 		case *sdkproto.Response_Log:
-			r.logProvisionerJobLog(context.Background(), msgType.Log.Level, "workspace provisioner job logged",
-				slog.F("level", msgType.Log.Level),
-				slog.F("output", msgType.Log.Output),
-				slog.F("workspace_build_id", r.job.GetWorkspaceBuild().WorkspaceBuildId),
-			)
+			switch {
+			case r.job.GetWorkspaceBuild() != nil:
+				r.logProvisionerJobLog(context.Background(), msgType.Log.Level, "workspace provisioner job logged",
+					slog.F("level", msgType.Log.Level),
+					slog.F("output", msgType.Log.Output),
+					slog.F("workspace_build_id", r.job.GetWorkspaceBuild().WorkspaceBuildId),
+				)
+			case r.job.GetResourcePoolEntryBuild() != nil:
+				r.logProvisionerJobLog(context.Background(), msgType.Log.Level, "resource pool entry provisioner job logged",
+					slog.F("level", msgType.Log.Level),
+					slog.F("output", msgType.Log.Output),
+					slog.F("pool_id", r.job.GetResourcePoolEntryBuild().GetMetadata().PoolId),
+					slog.F("pool_name", r.job.GetResourcePoolEntryBuild().GetMetadata().PoolName),
+				)
+			}
 
 			r.queueLog(ctx, &proto.Log{
 				Source:    proto.LogSource_PROVISIONER,
@@ -1035,13 +1056,129 @@ func (r *Runner) runWorkspaceBuild(ctx context.Context) (*proto.CompletedJob, *p
 		JobId: r.job.JobId,
 		Type: &proto.CompletedJob_WorkspaceBuild_{
 			WorkspaceBuild: &proto.CompletedJob_WorkspaceBuild{
-				State:     applyComplete.State,
-				Resources: applyComplete.Resources,
-				Timings:   applyComplete.Timings,
+				State:              applyComplete.State,
+				Resources:          applyComplete.Resources,
+				ResourcePoolClaims: applyComplete.ResourcePoolClaims,
+				Timings:            applyComplete.Timings,
 				// Modules are created on disk by `terraform init`, and that is only
 				// called by `plan`. `apply` does not modify them, so we can use the
 				// modules from the plan response.
 				Modules: planComplete.Modules,
+			},
+		},
+	}, nil
+}
+
+func (r *Runner) runResourcePoolEntryBuild(ctx context.Context) (*proto.CompletedJob, *proto.FailedJob) {
+	ctx, span := r.startTrace(ctx, tracing.FuncName())
+	defer span.End()
+
+	var (
+		applyStage string
+	)
+	switch r.job.GetResourcePoolEntryBuild().Metadata.Transition {
+	case sdkproto.ResourcePoolEntryTransition_ALLOCATE:
+		applyStage = "Allocate pool entry"
+	case sdkproto.ResourcePoolEntryTransition_DEALLOCATE:
+		applyStage = "Deallocate pool entry"
+	}
+
+	_ = applyStage
+
+	complete, failed := r.resourcePoolEntryBuild(ctx, r.job.GetResourcePoolEntryBuild())
+	if failed != nil {
+		return nil, failed
+	}
+
+	return complete, nil
+}
+
+func (r *Runner) resourcePoolEntryBuild(ctx context.Context, build *proto.AcquiredJob_ResourcePoolEntryBuild) (*proto.CompletedJob, *proto.FailedJob) {
+	// TODO: rename buildWorkspace since it's handling more than just workspaces now
+
+	failedJob := r.configure(&sdkproto.Config{
+		TemplateSourceArchive: r.job.GetTemplateSourceArchive(),
+		// ProvisionerLogLevel:   sdkproto.LogLevel_INFO.String(), // TODO: align with existing approach
+	})
+	if failedJob != nil {
+		return nil, failedJob
+	}
+
+	r.queueLog(ctx, &proto.Log{
+		Source:    proto.LogSource_PROVISIONER_DAEMON,
+		Level:     sdkproto.LogLevel_INFO,
+		Stage:     "plan",
+		CreatedAt: time.Now().UnixMilli(),
+	})
+
+	resp, failed := r.buildWorkspace(ctx, "plan resource pool entry", &sdkproto.Request{
+		Type: &sdkproto.Request_AllocatePlan{
+			AllocatePlan: &sdkproto.AllocatePlanRequest{
+				Metadata: build.Metadata,
+			},
+		},
+	})
+	if failed != nil {
+		return nil, failed
+	}
+	planComplete := resp.GetAllocatePlan()
+	if planComplete == nil {
+		return nil, r.failedWorkspaceBuildf("invalid message type %T received from provisioner", resp.Type)
+	}
+
+	r.logger.Info(context.Background(), "plan request successful")
+
+	r.flushQueuedLogs(ctx)
+
+	r.queueLog(ctx, &proto.Log{
+		Source:    proto.LogSource_PROVISIONER_DAEMON,
+		Level:     sdkproto.LogLevel_INFO,
+		Stage:     "apply",
+		CreatedAt: time.Now().UnixMilli(),
+	})
+
+	resp, failed = r.buildWorkspace(ctx, "allocate resource pool entry", &sdkproto.Request{
+		Type: &sdkproto.Request_AllocateApply{
+			AllocateApply: &sdkproto.AllocateApplyRequest{
+				Metadata: r.job.GetResourcePoolEntryBuild().GetMetadata(),
+			},
+		},
+	})
+	if failed != nil {
+		return nil, failed
+	}
+	applyComplete := resp.GetAllocateApply()
+	if applyComplete == nil {
+		return nil, r.failedWorkspaceBuildf("invalid message type %T received from provisioner", resp.Type)
+	}
+
+	if applyComplete.Error != "" {
+		r.logger.Warn(context.Background(), "allocate failed",
+			slog.F("error", applyComplete.Error),
+			// slog.F("state_len", len(applyComplete.State)), // TODO: save state
+		)
+
+		return nil, &proto.FailedJob{
+			JobId: r.job.JobId,
+			Error: applyComplete.Error,
+			Type: &proto.FailedJob_ResourcePoolEntryBuild_{
+				ResourcePoolEntryBuild: &proto.FailedJob_ResourcePoolEntryBuild{
+					// TODO
+				},
+			},
+		}
+	}
+
+	r.logger.Info(context.Background(), "allocate successful")
+	r.flushQueuedLogs(ctx)
+
+	return &proto.CompletedJob{
+		JobId: r.job.JobId,
+		Type: &proto.CompletedJob_ResourcePoolEntryBuild_{
+			ResourcePoolEntryBuild: &proto.CompletedJob_ResourcePoolEntryBuild{
+				// State: TODO: persist state
+				Resources:              applyComplete.Resources,
+				ResourcePoolClaimables: applyComplete.ResourcePoolClaimables,
 			},
 		},
 	}, nil

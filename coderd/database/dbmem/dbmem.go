@@ -1120,6 +1120,10 @@ func (q *FakeQuerier) getWorkspaceAgentScriptsByAgentIDsNoLock(ids []uuid.UUID) 
 	return scripts, nil
 }
 
+func (q *FakeQuerier) GetResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]database.ResourcePoolEntry, error) {
+	panic("not implemented")
+}
+
 func (*FakeQuerier) AcquireLock(_ context.Context, _ int64) error {
 	return xerrors.New("AcquireLock must only be called within a transaction")
 }
@@ -1475,6 +1479,15 @@ func (*FakeQuerier) BulkMarkNotificationMessagesSent(_ context.Context, arg data
 		return 0, err
 	}
 	return int64(len(arg.IDs)), nil
+}
+
+func (q *FakeQuerier) ClaimResourcePoolEntry(ctx context.Context, arg database.ClaimResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	err := validateDatabaseType(arg)
+	if err != nil {
+		return database.ResourcePoolEntry{}, err
+	}
+
+	panic("not implemented")
 }
 
 func (*FakeQuerier) CleanTailnetCoordinators(_ context.Context) error {
@@ -2485,6 +2498,14 @@ func (q *FakeQuerier) GetAuthorizationUserRoles(_ context.Context, userID uuid.U
 		Roles:    roles,
 		Groups:   groups,
 	}, nil
+}
+
+func (q *FakeQuerier) GetClaimableResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]database.ResourcePoolEntry, error) {
+	panic("not implemented")
+}
+
+func (q *FakeQuerier) GetClaimedResourcePoolEntry(ctx context.Context, claimantJobID database.GetClaimedResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	panic("not implemented")
 }
 
 func (q *FakeQuerier) GetCoordinatorResumeTokenSigningKey(_ context.Context) (string, error) {
@@ -3946,6 +3967,10 @@ func (q *FakeQuerier) GetReplicasUpdatedAfter(_ context.Context, updatedAt time.
 	return replicas, nil
 }
 
+func (q *FakeQuerier) GetResourcePoolByName(ctx context.Context, name string) (database.ResourcePool, error) {
+	panic("not implemented")
+}
+
 func (q *FakeQuerier) GetRuntimeConfig(_ context.Context, key string) (string, error) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
@@ -5054,6 +5079,10 @@ func (q *FakeQuerier) GetTemplateVersionParameters(_ context.Context, templateVe
 		return strings.ToLower(parameters[i].Name) < strings.ToLower(parameters[j].Name)
 	})
 	return parameters, nil
+}
+
+func (q *FakeQuerier) GetTemplateVersionResourcePoolClaims(ctx context.Context, templateVersionID uuid.UUID) ([]database.GetTemplateVersionResourcePoolClaimsRow, error) {
+	panic("not implemented")
 }
 
 func (q *FakeQuerier) GetTemplateVersionVariables(_ context.Context, templateVersionID uuid.UUID) ([]database.TemplateVersionVariable, error) {
@@ -7703,6 +7732,24 @@ func (q *FakeQuerier) InsertReplica(_ context.Context, arg database.InsertReplic
 	return replica, nil
 }
 
+func (q *FakeQuerier) InsertResourcePool(ctx context.Context, arg database.InsertResourcePoolParams) (database.ResourcePool, error) {
+	err := validateDatabaseType(arg)
+	if err != nil {
+		return database.ResourcePool{}, err
+	}
+
+	panic("not implemented")
+}
+
+func (q *FakeQuerier) InsertResourcePoolEntry(ctx context.Context, arg database.InsertResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	err := validateDatabaseType(arg)
+	if err != nil {
+		return database.ResourcePoolEntry{}, err
+	}
+
+	panic("not implemented")
+}
+
 func (q *FakeQuerier) InsertTemplate(_ context.Context, arg database.InsertTemplateParams) error {
 	if err := validateDatabaseType(arg); err != nil {
 		return err
@@ -7795,6 +7842,15 @@ func (q *FakeQuerier) InsertTemplateVersionParameter(_ context.Context, arg data
 	}
 	q.templateVersionParameters = append(q.templateVersionParameters, param)
 	return param, nil
+}
+
+func (q *FakeQuerier) InsertTemplateVersionResourcePoolClaim(ctx context.Context, arg database.InsertTemplateVersionResourcePoolClaimParams) (database.TemplateVersionResourcePoolClaim, error) {
+	err := validateDatabaseType(arg)
+	if err != nil {
+		return database.TemplateVersionResourcePoolClaim{}, err
+	}
+
+	panic("not implemented")
 }
 
 func (q *FakeQuerier) InsertTemplateVersionVariable(_ context.Context, arg database.InsertTemplateVersionVariableParams) (database.TemplateVersionVariable, error) {
@@ -8689,6 +8745,15 @@ func (q *FakeQuerier) RevokeDBCryptKey(_ context.Context, activeKeyDigest string
 	}
 
 	return sql.ErrNoRows
+}
+
+func (q *FakeQuerier) TransferWorkspaceAgentOwnership(ctx context.Context, arg database.TransferWorkspaceAgentOwnershipParams) (database.WorkspaceResource, error) {
+	err := validateDatabaseType(arg)
+	if err != nil {
+		return database.WorkspaceResource{}, err
+	}
+
+	panic("not implemented")
 }
 
 func (*FakeQuerier) TryAcquireLock(_ context.Context, _ int64) (bool, error) {
@@ -10190,6 +10255,26 @@ func (q *FakeQuerier) UpdateWorkspacesDormantDeletingAtByTemplateID(_ context.Co
 	}
 
 	return affectedRows, nil
+}
+
+func (q *FakeQuerier) UpdateWorkspacesTTLByTemplateID(_ context.Context, arg database.UpdateWorkspacesTTLByTemplateIDParams) error {
+	err := validateDatabaseType(arg)
+	if err != nil {
+		return err
+	}
+
+	q.mutex.Lock()
+	defer q.mutex.Unlock()
+
+	for i, ws := range q.workspaces {
+		if ws.TemplateID != arg.TemplateID {
+			continue
+		}
+
+		q.workspaces[i].Ttl = arg.Ttl
+	}
+
+	return nil
 }
 
 func (q *FakeQuerier) UpsertAnnouncementBanners(_ context.Context, data string) error {

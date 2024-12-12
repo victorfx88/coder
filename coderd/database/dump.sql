@@ -159,7 +159,8 @@ CREATE TYPE provisioner_job_timing_stage AS ENUM (
 CREATE TYPE provisioner_job_type AS ENUM (
     'template_version_import',
     'workspace_build',
-    'template_version_dry_run'
+    'template_version_dry_run',
+    'resource_pool_entry_build'
 );
 
 CREATE TYPE provisioner_storage_method AS ENUM (
@@ -1057,6 +1058,29 @@ CREATE TABLE replicas (
     "primary" boolean DEFAULT true NOT NULL
 );
 
+CREATE TABLE resource_pool_entries (
+    id uuid NOT NULL,
+    reference text NOT NULL,
+    workspace_agent_id uuid,
+    resource_pool_id uuid NOT NULL,
+    provision_job_id uuid NOT NULL,
+    claimant_job_id uuid,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    claimed_at timestamp with time zone
+);
+
+CREATE TABLE resource_pools (
+    id uuid NOT NULL,
+    name text NOT NULL,
+    capacity integer NOT NULL,
+    template_file_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    organization_id uuid NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL
+);
+
 CREATE TABLE site_configs (
     key character varying(256) NOT NULL,
     value text NOT NULL
@@ -1198,6 +1222,13 @@ COMMENT ON COLUMN template_version_parameters.display_name IS 'Display name of t
 COMMENT ON COLUMN template_version_parameters.display_order IS 'Specifies the order in which to display parameters in user interfaces.';
 
 COMMENT ON COLUMN template_version_parameters.ephemeral IS 'The value of an ephemeral parameter will not be preserved between consecutive workspace builds.';
+
+CREATE TABLE template_version_resource_pool_claims (
+    id uuid NOT NULL,
+    template_version_id uuid NOT NULL,
+    resource_pool_id uuid NOT NULL,
+    name text NOT NULL
+);
 
 CREATE TABLE template_version_variables (
     template_version_id uuid NOT NULL,
@@ -1928,6 +1959,15 @@ ALTER TABLE ONLY provisioner_jobs
 ALTER TABLE ONLY provisioner_keys
     ADD CONSTRAINT provisioner_keys_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY resource_pool_entries
+    ADD CONSTRAINT resource_pool_entries_pkey PRIMARY KEY (id);
+
+ALTER TABLE ONLY resource_pools
+    ADD CONSTRAINT resource_pools_name_key UNIQUE (name);
+
+ALTER TABLE ONLY resource_pools
+    ADD CONSTRAINT resource_pools_pkey PRIMARY KEY (id);
+
 ALTER TABLE ONLY site_configs
     ADD CONSTRAINT site_configs_key_key UNIQUE (key);
 
@@ -1954,6 +1994,9 @@ ALTER TABLE ONLY template_usage_stats
 
 ALTER TABLE ONLY template_version_parameters
     ADD CONSTRAINT template_version_parameters_template_version_id_name_key UNIQUE (template_version_id, name);
+
+ALTER TABLE ONLY template_version_resource_pool_claims
+    ADD CONSTRAINT template_version_resource_pool_claims_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY template_version_variables
     ADD CONSTRAINT template_version_variables_template_version_id_name_key UNIQUE (template_version_id, name);
@@ -2309,6 +2352,27 @@ ALTER TABLE ONLY provisioner_jobs
 ALTER TABLE ONLY provisioner_keys
     ADD CONSTRAINT provisioner_keys_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
+ALTER TABLE ONLY resource_pool_entries
+    ADD CONSTRAINT resource_pool_entries_claimant_job_id_fkey FOREIGN KEY (claimant_job_id) REFERENCES provisioner_jobs(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY resource_pool_entries
+    ADD CONSTRAINT resource_pool_entries_provision_job_id_fkey FOREIGN KEY (provision_job_id) REFERENCES provisioner_jobs(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY resource_pool_entries
+    ADD CONSTRAINT resource_pool_entries_resource_pool_id_fkey FOREIGN KEY (resource_pool_id) REFERENCES resource_pools(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY resource_pool_entries
+    ADD CONSTRAINT resource_pool_entries_workspace_agent_id_fkey FOREIGN KEY (workspace_agent_id) REFERENCES workspace_agents(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY resource_pools
+    ADD CONSTRAINT resource_pools_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY resource_pools
+    ADD CONSTRAINT resource_pools_template_file_id_fkey FOREIGN KEY (template_file_id) REFERENCES files(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY resource_pools
+    ADD CONSTRAINT resource_pools_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
+
 ALTER TABLE ONLY tailnet_agents
     ADD CONSTRAINT tailnet_agents_coordinator_id_fkey FOREIGN KEY (coordinator_id) REFERENCES tailnet_coordinators(id) ON DELETE CASCADE;
 
@@ -2326,6 +2390,12 @@ ALTER TABLE ONLY tailnet_tunnels
 
 ALTER TABLE ONLY template_version_parameters
     ADD CONSTRAINT template_version_parameters_template_version_id_fkey FOREIGN KEY (template_version_id) REFERENCES template_versions(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY template_version_resource_pool_claims
+    ADD CONSTRAINT template_version_resource_pool_claims_resource_pool_id_fkey FOREIGN KEY (resource_pool_id) REFERENCES resource_pools(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY template_version_resource_pool_claims
+    ADD CONSTRAINT template_version_resource_pool_claims_template_version_id_fkey FOREIGN KEY (template_version_id) REFERENCES template_versions(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY template_version_variables
     ADD CONSTRAINT template_version_variables_template_version_id_fkey FOREIGN KEY (template_version_id) REFERENCES template_versions(id) ON DELETE CASCADE;

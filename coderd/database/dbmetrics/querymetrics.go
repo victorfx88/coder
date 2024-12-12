@@ -12,6 +12,7 @@ import (
 	"golang.org/x/exp/slices"
 
 	"cdr.dev/slog"
+
 	"github.com/coder/coder/v2/coderd/database"
 	"github.com/coder/coder/v2/coderd/rbac"
 	"github.com/coder/coder/v2/coderd/rbac/policy"
@@ -144,6 +145,13 @@ func (m queryMetricsStore) BulkMarkNotificationMessagesSent(ctx context.Context,
 	start := time.Now()
 	r0, r1 := m.s.BulkMarkNotificationMessagesSent(ctx, arg)
 	m.queryLatencies.WithLabelValues("BulkMarkNotificationMessagesSent").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
+func (m queryMetricsStore) ClaimResourcePoolEntry(ctx context.Context, arg database.ClaimResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	start := time.Now()
+	r0, r1 := m.s.ClaimResourcePoolEntry(ctx, arg)
+	m.queryLatencies.WithLabelValues("ClaimResourcePoolEntry").Observe(time.Since(start).Seconds())
 	return r0, r1
 }
 
@@ -544,6 +552,20 @@ func (m queryMetricsStore) GetAuthorizationUserRoles(ctx context.Context, userID
 	row, err := m.s.GetAuthorizationUserRoles(ctx, userID)
 	m.queryLatencies.WithLabelValues("GetAuthorizationUserRoles").Observe(time.Since(start).Seconds())
 	return row, err
+}
+
+func (m queryMetricsStore) GetClaimableResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]database.ResourcePoolEntry, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetClaimableResourcePoolEntries(ctx, poolID)
+	m.queryLatencies.WithLabelValues("GetClaimableResourcePoolEntries").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
+func (m queryMetricsStore) GetClaimedResourcePoolEntry(ctx context.Context, claimantJobID database.GetClaimedResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetClaimedResourcePoolEntry(ctx, claimantJobID)
+	m.queryLatencies.WithLabelValues("GetClaimedResourcePoolEntry").Observe(time.Since(start).Seconds())
+	return r0, r1
 }
 
 func (m queryMetricsStore) GetCoordinatorResumeTokenSigningKey(ctx context.Context) (string, error) {
@@ -1064,6 +1086,13 @@ func (m queryMetricsStore) GetReplicasUpdatedAfter(ctx context.Context, updatedA
 	return replicas, err
 }
 
+func (m queryMetricsStore) GetResourcePoolByName(ctx context.Context, name string) (database.ResourcePool, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetResourcePoolByName(ctx, name)
+	m.queryLatencies.WithLabelValues("GetResourcePoolByName").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
 func (m queryMetricsStore) GetRuntimeConfig(ctx context.Context, key string) (string, error) {
 	start := time.Now()
 	r0, r1 := m.s.GetRuntimeConfig(ctx, key)
@@ -1209,6 +1238,13 @@ func (m queryMetricsStore) GetTemplateVersionParameters(ctx context.Context, tem
 	parameters, err := m.s.GetTemplateVersionParameters(ctx, templateVersionID)
 	m.queryLatencies.WithLabelValues("GetTemplateVersionParameters").Observe(time.Since(start).Seconds())
 	return parameters, err
+}
+
+func (m queryMetricsStore) GetTemplateVersionResourcePoolClaims(ctx context.Context, templateVersionID uuid.UUID) ([]database.GetTemplateVersionResourcePoolClaimsRow, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetTemplateVersionResourcePoolClaims(ctx, templateVersionID)
+	m.queryLatencies.WithLabelValues("GetTemplateVersionResourcePoolClaims").Observe(time.Since(start).Seconds())
+	return r0, r1
 }
 
 func (m queryMetricsStore) GetTemplateVersionVariables(ctx context.Context, templateVersionID uuid.UUID) ([]database.TemplateVersionVariable, error) {
@@ -1876,6 +1912,20 @@ func (m queryMetricsStore) InsertReplica(ctx context.Context, arg database.Inser
 	return replica, err
 }
 
+func (m queryMetricsStore) InsertResourcePool(ctx context.Context, arg database.InsertResourcePoolParams) (database.ResourcePool, error) {
+	start := time.Now()
+	r0, r1 := m.s.InsertResourcePool(ctx, arg)
+	m.queryLatencies.WithLabelValues("InsertResourcePool").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
+func (m queryMetricsStore) InsertResourcePoolEntry(ctx context.Context, arg database.InsertResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	start := time.Now()
+	r0, r1 := m.s.InsertResourcePoolEntry(ctx, arg)
+	m.queryLatencies.WithLabelValues("InsertResourcePoolEntry").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
 func (m queryMetricsStore) InsertTemplate(ctx context.Context, arg database.InsertTemplateParams) error {
 	start := time.Now()
 	err := m.s.InsertTemplate(ctx, arg)
@@ -1895,6 +1945,13 @@ func (m queryMetricsStore) InsertTemplateVersionParameter(ctx context.Context, a
 	parameter, err := m.s.InsertTemplateVersionParameter(ctx, arg)
 	m.queryLatencies.WithLabelValues("InsertTemplateVersionParameter").Observe(time.Since(start).Seconds())
 	return parameter, err
+}
+
+func (m queryMetricsStore) InsertTemplateVersionResourcePoolClaim(ctx context.Context, arg database.InsertTemplateVersionResourcePoolClaimParams) (database.TemplateVersionResourcePoolClaim, error) {
+	start := time.Now()
+	r0, r1 := m.s.InsertTemplateVersionResourcePoolClaim(ctx, arg)
+	m.queryLatencies.WithLabelValues("InsertTemplateVersionResourcePoolClaim").Observe(time.Since(start).Seconds())
+	return r0, r1
 }
 
 func (m queryMetricsStore) InsertTemplateVersionVariable(ctx context.Context, arg database.InsertTemplateVersionVariableParams) (database.TemplateVersionVariable, error) {
@@ -2126,6 +2183,13 @@ func (m queryMetricsStore) RevokeDBCryptKey(ctx context.Context, activeKeyDigest
 	r0 := m.s.RevokeDBCryptKey(ctx, activeKeyDigest)
 	m.queryLatencies.WithLabelValues("RevokeDBCryptKey").Observe(time.Since(start).Seconds())
 	return r0
+}
+
+func (m queryMetricsStore) TransferWorkspaceAgentOwnership(ctx context.Context, arg database.TransferWorkspaceAgentOwnershipParams) (database.WorkspaceResource, error) {
+	start := time.Now()
+	r0, r1 := m.s.TransferWorkspaceAgentOwnership(ctx, arg)
+	m.queryLatencies.WithLabelValues("TransferWorkspaceAgentOwnership").Observe(time.Since(start).Seconds())
+	return r0, r1
 }
 
 func (m queryMetricsStore) TryAcquireLock(ctx context.Context, pgTryAdvisoryXactLock int64) (bool, error) {
@@ -2588,6 +2652,13 @@ func (m queryMetricsStore) UpdateWorkspacesDormantDeletingAtByTemplateID(ctx con
 	r0, r1 := m.s.UpdateWorkspacesDormantDeletingAtByTemplateID(ctx, arg)
 	m.queryLatencies.WithLabelValues("UpdateWorkspacesDormantDeletingAtByTemplateID").Observe(time.Since(start).Seconds())
 	return r0, r1
+}
+
+func (m queryMetricsStore) UpdateWorkspacesTTLByTemplateID(ctx context.Context, arg database.UpdateWorkspacesTTLByTemplateIDParams) error {
+	start := time.Now()
+	r0 := m.s.UpdateWorkspacesTTLByTemplateID(ctx, arg)
+	m.queryLatencies.WithLabelValues("UpdateWorkspacesTTLByTemplateID").Observe(time.Since(start).Seconds())
+	return r0
 }
 
 func (m queryMetricsStore) UpsertAnnouncementBanners(ctx context.Context, value string) error {

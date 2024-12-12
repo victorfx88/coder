@@ -21,6 +21,7 @@ import (
 
 	"cdr.dev/slog"
 	"cdr.dev/slog/sloggers/slogtest"
+
 	"github.com/coder/coder/v2/codersdk/drpc"
 	"github.com/coder/coder/v2/provisionerd"
 	"github.com/coder/coder/v2/provisionerd/proto"
@@ -1189,6 +1190,16 @@ func (p *provisionerTestServer) Plan(s *provisionersdk.Session, r *sdkproto.Plan
 
 func (p *provisionerTestServer) Apply(s *provisionersdk.Session, r *sdkproto.ApplyRequest, canceledOrComplete <-chan struct{}) *sdkproto.ApplyComplete {
 	return p.apply(s, r, canceledOrComplete)
+}
+
+func (p *provisionerTestServer) AllocatePlan(s *provisionersdk.Session, r *sdkproto.AllocatePlanRequest, canceledOrComplete <-chan struct{}) *sdkproto.AllocatePlanComplete {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (p *provisionerTestServer) AllocateApply(s *provisionersdk.Session, r *sdkproto.AllocateApplyRequest, canceledOrComplete <-chan struct{}) *sdkproto.AllocateApplyComplete {
+	// TODO implement me
+	panic("implement me")
 }
 
 // Fulfills the protobuf interface for a ProvisionerDaemon with

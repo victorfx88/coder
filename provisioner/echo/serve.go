@@ -192,6 +192,16 @@ func (*echo) Apply(sess *provisionersdk.Session, req *proto.ApplyRequest, cancel
 	return provisionersdk.ApplyErrorf("canceled")
 }
 
+func (e *echo) AllocatePlan(s *provisionersdk.Session, r *proto.AllocatePlanRequest, canceledOrComplete <-chan struct{}) *proto.AllocatePlanComplete {
+	// TODO implement me
+	panic("implement me")
+}
+
+func (e *echo) AllocateApply(s *provisionersdk.Session, r *proto.AllocateApplyRequest, canceledOrComplete <-chan struct{}) *proto.AllocateApplyComplete {
+	// TODO implement me
+	panic("implement me")
+}
+
 func (*echo) Shutdown(_ context.Context, _ *proto.Empty) (*proto.Empty, error) {
 	return &proto.Empty{}, nil
 }

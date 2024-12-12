@@ -30,6 +30,13 @@ export enum WorkspaceTransition {
 	UNRECOGNIZED = -1,
 }
 
+export enum ResourcePoolEntryTransition {
+	ALLOCATE = 0,
+	/** DEALLOCATE - CLAIM = 2; ? */
+	DEALLOCATE = 1,
+	UNRECOGNIZED = -1,
+}
+
 export enum TimingState {
 	STARTED = 0,
 	COMPLETED = 1,
@@ -110,6 +117,27 @@ export interface ExternalAuthProviderResource {
 export interface ExternalAuthProvider {
 	id: string;
 	accessToken: string;
+}
+
+export interface ResourcePoolClaim {
+	name: string;
+	poolName: string;
+	instanceId: string;
+}
+
+export interface ResourcePoolClaimableCompute {
+	instanceId: string;
+	agentId: string;
+}
+
+export interface ResourcePoolClaimableOther {
+	instanceId: string;
+}
+
+export interface ResourcePoolClaimable {
+	name: string;
+	compute: ResourcePoolClaimableCompute | undefined;
+	other: ResourcePoolClaimableOther | undefined;
 }
 
 /** Agent represents a running agent on the workspace. */
@@ -251,6 +279,14 @@ export interface Metadata {
 	workspaceOwnerSshPrivateKey: string;
 	workspaceBuildId: string;
 	workspaceOwnerLoginType: string;
+	resourcePoolClaims: ResourcePoolClaim[];
+}
+
+export interface ResourcePoolEntryMetadata {
+	coderUrl: string;
+	poolId: string;
+	poolName: string;
+	transition: ResourcePoolEntryTransition;
 }
 
 /** Config represents execution configuration shared by all subsequent requests in the Session */
@@ -292,6 +328,7 @@ export interface PlanComplete {
 	resources: Resource[];
 	parameters: RichParameter[];
 	externalAuthProviders: ExternalAuthProviderResource[];
+	resourcePoolClaims: ResourcePoolClaim[];
 	timings: Timing[];
 	modules: Module[];
 }
@@ -311,6 +348,8 @@ export interface ApplyComplete {
 	resources: Resource[];
 	parameters: RichParameter[];
 	externalAuthProviders: ExternalAuthProviderResource[];
+	resourcePoolClaims: ResourcePoolClaim[];
+	resourcePoolClaimables: ResourcePoolClaimable[];
 	timings: Timing[];
 }
 
@@ -327,12 +366,38 @@ export interface Timing {
 /** CancelRequest requests that the previous request be canceled gracefully. */
 export interface CancelRequest {}
 
+/** AllocatePlanRequest asks the provisioner to plan what resources & parameters it will create for resource pool entries */
+export interface AllocatePlanRequest {
+	metadata: ResourcePoolEntryMetadata | undefined;
+}
+
+/** AllocatePlanComplete indicates a request to plan a resource pool entry completed. */
+export interface AllocatePlanComplete {
+	error: string;
+	resources: Resource[];
+}
+
+/** AllocateApplyRequest asks the provisioner to apply the resources & parameters it will create for resource pool entries */
+export interface AllocateApplyRequest {
+	metadata: ResourcePoolEntryMetadata | undefined;
+}
+
+/** AllocateApplyComplete indicates a request to apply a resource pool entry completed. */
+export interface AllocateApplyComplete {
+	error: string;
+	resources: Resource[];
+	resourcePoolClaimables: ResourcePoolClaimable[];
+}
+
 export interface Request {
 	config?: Config | undefined;
 	parse?: ParseRequest | undefined;
 	plan?: PlanRequest | undefined;
 	apply?: ApplyRequest | undefined;
 	cancel?: CancelRequest | undefined;
+	/** TODO: merge with Plan/Apply/Cancel */
+	allocatePlan?: AllocatePlanRequest | undefined;
+	allocateApply?: AllocateApplyRequest | undefined;
 }
 
 export interface Response {
@@ -340,6 +405,9 @@ export interface Response {
 	parse?: ParseComplete | undefined;
 	plan?: PlanComplete | undefined;
 	apply?: ApplyComplete | undefined;
+	/** TODO: merge with Plan/Apply/Cancel */
+	allocatePlan?: AllocatePlanComplete | undefined;
+	allocateApply?: AllocateApplyComplete | undefined;
 }
 
 export const Empty = {
@@ -535,6 +603,75 @@ export const ExternalAuthProvider = {
 		}
 		if (message.accessToken !== "") {
 			writer.uint32(18).string(message.accessToken);
+		}
+		return writer;
+	},
+};
+
+export const ResourcePoolClaim = {
+	encode(
+		message: ResourcePoolClaim,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.name !== "") {
+			writer.uint32(10).string(message.name);
+		}
+		if (message.poolName !== "") {
+			writer.uint32(18).string(message.poolName);
+		}
+		if (message.instanceId !== "") {
+			writer.uint32(26).string(message.instanceId);
+		}
+		return writer;
+	},
+};
+
+export const ResourcePoolClaimableCompute = {
+	encode(
+		message: ResourcePoolClaimableCompute,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.instanceId !== "") {
+			writer.uint32(10).string(message.instanceId);
+		}
+		if (message.agentId !== "") {
+			writer.uint32(18).string(message.agentId);
+		}
+		return writer;
+	},
+};
+
+export const ResourcePoolClaimableOther = {
+	encode(
+		message: ResourcePoolClaimableOther,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.instanceId !== "") {
+			writer.uint32(10).string(message.instanceId);
+		}
+		return writer;
+	},
+};
+
+export const ResourcePoolClaimable = {
+	encode(
+		message: ResourcePoolClaimable,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.name !== "") {
+			writer.uint32(10).string(message.name);
+		}
+		if (message.compute !== undefined) {
+			ResourcePoolClaimableCompute.encode(
+				message.compute,
+				writer.uint32(18).fork(),
+			).ldelim();
+		}
+		if (message.other !== undefined) {
+			ResourcePoolClaimableOther.encode(
+				message.other,
+				writer.uint32(26).fork(),
+			).ldelim();
 		}
 		return writer;
 	},
@@ -911,6 +1048,30 @@ export const Metadata = {
 		if (message.workspaceOwnerLoginType !== "") {
 			writer.uint32(146).string(message.workspaceOwnerLoginType);
 		}
+		for (const v of message.resourcePoolClaims) {
+			ResourcePoolClaim.encode(v!, writer.uint32(154).fork()).ldelim();
+		}
+		return writer;
+	},
+};
+
+export const ResourcePoolEntryMetadata = {
+	encode(
+		message: ResourcePoolEntryMetadata,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.coderUrl !== "") {
+			writer.uint32(10).string(message.coderUrl);
+		}
+		if (message.poolId !== "") {
+			writer.uint32(18).string(message.poolId);
+		}
+		if (message.poolName !== "") {
+			writer.uint32(26).string(message.poolName);
+		}
+		if (message.transition !== 0) {
+			writer.uint32(32).int32(message.transition);
+		}
 		return writer;
 	},
 };
@@ -1022,6 +1183,9 @@ export const PlanComplete = {
 				writer.uint32(34).fork(),
 			).ldelim();
 		}
+		for (const v of message.resourcePoolClaims) {
+			ResourcePoolClaim.encode(v!, writer.uint32(42).fork()).ldelim();
+		}
 		for (const v of message.timings) {
 			Timing.encode(v!, writer.uint32(50).fork()).ldelim();
 		}
@@ -1066,6 +1230,12 @@ export const ApplyComplete = {
 				v!,
 				writer.uint32(42).fork(),
 			).ldelim();
+		}
+		for (const v of message.resourcePoolClaims) {
+			ResourcePoolClaim.encode(v!, writer.uint32(58).fork()).ldelim();
+		}
+		for (const v of message.resourcePoolClaimables) {
+			ResourcePoolClaimable.encode(v!, writer.uint32(66).fork()).ldelim();
 		}
 		for (const v of message.timings) {
 			Timing.encode(v!, writer.uint32(50).fork()).ldelim();
@@ -1119,6 +1289,69 @@ export const CancelRequest = {
 	},
 };
 
+export const AllocatePlanRequest = {
+	encode(
+		message: AllocatePlanRequest,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.metadata !== undefined) {
+			ResourcePoolEntryMetadata.encode(
+				message.metadata,
+				writer.uint32(10).fork(),
+			).ldelim();
+		}
+		return writer;
+	},
+};
+
+export const AllocatePlanComplete = {
+	encode(
+		message: AllocatePlanComplete,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.error !== "") {
+			writer.uint32(10).string(message.error);
+		}
+		for (const v of message.resources) {
+			Resource.encode(v!, writer.uint32(18).fork()).ldelim();
+		}
+		return writer;
+	},
+};
+
+export const AllocateApplyRequest = {
+	encode(
+		message: AllocateApplyRequest,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.metadata !== undefined) {
+			ResourcePoolEntryMetadata.encode(
+				message.metadata,
+				writer.uint32(10).fork(),
+			).ldelim();
+		}
+		return writer;
+	},
+};
+
+export const AllocateApplyComplete = {
+	encode(
+		message: AllocateApplyComplete,
+		writer: _m0.Writer = _m0.Writer.create(),
+	): _m0.Writer {
+		if (message.error !== "") {
+			writer.uint32(10).string(message.error);
+		}
+		for (const v of message.resources) {
+			Resource.encode(v!, writer.uint32(18).fork()).ldelim();
+		}
+		for (const v of message.resourcePoolClaimables) {
+			ResourcePoolClaimable.encode(v!, writer.uint32(26).fork()).ldelim();
+		}
+		return writer;
+	},
+};
+
 export const Request = {
 	encode(
 		message: Request,
@@ -1138,6 +1371,18 @@ export const Request = {
 		}
 		if (message.cancel !== undefined) {
 			CancelRequest.encode(message.cancel, writer.uint32(42).fork()).ldelim();
+		}
+		if (message.allocatePlan !== undefined) {
+			AllocatePlanRequest.encode(
+				message.allocatePlan,
+				writer.uint32(50).fork(),
+			).ldelim();
+		}
+		if (message.allocateApply !== undefined) {
+			AllocateApplyRequest.encode(
+				message.allocateApply,
+				writer.uint32(58).fork(),
+			).ldelim();
 		}
 		return writer;
 	},
@@ -1159,6 +1404,18 @@ export const Response = {
 		}
 		if (message.apply !== undefined) {
 			ApplyComplete.encode(message.apply, writer.uint32(34).fork()).ldelim();
+		}
+		if (message.allocatePlan !== undefined) {
+			AllocatePlanComplete.encode(
+				message.allocatePlan,
+				writer.uint32(42).fork(),
+			).ldelim();
+		}
+		if (message.allocateApply !== undefined) {
+			AllocateApplyComplete.encode(
+				message.allocateApply,
+				writer.uint32(50).fork(),
+			).ldelim();
 		}
 		return writer;
 	},

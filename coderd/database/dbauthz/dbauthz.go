@@ -1074,6 +1074,14 @@ func (q *querier) BulkMarkNotificationMessagesSent(ctx context.Context, arg data
 	return q.db.BulkMarkNotificationMessagesSent(ctx, arg)
 }
 
+func (q *querier) ClaimResourcePoolEntry(ctx context.Context, arg database.ClaimResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+		return database.ResourcePoolEntry{}, err
+	}
+	return q.db.ClaimResourcePoolEntry(ctx, arg)
+}
+
 func (q *querier) CleanTailnetCoordinators(ctx context.Context) error {
 	if err := q.authorizeContext(ctx, policy.ActionDelete, rbac.ResourceTailnetCoordinator); err != nil {
 		return err
@@ -1488,6 +1496,22 @@ func (q *querier) GetAuthorizationUserRoles(ctx context.Context, userID uuid.UUI
 		return database.GetAuthorizationUserRolesRow{}, err
 	}
 	return q.db.GetAuthorizationUserRoles(ctx, userID)
+}
+
+func (q *querier) GetClaimableResourcePoolEntries(ctx context.Context, poolID uuid.UUID) ([]database.ResourcePoolEntry, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+		return []database.ResourcePoolEntry{}, err
+	}
+	return q.db.GetClaimableResourcePoolEntries(ctx, poolID)
+}
+
+func (q *querier) GetClaimedResourcePoolEntry(ctx context.Context, arg database.GetClaimedResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
+		return database.ResourcePoolEntry{}, err
+	}
+	return q.db.GetClaimedResourcePoolEntry(ctx, arg)
 }
 
 func (q *querier) GetCoordinatorResumeTokenSigningKey(ctx context.Context) (string, error) {
@@ -1944,6 +1968,8 @@ func (q *querier) GetProvisionerJobByID(ctx context.Context, id uuid.UUID) (data
 		if err != nil {
 			return database.ProvisionerJob{}, err
 		}
+	case database.ProvisionerJobTypeResourcePoolEntryBuild:
+		// TODO: auth
 	default:
 		return database.ProvisionerJob{}, xerrors.Errorf("unknown job type: %q", job.Type)
 	}
@@ -2029,6 +2055,14 @@ func (q *querier) GetReplicasUpdatedAfter(ctx context.Context, updatedAt time.Ti
 		return nil, err
 	}
 	return q.db.GetReplicasUpdatedAfter(ctx, updatedAt)
+}
+
+func (q *querier) GetResourcePoolByName(ctx context.Context, name string) (database.ResourcePool, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
+		return database.ResourcePool{}, err
+	}
+	return q.db.GetResourcePoolByName(ctx, name)
 }
 
 func (q *querier) GetRuntimeConfig(ctx context.Context, key string) (string, error) {
@@ -2221,6 +2255,14 @@ func (q *querier) GetTemplateVersionParameters(ctx context.Context, templateVers
 		return nil, err
 	}
 	return q.db.GetTemplateVersionParameters(ctx, templateVersionID)
+}
+
+func (q *querier) GetTemplateVersionResourcePoolClaims(ctx context.Context, templateVersionID uuid.UUID) ([]database.GetTemplateVersionResourcePoolClaimsRow, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
+		return nil, err
+	}
+	return q.db.GetTemplateVersionResourcePoolClaims(ctx, templateVersionID)
 }
 
 func (q *querier) GetTemplateVersionVariables(ctx context.Context, templateVersionID uuid.UUID) ([]database.TemplateVersionVariable, error) {
@@ -2797,6 +2839,8 @@ func (q *querier) GetWorkspaceResourcesByJobID(ctx context.Context, jobID uuid.U
 			return nil, err
 		}
 		obj = workspace
+	case database.ProvisionerJobTypeResourcePoolEntryBuild:
+		// TODO: auth
 	default:
 		return nil, xerrors.Errorf("unknown job type: %s", job.Type)
 	}
@@ -3055,6 +3099,22 @@ func (q *querier) InsertReplica(ctx context.Context, arg database.InsertReplicaP
 	return q.db.InsertReplica(ctx, arg)
 }
 
+func (q *querier) InsertResourcePool(ctx context.Context, arg database.InsertResourcePoolParams) (database.ResourcePool, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+		return database.ResourcePool{}, err
+	}
+	return q.db.InsertResourcePool(ctx, arg)
+}
+
+func (q *querier) InsertResourcePoolEntry(ctx context.Context, arg database.InsertResourcePoolEntryParams) (database.ResourcePoolEntry, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+		return database.ResourcePoolEntry{}, err
+	}
+	return q.db.InsertResourcePoolEntry(ctx, arg)
+}
+
 func (q *querier) InsertTemplate(ctx context.Context, arg database.InsertTemplateParams) error {
 	obj := rbac.ResourceTemplate.InOrg(arg.OrganizationID)
 	if err := q.authorizeContext(ctx, policy.ActionCreate, obj); err != nil {
@@ -3091,6 +3151,14 @@ func (q *querier) InsertTemplateVersionParameter(ctx context.Context, arg databa
 		return database.TemplateVersionParameter{}, err
 	}
 	return q.db.InsertTemplateVersionParameter(ctx, arg)
+}
+
+func (q *querier) InsertTemplateVersionResourcePoolClaim(ctx context.Context, arg database.InsertTemplateVersionResourcePoolClaimParams) (database.TemplateVersionResourcePoolClaim, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+		return database.TemplateVersionResourcePoolClaim{}, err
+	}
+	return q.db.InsertTemplateVersionResourcePoolClaim(ctx, arg)
 }
 
 func (q *querier) InsertTemplateVersionVariable(ctx context.Context, arg database.InsertTemplateVersionVariableParams) (database.TemplateVersionVariable, error) {
@@ -3390,6 +3458,14 @@ func (q *querier) RevokeDBCryptKey(ctx context.Context, activeKeyDigest string) 
 	return q.db.RevokeDBCryptKey(ctx, activeKeyDigest)
 }
 
+func (q *querier) TransferWorkspaceAgentOwnership(ctx context.Context, arg database.TransferWorkspaceAgentOwnershipParams) (database.WorkspaceResource, error) {
+	// TODO: auth
+	if err := q.authorizeContext(ctx, policy.ActionUpdate, rbac.ResourceSystem); err != nil {
+		return database.WorkspaceResource{}, err
+	}
+	return q.db.TransferWorkspaceAgentOwnership(ctx, arg)
+}
+
 func (q *querier) TryAcquireLock(ctx context.Context, id int64) (bool, error) {
 	return q.db.TryAcquireLock(ctx, id)
 }
@@ -3631,6 +3707,8 @@ func (q *querier) UpdateProvisionerJobWithCancelByID(ctx context.Context, arg da
 				return err
 			}
 		}
+	case database.ProvisionerJobTypeResourcePoolEntryBuild:
+		// TODO: auth
 	default:
 		return xerrors.Errorf("unknown job type: %q", job.Type)
 	}
@@ -4136,6 +4214,17 @@ func (q *querier) UpdateWorkspacesDormantDeletingAtByTemplateID(ctx context.Cont
 		return nil, err
 	}
 	return q.db.UpdateWorkspacesDormantDeletingAtByTemplateID(ctx, arg)
+}
+
+func (q *querier) UpdateWorkspacesTTLByTemplateID(ctx context.Context, arg database.UpdateWorkspacesTTLByTemplateIDParams) error {
+	template, err := q.db.GetTemplateByID(ctx, arg.TemplateID)
+	if err != nil {
+		return xerrors.Errorf("get template by id: %w", err)
+	}
+	if err := q.authorizeContext(ctx, policy.ActionUpdate, template); err != nil {
+		return err
+	}
+	return q.db.UpdateWorkspacesTTLByTemplateID(ctx, arg)
 }
 
 func (q *querier) UpsertAnnouncementBanners(ctx context.Context, value string) error {

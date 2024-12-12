@@ -1209,6 +1209,41 @@ export interface ResolveAutostartResponse {
 	readonly parameter_mismatch: boolean;
 }
 
+// From codersdk/resourcepools.go
+export interface ResourcePool {
+	readonly id: string;
+	readonly name: string;
+	readonly capacity: number;
+	readonly template_file_id: string;
+	readonly userID: string;
+	readonly organization_id: string;
+	readonly created_at: string;
+	readonly updated_at: string;
+}
+
+// From codersdk/resourcepools.go
+export interface ResourcePoolClaim {
+	readonly id: string;
+	readonly resource_pool_entry_id: string;
+	readonly user_id: string;
+	readonly workspace_id: string;
+}
+
+// From codersdk/resourcepools.go
+export interface ResourcePoolEntry {
+	readonly id: string;
+	readonly reference: string;
+	readonly created_at: string;
+	readonly updated_at: string;
+}
+
+// From codersdk/resourcepools.go
+export interface ResourcePoolRequest {
+	readonly name: string;
+	readonly capacity: number;
+	readonly template: string;
+}
+
 // From codersdk/client.go
 export interface Response {
 	readonly message: string;

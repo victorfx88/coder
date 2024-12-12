@@ -129,9 +129,11 @@ type resourceMetadataItem struct {
 }
 
 type State struct {
-	Resources             []*proto.Resource
-	Parameters            []*proto.RichParameter
-	ExternalAuthProviders []*proto.ExternalAuthProviderResource
+	Resources              []*proto.Resource
+	Parameters             []*proto.RichParameter
+	ExternalAuthProviders  []*proto.ExternalAuthProviderResource
+	ResourcePoolClaimables []*proto.ResourcePoolClaimable
+	ResourcePoolClaims     []*proto.ResourcePoolClaim
 }
 
 var ErrInvalidTerraformAddr = xerrors.New("invalid terraform address")
@@ -151,6 +153,8 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 
 	resources := make([]*proto.Resource, 0)
 	resourceAgents := map[string][]*proto.Agent{}
+	var resourcePoolClaims []*proto.ResourcePoolClaim
+	var resourcePoolClaimables []*proto.ResourcePoolClaimable
 
 	// Indexes Terraform resources by their label.
 	// The label is what "terraform graph" uses to reference nodes.
@@ -158,6 +162,8 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 
 	// Extra array to preserve the order of rich parameters.
 	tfResourcesRichParameters := make([]*tfjson.StateResource, 0)
+	var tfResourcePoolClaims []*tfjson.StateResource
+	var tfResourcePoolClaimables []*tfjson.StateResource
 
 	var findTerraformResources func(mod *tfjson.StateModule)
 	findTerraformResources = func(mod *tfjson.StateModule) {
@@ -165,6 +171,13 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 			findTerraformResources(module)
 		}
 		for _, resource := range mod.Resources {
+			if resource.Type == "coder_pool_resource_claim" {
+				tfResourcePoolClaims = append(tfResourcePoolClaims, resource)
+			}
+			if resource.Type == "coder_pool_resource_claimable" {
+				tfResourcePoolClaimables = append(tfResourcePoolClaimables, resource)
+			}
+
 			if resource.Type == "coder_parameter" {
 				tfResourcesRichParameters = append(tfResourcesRichParameters, resource)
 			}
@@ -754,10 +767,66 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 		externalAuthProviders = append(externalAuthProviders, it)
 	}
 
+	// Track resource pool claims.
+	for _, resource := range tfResourcePoolClaims {
+		poolName, ok := resource.AttributeValues["pool_name"]
+		if !ok {
+			return nil, xerrors.Errorf("could not find 'pool_name' attribute for pool claim resource")
+		}
+
+		resourcePoolClaims = append(resourcePoolClaims, &proto.ResourcePoolClaim{
+			Name:     resource.Name,
+			PoolName: poolName.(string), // TODO: type safety
+		})
+	}
+
+	// TODO: move structs out
+	type resourcePoolClaimableComputeType struct {
+		InstanceId string `mapstructure:"instance_id"`
+		AgentId    string `mapstructure:"agent_id"`
+	}
+	type resourcePoolClaimableOtherType struct {
+		InstanceId string `mapstructure:"instance_id"`
+	}
+	type resourcePoolClaimableType struct {
+		Compute []resourcePoolClaimableComputeType `mapstructure:"compute"`
+		Other   []resourcePoolClaimableOtherType   `mapstructure:"other"`
+	}
+
+	// Track resource pool claimables.
+	for _, resource := range tfResourcePoolClaimables {
+		var attrs resourcePoolClaimableType
+		err = mapstructure.Decode(resource.AttributeValues, &attrs)
+		if err != nil {
+			return nil, xerrors.Errorf("decode pool resource claimable attributes: %w", err)
+		}
+
+		switch {
+		// TODO: harden this; how do we handle this func getting called from Plan when these IDs are not yet known?
+		case len(attrs.Compute) > 0 && (attrs.Compute[0].InstanceId != "" && attrs.Compute[0].AgentId != ""):
+			resourcePoolClaimables = append(resourcePoolClaimables, &proto.ResourcePoolClaimable{
+				Name: resource.Name,
+				Compute: &proto.ResourcePoolClaimableCompute{
+					InstanceId: attrs.Compute[0].InstanceId,
+					AgentId:    attrs.Compute[0].AgentId,
+				},
+			})
+		case len(attrs.Other) > 0 && attrs.Other[0].InstanceId != "":
+			resourcePoolClaimables = append(resourcePoolClaimables, &proto.ResourcePoolClaimable{
+				Name: resource.Name,
+				Other: &proto.ResourcePoolClaimableOther{
+					InstanceId: attrs.Other[0].InstanceId,
+				},
+			})
+		}
+	}
+
 	return &State{
-		Resources:             resources,
-		Parameters:            parameters,
-		ExternalAuthProviders: externalAuthProviders,
+		Resources:              resources,
+		Parameters:             parameters,
+		ExternalAuthProviders:  externalAuthProviders,
+		ResourcePoolClaimables: resourcePoolClaimables,
+		ResourcePoolClaims:     resourcePoolClaims,
 	}, nil
 }
 

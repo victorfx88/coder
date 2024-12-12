@@ -2,6 +2,8 @@ package terraform
 
 import (
 	"context"
+	"crypto/sha1"
+	"encoding/base32"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -220,9 +222,163 @@ func (s *server) Apply(
 		return &proto.ApplyComplete{
 			State: stateData,
 			Error: errorMessage,
+			ResourcePoolClaims: request.Metadata.ResourcePoolClaims,
 		}
 	}
+
+	// TODO: figure out a better way to do this; the instanceID is not available from the graph output
+	resp.ResourcePoolClaims = request.Metadata.ResourcePoolClaims
+
 	return resp
+}
+
+func (s *server) AllocatePlan(sess *provisionersdk.Session, request *proto.AllocatePlanRequest, canceledOrComplete <-chan struct{}) *proto.AllocatePlanComplete {
+	// Copied from Plan
+
+	ctx, span := s.startTrace(sess.Context(), tracing.FuncName())
+	defer span.End()
+	ctx, cancel, killCtx, kill := s.setupContexts(ctx, canceledOrComplete)
+	defer cancel()
+	defer kill()
+
+	e := s.executor(sess.WorkDirectory, database.ProvisionerJobTimingStagePlan)
+	if err := e.checkMinVersion(ctx); err != nil {
+		return provisionersdk.AllocatePlanErrorf(err.Error())
+	}
+	logTerraformEnvVars(sess)
+
+	// If we're destroying, exit early if there's no state. This is necessary to
+	// avoid any cases where a workspace is "locked out" of terraform due to
+	// e.g. bad template param values and cannot be deleted. This is just for
+	// contingency, in the future we will try harder to prevent workspaces being
+	// broken this hard.
+	// TODO: should sess.Config.State hold anything for resource pool entry provisioning?
+	if request.Metadata.GetTransition() == proto.ResourcePoolEntryTransition_DEALLOCATE && len(sess.Config.State) == 0 {
+		sess.ProvisionLog(proto.LogLevel_INFO, "The terraform state does not exist, there is nothing to do")
+		return &proto.AllocatePlanComplete{}
+	}
+
+	statefilePath := getStateFilePath(sess.WorkDirectory)
+	if len(sess.Config.State) > 0 {
+		err := os.WriteFile(statefilePath, sess.Config.State, 0o600)
+		if err != nil {
+			return provisionersdk.AllocatePlanErrorf("write statefile %q: %s", statefilePath, err)
+		}
+	}
+
+	err := CleanStaleTerraformPlugins(sess.Context(), s.cachePath, afero.NewOsFs(), time.Now(), s.logger)
+	if err != nil {
+		return provisionersdk.AllocatePlanErrorf("unable to clean stale Terraform plugins: %s", err)
+	}
+
+	s.logger.Debug(ctx, "running initialization")
+
+	err = e.init(ctx, killCtx, sess)
+
+	if err != nil {
+		s.logger.Debug(ctx, "init failed", slog.Error(err))
+
+		// Special handling for "text file busy" c.f. https://github.com/coder/coder/issues/14726
+		// We believe this might be due to some race condition that prevents the
+		// terraform-provider-coder process from exiting.  When terraform tries to install the
+		// provider during this init, it copies over the local cache. Normally this isn't an issue,
+		// but if the terraform-provider-coder process is still running from a previous build, Linux
+		// returns "text file busy" error when attempting to open the file.
+		//
+		// Capturing the stack trace from the process should help us figure out why it has not
+		// exited.  We'll drop these diagnostics in a CRITICAL log so that operators are likely to
+		// notice, and also because it indicates this provisioner could be permanently broken and
+		// require a restart.
+		var errTFB *textFileBusyError
+		if xerrors.As(err, &errTFB) {
+			stacktrace := tryGettingCoderProviderStacktrace(sess)
+			s.logger.Critical(ctx, "init: text file busy",
+				slog.Error(errTFB),
+				slog.F("stderr", errTFB.stderr),
+				slog.F("provider_coder_stacktrace", stacktrace),
+			)
+		}
+		return provisionersdk.AllocatePlanErrorf("initialize terraform: %s", err)
+	}
+
+	s.logger.Debug(ctx, "ran initialization")
+
+	env, err := allocateEnv(sess.Config, request.Metadata)
+	if err != nil {
+		return provisionersdk.AllocatePlanErrorf("setup env: %s", err)
+	}
+
+	// TODO: split into own plan func
+	planComplete, err := e.plan(
+		ctx, killCtx, env, []string{}, sess,
+		request.Metadata.GetTransition() == proto.ResourcePoolEntryTransition_DEALLOCATE,
+	)
+	if err != nil {
+		return provisionersdk.AllocatePlanErrorf(err.Error())
+	}
+
+	return &proto.AllocatePlanComplete{
+		Resources: planComplete.Resources,
+	}
+}
+
+func (s *server) AllocateApply(sess *provisionersdk.Session, request *proto.AllocateApplyRequest, canceledOrComplete <-chan struct{}) *proto.AllocateApplyComplete {
+	// Copied from Apply
+
+	ctx, span := s.startTrace(sess.Context(), tracing.FuncName())
+	defer span.End()
+	ctx, cancel, killCtx, kill := s.setupContexts(ctx, canceledOrComplete)
+	defer cancel()
+	defer kill()
+
+	e := s.executor(sess.WorkDirectory, database.ProvisionerJobTimingStageApply)
+	if err := e.checkMinVersion(ctx); err != nil {
+		return provisionersdk.AllocateApplyErrorf(err.Error())
+	}
+	logTerraformEnvVars(sess)
+
+	// Exit early if there is no plan file. This is necessary to
+	// avoid any cases where a workspace is "locked out" of terraform due to
+	// e.g. bad template param values and cannot be deleted. This is just for
+	// contingency, in the future we will try harder to prevent workspaces being
+	// broken this hard.
+	if request.Metadata.GetTransition() == proto.ResourcePoolEntryTransition_DEALLOCATE && len(sess.Config.State) == 0 {
+		sess.ProvisionLog(proto.LogLevel_INFO, "The terraform plan does not exist, there is nothing to do")
+		return &proto.AllocateApplyComplete{}
+	}
+
+	// Earlier in the session, Plan() will have written the state file and the plan file.
+	statefilePath := getStateFilePath(sess.WorkDirectory)
+	env, err := allocateEnv(sess.Config, request.Metadata)
+	if err != nil {
+		return provisionersdk.AllocateApplyErrorf("provision env: %s", err)
+	}
+	applyComplete, err := e.apply(
+		ctx, killCtx, env, sess,
+	)
+	if err != nil {
+		errorMessage := err.Error()
+		// Terraform can fail and apply and still need to store it's state.
+		// In this case, we return Complete with an explicit error message.
+		stateData, _ := os.ReadFile(statefilePath)
+		// TODO: do something with the state
+		sess.ProvisionLog(
+			proto.LogLevel_INFO,
+			fmt.Sprintf("state data captured (len: %d)", len(stateData)),
+		)
+
+		return &proto.AllocateApplyComplete{
+			// State: stateData,
+			Error: errorMessage,
+		}
+	}
+
+	// TODO: validate resourceId.Sensitive?
+	// TODO: do something with the state
+	return &proto.AllocateApplyComplete{
+		Resources:              applyComplete.Resources,
+		ResourcePoolClaimables: applyComplete.ResourcePoolClaimables,
+	}
 }
 
 func planVars(plan *proto.PlanRequest) ([]string, error) {
@@ -233,10 +389,7 @@ func planVars(plan *proto.PlanRequest) ([]string, error) {
 	return vars, nil
 }
 
-func provisionEnv(
-	config *proto.Config, metadata *proto.Metadata,
-	richParams []*proto.RichParameterValue, externalAuth []*proto.ExternalAuthProvider,
-) ([]string, error) {
+func provisionEnv(config *proto.Config, metadata *proto.Metadata, richParams []*proto.RichParameterValue, externalAuth []*proto.ExternalAuthProvider) ([]string, error) {
 	env := safeEnviron()
 	ownerGroups, err := json.Marshal(metadata.GetWorkspaceOwnerGroups())
 	if err != nil {
@@ -272,6 +425,32 @@ func provisionEnv(
 	for _, extAuth := range externalAuth {
 		env = append(env, provider.GitAuthAccessTokenEnvironmentVariable(extAuth.Id)+"="+extAuth.AccessToken)
 		env = append(env, provider.ExternalAuthAccessTokenEnvironmentVariable(extAuth.Id)+"="+extAuth.AccessToken)
+	}
+
+	if config.ProvisionerLogLevel != "" {
+		// TF_LOG=JSON enables all kind of logging: trace-debug-info-warn-error.
+		// The idea behind using TF_LOG=JSON instead of TF_LOG=debug is ensuring the proper log format.
+		env = append(env, "TF_LOG=JSON")
+	}
+
+	for _, claim := range metadata.ResourcePoolClaims {
+		sha1Pool := sha1.Sum([]byte(claim.PoolName))
+		b64InstID := base32.StdEncoding.EncodeToString([]byte(claim.InstanceId))
+		// TODO: maybe also pass resource claim name?
+		env = append(env, fmt.Sprintf("CODER_RESOURCEPOOL_%x_ENTRY_INSTANCE_ID=%s", sha1Pool, b64InstID))
+	}
+
+	return env, nil
+}
+
+func allocateEnv(
+	config *proto.Config, metadata *proto.ResourcePoolEntryMetadata,
+) ([]string, error) {
+	env := safeEnviron()
+	env = append(env, "CODER_AGENT_URL="+metadata.GetCoderUrl())
+
+	for key, value := range provisionersdk.AgentScriptEnv() {
+		env = append(env, key+"="+value)
 	}
 
 	if config.ProvisionerLogLevel != "" {
