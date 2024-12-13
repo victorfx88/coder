@@ -2462,7 +2462,7 @@ export interface UpdateTemplateMeta {
 	readonly deprecation_message?: string;
 	readonly disable_everyone_group_access: boolean;
 	readonly max_port_share_level?: WorkspaceAgentPortShareLevel;
-	readonly cors_behavior: AppCORSBehavior | null;
+	readonly cors_behavior?: AppCORSBehavior;
 }
 
 // From codersdk/users.go

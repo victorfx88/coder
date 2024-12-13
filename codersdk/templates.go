@@ -251,7 +251,7 @@ type UpdateTemplateMeta struct {
 	// of the template.
 	DisableEveryoneGroupAccess bool                          `json:"disable_everyone_group_access"`
 	MaxPortShareLevel          *WorkspaceAgentPortShareLevel `json:"max_port_share_level,omitempty"`
-	CORSBehavior               *AppCORSBehavior              `json:"cors_behavior"`
+	CORSBehavior               *AppCORSBehavior              `json:"cors_behavior,omitempty"`
 }
 
 type TemplateExample struct {
