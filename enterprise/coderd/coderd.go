@@ -488,6 +488,7 @@ func New(ctx context.Context, options *Options) (_ *API, err error) {
 				r.Post("/", api.scimPostUser)
 				r.Get("/{id}", api.scimGetUser)
 				r.Patch("/{id}", api.scimPatchUser)
+				r.Put("/{id}", api.scimPutUser)
 			})
 			r.NotFound(func(w http.ResponseWriter, r *http.Request) {
 				u := r.URL.String()
@@ -738,7 +739,7 @@ func (api *API) updateEntitlements(ctx context.Context) error {
 
 		if initial, changed, enabled := featureChanged(codersdk.FeatureAdvancedTemplateScheduling); shouldUpdate(initial, changed, enabled) {
 			if enabled {
-				templateStore := schedule.NewEnterpriseTemplateScheduleStore(api.AGPL.UserQuietHoursScheduleStore, api.NotificationsEnqueuer, api.Logger.Named("template.schedule-store"))
+				templateStore := schedule.NewEnterpriseTemplateScheduleStore(api.AGPL.UserQuietHoursScheduleStore, api.NotificationsEnqueuer, api.Logger.Named("template.schedule-store"), api.Clock)
 				templateStoreInterface := agplschedule.TemplateScheduleStore(templateStore)
 				api.AGPL.TemplateScheduleStore.Store(&templateStoreInterface)
 

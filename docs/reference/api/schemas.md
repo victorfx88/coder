@@ -187,23 +187,23 @@
 
 ### Properties
 
-| Name             | Type               | Required | Restrictions | Description |
-| ---------------- | ------------------ | -------- | ------------ | ----------- |
-| `active`         | boolean            | false    |              |             |
-| `emails`         | array of object    | false    |              |             |
-| `» display`      | string             | false    |              |             |
-| `» primary`      | boolean            | false    |              |             |
-| `» type`         | string             | false    |              |             |
-| `» value`        | string             | false    |              |             |
-| `groups`         | array of undefined | false    |              |             |
-| `id`             | string             | false    |              |             |
-| `meta`           | object             | false    |              |             |
-| `» resourceType` | string             | false    |              |             |
-| `name`           | object             | false    |              |             |
-| `» familyName`   | string             | false    |              |             |
-| `» givenName`    | string             | false    |              |             |
-| `schemas`        | array of string    | false    |              |             |
-| `userName`       | string             | false    |              |             |
+| Name             | Type               | Required | Restrictions | Description                                                                 |
+| ---------------- | ------------------ | -------- | ------------ | --------------------------------------------------------------------------- |
+| `active`         | boolean            | false    |              | Active is a ptr to prevent the empty value from being interpreted as false. |
+| `emails`         | array of object    | false    |              |                                                                             |
+| `» display`      | string             | false    |              |                                                                             |
+| `» primary`      | boolean            | false    |              |                                                                             |
+| `» type`         | string             | false    |              |                                                                             |
+| `» value`        | string             | false    |              |                                                                             |
+| `groups`         | array of undefined | false    |              |                                                                             |
+| `id`             | string             | false    |              |                                                                             |
+| `meta`           | object             | false    |              |                                                                             |
+| `» resourceType` | string             | false    |              |                                                                             |
+| `name`           | object             | false    |              |                                                                             |
+| `» familyName`   | string             | false    |              |                                                                             |
+| `» givenName`    | string             | false    |              |                                                                             |
+| `schemas`        | array of string    | false    |              |                                                                             |
+| `userName`       | string             | false    |              |                                                                             |
 
 ## coderd.cspViolation
 
@@ -6621,6 +6621,11 @@ If the schedule is empty, the user will be updated to use the default schedule.|
 			},
 			"worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
 		},
+		"matched_provisioners": {
+			"available": 0,
+			"count": 0,
+			"most_recently_seen": "2019-08-24T14:15:22Z"
+		},
 		"max_deadline": "2019-08-24T14:15:22Z",
 		"reason": "initiator",
 		"resources": [
@@ -6747,6 +6752,7 @@ If the schedule is empty, the user will be updated to use the default schedule.|
 		"workspace_owner_name": "string"
 	},
 	"name": "string",
+	"next_start_at": "2019-08-24T14:15:22Z",
 	"organization_id": "7c60d51f-b44e-4682-87d6-449835ea4de6",
 	"organization_name": "string",
 	"outdated": true,
@@ -6781,6 +6787,7 @@ If the schedule is empty, the user will be updated to use the default schedule.|
 | `last_used_at`                              | string                                                 | false    |              |                                                                                                                                                                                                                                                       |
 | `latest_build`                              | [codersdk.WorkspaceBuild](#codersdkworkspacebuild)     | false    |              |                                                                                                                                                                                                                                                       |
 | `name`                                      | string                                                 | false    |              |                                                                                                                                                                                                                                                       |
+| `next_start_at`                             | string                                                 | false    |              |                                                                                                                                                                                                                                                       |
 | `organization_id`                           | string                                                 | false    |              |                                                                                                                                                                                                                                                       |
 | `organization_name`                         | string                                                 | false    |              |                                                                                                                                                                                                                                                       |
 | `outdated`                                  | boolean                                                | false    |              |                                                                                                                                                                                                                                                       |
@@ -7319,6 +7326,11 @@ If the schedule is empty, the user will be updated to use the default schedule.|
 		},
 		"worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
 	},
+	"matched_provisioners": {
+		"available": 0,
+		"count": 0,
+		"most_recently_seen": "2019-08-24T14:15:22Z"
+	},
 	"max_deadline": "2019-08-24T14:15:22Z",
 	"reason": "initiator",
 	"resources": [
@@ -7458,6 +7470,7 @@ If the schedule is empty, the user will be updated to use the default schedule.|
 | `initiator_id`               | string                                                            | false    |              |             |
 | `initiator_name`             | string                                                            | false    |              |             |
 | `job`                        | [codersdk.ProvisionerJob](#codersdkprovisionerjob)                | false    |              |             |
+| `matched_provisioners`       | [codersdk.MatchedProvisioners](#codersdkmatchedprovisioners)      | false    |              |             |
 | `max_deadline`               | string                                                            | false    |              |             |
 | `reason`                     | [codersdk.BuildReason](#codersdkbuildreason)                      | false    |              |             |
 | `resources`                  | array of [codersdk.WorkspaceResource](#codersdkworkspaceresource) | false    |              |             |
@@ -7945,6 +7958,11 @@ If the schedule is empty, the user will be updated to use the default schedule.|
 					},
 					"worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
 				},
+				"matched_provisioners": {
+					"available": 0,
+					"count": 0,
+					"most_recently_seen": "2019-08-24T14:15:22Z"
+				},
 				"max_deadline": "2019-08-24T14:15:22Z",
 				"reason": "initiator",
 				"resources": [
@@ -8067,6 +8085,7 @@ If the schedule is empty, the user will be updated to use the default schedule.|
 				"workspace_owner_name": "string"
 			},
 			"name": "string",
+			"next_start_at": "2019-08-24T14:15:22Z",
 			"organization_id": "7c60d51f-b44e-4682-87d6-449835ea4de6",
 			"organization_name": "string",
 			"outdated": true,

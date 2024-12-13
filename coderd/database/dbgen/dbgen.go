@@ -260,6 +260,7 @@ func Workspace(t testing.TB, db database.Store, orig database.WorkspaceTable) da
 		AutostartSchedule: orig.AutostartSchedule,
 		Ttl:               orig.Ttl,
 		AutomaticUpdates:  takeFirst(orig.AutomaticUpdates, database.AutomaticUpdatesNever),
+		NextStartAt:       orig.NextStartAt,
 	})
 	require.NoError(t, err, "insert workspace")
 	return workspace
@@ -500,6 +501,46 @@ func GroupMember(t testing.TB, db database.Store, member database.GroupMemberTab
 	}
 
 	return groupMember
+}
+
+// ProvisionerDaemon creates a provisioner daemon as far as the database is concerned. It does not run a provisioner daemon.
+// If no key is provided, it will create one.
+func ProvisionerDaemon(t testing.TB, db database.Store, daemon database.ProvisionerDaemon) database.ProvisionerDaemon {
+	t.Helper()
+
+	if daemon.KeyID == uuid.Nil {
+		key, err := db.InsertProvisionerKey(genCtx, database.InsertProvisionerKeyParams{
+			ID:             uuid.New(),
+			Name:           daemon.Name + "-key",
+			OrganizationID: daemon.OrganizationID,
+			HashedSecret:   []byte("secret"),
+			CreatedAt:      dbtime.Now(),
+			Tags:           daemon.Tags,
+		})
+		require.NoError(t, err)
+		daemon.KeyID = key.ID
+	}
+
+	if daemon.CreatedAt.IsZero() {
+		daemon.CreatedAt = dbtime.Now()
+	}
+	if daemon.Name == "" {
+		daemon.Name = "test-daemon"
+	}
+
+	d, err := db.UpsertProvisionerDaemon(genCtx, database.UpsertProvisionerDaemonParams{
+		Name:           daemon.Name,
+		OrganizationID: daemon.OrganizationID,
+		CreatedAt:      daemon.CreatedAt,
+		Provisioners:   daemon.Provisioners,
+		Tags:           daemon.Tags,
+		KeyID:          daemon.KeyID,
+		LastSeenAt:     daemon.LastSeenAt,
+		Version:        daemon.Version,
+		APIVersion:     daemon.APIVersion,
+	})
+	require.NoError(t, err)
+	return d
 }
 
 // ProvisionerJob is a bit more involved to get the values such as "completedAt", "startedAt", "cancelledAt" set.  ps

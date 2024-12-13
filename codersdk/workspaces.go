@@ -63,6 +63,7 @@ type Workspace struct {
 	AutomaticUpdates AutomaticUpdates `json:"automatic_updates" enums:"always,never"`
 	AllowRenames     bool             `json:"allow_renames"`
 	Favorite         bool             `json:"favorite"`
+	NextStartAt      *time.Time       `json:"next_start_at" format:"date-time"`
 }
 
 func (w Workspace) FullName() string {
@@ -259,7 +260,7 @@ type UpdateWorkspaceAutostartRequest struct {
 	// Schedule is expected to be of the form `CRON_TZ=<IANA Timezone> <min> <hour> * * <dow>`
 	// Example: `CRON_TZ=US/Central 30 9 * * 1-5` represents 0930 in the timezone US/Central
 	// on weekdays (Mon-Fri). `CRON_TZ` defaults to UTC if not present.
-	Schedule *string `json:"schedule"`
+	Schedule *string `json:"schedule,omitempty"`
 }
 
 // UpdateWorkspaceAutostart sets the autostart schedule for workspace by id.
