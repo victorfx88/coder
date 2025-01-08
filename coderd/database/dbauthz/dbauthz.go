@@ -1339,6 +1339,10 @@ func (q *querier) DeleteTailnetTunnel(ctx context.Context, arg database.DeleteTa
 	return q.db.DeleteTailnetTunnel(ctx, arg)
 }
 
+func (q *querier) DeleteTfsecViolation(ctx context.Context, id uuid.UUID) error {
+	panic("not implemented")
+}
+
 func (q *querier) DeleteWorkspaceAgentPortShare(ctx context.Context, arg database.DeleteWorkspaceAgentPortShareParams) error {
 	w, err := q.db.GetWorkspaceByID(ctx, arg.WorkspaceID)
 	if err != nil {
@@ -2319,6 +2323,20 @@ func (q *querier) GetTemplatesWithFilter(ctx context.Context, arg database.GetTe
 	return q.db.GetAuthorizedTemplates(ctx, arg, prep)
 }
 
+func (q *querier) GetTfsecViolation(ctx context.Context, id database.GetTfsecViolationParams) (database.TfsecViolation, error) {
+	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
+		return database.TfsecViolation{}, err
+	}
+	return q.db.GetTfsecViolation(ctx, id)
+}
+
+func (q *querier) GetTfsecViolations(ctx context.Context, jobID uuid.UUID) ([]database.TfsecViolation, error) {
+	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
+		return nil, err
+	}
+	return q.db.GetTfsecViolations(ctx, jobID)
+}
+
 func (q *querier) GetUnexpiredLicenses(ctx context.Context) ([]database.License, error) {
 	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
 		return nil, err
@@ -3109,6 +3127,13 @@ func (q *querier) InsertTemplateVersionWorkspaceTag(ctx context.Context, arg dat
 		return database.TemplateVersionWorkspaceTag{}, err
 	}
 	return q.db.InsertTemplateVersionWorkspaceTag(ctx, arg)
+}
+
+func (q *querier) InsertTfsecViolation(ctx context.Context, arg database.InsertTfsecViolationParams) (database.TfsecViolation, error) {
+	if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+		return database.TfsecViolation{}, err
+	}
+	return q.db.InsertTfsecViolation(ctx, arg)
 }
 
 func (q *querier) InsertUser(ctx context.Context, arg database.InsertUserParams) (database.User, error) {

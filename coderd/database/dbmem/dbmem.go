@@ -2163,6 +2163,10 @@ func (*FakeQuerier) DeleteTailnetTunnel(_ context.Context, arg database.DeleteTa
 	return database.DeleteTailnetTunnelRow{}, ErrUnimplemented
 }
 
+func (q *FakeQuerier) DeleteTfsecViolation(ctx context.Context, id uuid.UUID) error {
+	panic("not implemented")
+}
+
 func (q *FakeQuerier) DeleteWorkspaceAgentPortShare(_ context.Context, arg database.DeleteWorkspaceAgentPortShareParams) error {
 	err := validateDatabaseType(arg)
 	if err != nil {
@@ -5335,6 +5339,14 @@ func (q *FakeQuerier) GetTemplatesWithFilter(ctx context.Context, arg database.G
 	return q.GetAuthorizedTemplates(ctx, arg, nil)
 }
 
+func (q *FakeQuerier) GetTfsecViolation(ctx context.Context, id database.GetTfsecViolationParams) (database.TfsecViolation, error) {
+	panic("not implemented")
+}
+
+func (q *FakeQuerier) GetTfsecViolations(ctx context.Context, jobID uuid.UUID) ([]database.TfsecViolation, error) {
+	panic("not implemented")
+}
+
 func (q *FakeQuerier) GetUnexpiredLicenses(_ context.Context) ([]database.License, error) {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
@@ -7979,6 +7991,15 @@ func (q *FakeQuerier) InsertTemplateVersionWorkspaceTag(_ context.Context, arg d
 	}
 	q.templateVersionWorkspaceTags = append(q.templateVersionWorkspaceTags, workspaceTag)
 	return workspaceTag, nil
+}
+
+func (q *FakeQuerier) InsertTfsecViolation(ctx context.Context, arg database.InsertTfsecViolationParams) (database.TfsecViolation, error) {
+	err := validateDatabaseType(arg)
+	if err != nil {
+		return database.TfsecViolation{}, err
+	}
+
+	panic("not implemented")
 }
 
 func (q *FakeQuerier) InsertUser(_ context.Context, arg database.InsertUserParams) (database.User, error) {

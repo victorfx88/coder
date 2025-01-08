@@ -85,6 +85,51 @@ sql:
           - column: "user_links.claims"
             go_type:
               type: "UserLinkClaims"
+          - column: "tfsec_violations.rule_description"
+            go_type:
+              type: "string"
+          - column: "tfsec_violations.rule_provider"
+            go_type:
+              type: "string"
+          - column: "tfsec_violations.rule_service"
+            go_type:
+              type: "string"
+          - column: "tfsec_violations.impact"
+            go_type:
+              type: "string"
+          - column: "tfsec_violations.resolution"
+            go_type:
+              type: "string"
+          - column: "tfsec_violations.description"
+            go_type:
+              type: "string"
+          - column: "tfsec_violations.severity"
+            go_type:
+              type: "string"
+          - column: "tfsec_violations.warning"
+            go_type:
+              type: "bool"
+          - column: "tfsec_violations.status"
+            go_type:
+              type: "int32"
+          - column: "tfsec_violations.resource"
+            go_type:
+              type: "string"
+          - column: "tfsec_violations.filename"
+            go_type:
+              type: "string"
+          - column: "tfsec_violations.start_line"
+            go_type:
+              type: "int32"
+          - column: "tfsec_violations.end_line"
+            go_type:
+              type: "int32"
+          - column: "tfsec_violations.created_at"
+            go_type:
+              type: "time.Time"
+          - column: "tfsec_violations.updated_at"
+            go_type:
+              type: "time.Time"
         rename:
           group_member: GroupMemberTable
           group_members_expanded: GroupMember

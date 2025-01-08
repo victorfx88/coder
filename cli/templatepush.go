@@ -2,8 +2,10 @@ package cli
 
 import (
 	"bufio"
+	"cdr.dev/slog"
 	"errors"
 	"fmt"
+	"golang.org/x/exp/slices"
 	"io"
 	"net/http"
 	"os"
@@ -175,6 +177,53 @@ func (r *RootCmd) templatePush() *serpent.Command {
 			}
 
 			_, _ = fmt.Fprintf(inv.Stdout, "Updated version at %s!\n", pretty.Sprint(cliui.DefaultStyles.DateTimeStamp, time.Now().Format(time.Stamp)))
+
+			violations, err := client.TfsecViolations(inv.Context(), job.Job.ID)
+			if err != nil {
+				_, _ = fmt.Fprintf(inv.Stderr, "error fetching tfsec violations: %s:\n", err)
+				inv.Logger.Debug(inv.Context(), "failed to fetch tfsec violations", slog.Error(err))
+			} else {
+				if len(violations) > 0 {
+					_, _ = fmt.Fprintf(inv.Stdout, "\nFound tfsec violations!\n")
+
+					slices.SortStableFunc(violations, func(a, b codersdk.TfsecViolation) int {
+						severityOrder := map[string]int{
+							"HIGH":   3,
+							"MEDIUM": 2,
+							"LOW":    1,
+						}
+						switch {
+						case severityOrder[a.Severity] < severityOrder[b.Severity]:
+							return 1
+						case severityOrder[a.Severity] > severityOrder[b.Severity]:
+							return -1
+						default:
+							return 0
+						}
+					})
+					for _, vio := range violations {
+						var printer func(io.Writer, string, ...interface{})
+						switch vio.Severity {
+						case "HIGH":
+							printer = cliui.Errorf
+						case "MEDIUM":
+							printer = cliui.Warnf
+						}
+
+						if printer == nil {
+							continue
+						}
+
+						printer(inv.Stderr, "[%s] %s in %s (lines %d to %d)", vio.RuleID, vio.Severity, vio.Resource, vio.StartLine, vio.EndLine)
+						printer(inv.Stderr, "\tDescription:\t%s", vio.Impact)
+						printer(inv.Stderr, "\tImpact:\t\t%s", vio.Description)
+						printer(inv.Stderr, "\tResolution:\t%s", vio.Resolution)
+					}
+				} else {
+					_, _ = fmt.Fprintf(inv.Stdout, "Found no tfsec violations (%q)!\n", job.ID)
+				}
+			}
+
 			return nil
 		},
 	}

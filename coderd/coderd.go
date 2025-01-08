@@ -1031,6 +1031,12 @@ func New(options *Options) *API {
 				})
 			})
 		})
+		r.Route("/tfsec-violations", func(r chi.Router) {
+			r.Use(
+				apiKeyMiddleware,
+			)
+			r.Get("/{jobID}", api.fetchTfsecViolations)
+		})
 		r.Route("/templateversions/{templateversion}", func(r chi.Router) {
 			r.Use(
 				apiKeyMiddleware,

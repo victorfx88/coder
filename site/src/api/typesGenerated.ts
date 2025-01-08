@@ -2390,6 +2390,26 @@ export interface TemplateVersionsByTemplateRequest extends Pagination {
 	readonly include_archived: boolean;
 }
 
+// From codersdk/tfsec.go
+export interface TfsecViolation {
+	readonly rule_id: string;
+	readonly long_id: string;
+	readonly rule_description: string;
+	readonly rule_provider: string;
+	readonly rule_service: string;
+	readonly impact: string;
+	readonly resolution: string;
+	readonly links: readonly string[];
+	readonly description: string;
+	readonly severity: string;
+	readonly warning: boolean;
+	readonly status: number;
+	readonly resource: string;
+	readonly filename: string;
+	readonly start_line: number;
+	readonly end_line: number;
+}
+
 // From codersdk/workspacebuilds.go
 export type TimingStage =
 	| "apply"

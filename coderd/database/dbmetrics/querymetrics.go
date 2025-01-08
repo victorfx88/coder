@@ -399,6 +399,13 @@ func (m queryMetricsStore) DeleteTailnetTunnel(ctx context.Context, arg database
 	return r0, r1
 }
 
+func (m queryMetricsStore) DeleteTfsecViolation(ctx context.Context, id uuid.UUID) error {
+	start := time.Now()
+	r0 := m.s.DeleteTfsecViolation(ctx, id)
+	m.queryLatencies.WithLabelValues("DeleteTfsecViolation").Observe(time.Since(start).Seconds())
+	return r0
+}
+
 func (m queryMetricsStore) DeleteWorkspaceAgentPortShare(ctx context.Context, arg database.DeleteWorkspaceAgentPortShareParams) error {
 	start := time.Now()
 	r0 := m.s.DeleteWorkspaceAgentPortShare(ctx, arg)
@@ -1267,6 +1274,20 @@ func (m queryMetricsStore) GetTemplatesWithFilter(ctx context.Context, arg datab
 	return templates, err
 }
 
+func (m queryMetricsStore) GetTfsecViolation(ctx context.Context, id database.GetTfsecViolationParams) (database.TfsecViolation, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetTfsecViolation(ctx, id)
+	m.queryLatencies.WithLabelValues("GetTfsecViolation").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
+func (m queryMetricsStore) GetTfsecViolations(ctx context.Context, jobID uuid.UUID) ([]database.TfsecViolation, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetTfsecViolations(ctx, jobID)
+	m.queryLatencies.WithLabelValues("GetTfsecViolations").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
 func (m queryMetricsStore) GetUnexpiredLicenses(ctx context.Context) ([]database.License, error) {
 	start := time.Now()
 	licenses, err := m.s.GetUnexpiredLicenses(ctx)
@@ -1915,6 +1936,13 @@ func (m queryMetricsStore) InsertTemplateVersionWorkspaceTag(ctx context.Context
 	start := time.Now()
 	r0, r1 := m.s.InsertTemplateVersionWorkspaceTag(ctx, arg)
 	m.queryLatencies.WithLabelValues("InsertTemplateVersionWorkspaceTag").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
+func (m queryMetricsStore) InsertTfsecViolation(ctx context.Context, arg database.InsertTfsecViolationParams) (database.TfsecViolation, error) {
+	start := time.Now()
+	r0, r1 := m.s.InsertTfsecViolation(ctx, arg)
+	m.queryLatencies.WithLabelValues("InsertTfsecViolation").Observe(time.Since(start).Seconds())
 	return r0, r1
 }
 

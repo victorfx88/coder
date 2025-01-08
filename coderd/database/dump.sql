@@ -1377,6 +1377,29 @@ CREATE VIEW template_with_names AS
 
 COMMENT ON VIEW template_with_names IS 'Joins in the display name information such as username, avatar, and organization name.';
 
+CREATE TABLE tfsec_violations (
+    id uuid NOT NULL,
+    job_id uuid NOT NULL,
+    rule_id text NOT NULL,
+    long_id text NOT NULL,
+    rule_description text,
+    rule_provider text,
+    rule_service text,
+    impact text,
+    resolution text,
+    links text[],
+    description text,
+    severity text,
+    warning boolean,
+    status integer,
+    resource text,
+    filename text,
+    start_line integer,
+    end_line integer,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP,
+    updated_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE user_links (
     user_id uuid NOT NULL,
     login_type login_type NOT NULL,
@@ -1980,6 +2003,12 @@ ALTER TABLE ONLY template_versions
 ALTER TABLE ONLY templates
     ADD CONSTRAINT templates_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY tfsec_violations
+    ADD CONSTRAINT tfsec_violations_job_id_rule_id_key UNIQUE (job_id, rule_id);
+
+ALTER TABLE ONLY tfsec_violations
+    ADD CONSTRAINT tfsec_violations_pkey PRIMARY KEY (id);
+
 ALTER TABLE ONLY user_links
     ADD CONSTRAINT user_links_pkey PRIMARY KEY (user_id, login_type);
 
@@ -2357,6 +2386,9 @@ ALTER TABLE ONLY templates
 
 ALTER TABLE ONLY templates
     ADD CONSTRAINT templates_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY tfsec_violations
+    ADD CONSTRAINT tfsec_violations_job_id_fkey FOREIGN KEY (job_id) REFERENCES provisioner_jobs(id) ON DELETE CASCADE;
 
 ALTER TABLE ONLY user_links
     ADD CONSTRAINT user_links_oauth_access_token_key_id_fkey FOREIGN KEY (oauth_access_token_key_id) REFERENCES dbcrypt_keys(active_key_digest);

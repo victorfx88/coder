@@ -1385,6 +1385,32 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 			return nil, xerrors.Errorf("failed to serialize external_auth_providers value: %w", err)
 		}
 
+		for _, vio := range jobType.TemplateImport.SecurityViolations {
+			_, err = s.Database.InsertTfsecViolation(ctx, database.InsertTfsecViolationParams{
+				ID:              uuid.New(),
+				JobID:           job.ID,
+				RuleID:          vio.RuleId,
+				LongID:          vio.LongId,
+				RuleDescription: vio.RuleDescription,
+				RuleProvider:    vio.RuleProvider,
+				RuleService:     vio.RuleService,
+				Impact:          vio.Impact,
+				Resolution:      vio.Resolution,
+				Links:           vio.Links,
+				Description:     vio.Description,
+				Severity:        vio.Severity,
+				Warning:         vio.Warning,
+				Status:          vio.Status,
+				Resource:        vio.Resource,
+				Filename:        vio.Location.Filename,
+				StartLine:       vio.Location.StartLine,
+				EndLine:         vio.Location.EndLine,
+			})
+			if err != nil {
+				s.Logger.Error(ctx, "failed to insert tfsec violation", slog.F("job_id", jobID), slog.Error(err))
+			}
+		}
+
 		err = s.Database.UpdateTemplateVersionExternalAuthProvidersByJobID(ctx, database.UpdateTemplateVersionExternalAuthProvidersByJobIDParams{
 			JobID:                 jobID,
 			ExternalAuthProviders: json.RawMessage(externalAuthProvidersMessage),
