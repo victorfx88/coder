@@ -84,10 +84,12 @@ message CompletedJob {
         repeated provisioner.ExternalAuthProviderResource external_auth_providers = 5;
         repeated provisioner.Module start_modules = 6;
         repeated provisioner.Module stop_modules = 7;
+				repeated provisioner.SecurityViolation securityViolations = 8;
     }
     message TemplateDryRun {
         repeated provisioner.Resource resources = 1;
         repeated provisioner.Module modules = 2;
+				repeated provisioner.SecurityViolation securityViolations = 3;
     }
 
     string job_id = 1;

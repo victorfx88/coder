@@ -275,6 +275,29 @@ export interface Config {
 export interface ParseRequest {
 }
 
+export interface SecurityViolation {
+  ruleId: string;
+  longId: string;
+  ruleDescription: string;
+  ruleProvider: string;
+  ruleService: string;
+  impact: string;
+  resolution: string;
+  links: string[];
+  description: string;
+  severity: string;
+  warning: boolean;
+  status: number;
+  resource: string;
+  location: SecurityViolation_Location | undefined;
+}
+
+export interface SecurityViolation_Location {
+  filename: string;
+  startLine: number;
+  endLine: number;
+}
+
 /** ParseComplete indicates a request to parse completed. */
 export interface ParseComplete {
   error: string;
@@ -304,6 +327,7 @@ export interface PlanComplete {
   externalAuthProviders: ExternalAuthProviderResource[];
   timings: Timing[];
   modules: Module[];
+  securityViolations: SecurityViolation[];
 }
 
 /**
@@ -890,6 +914,69 @@ export const ParseRequest = {
   },
 };
 
+export const SecurityViolation = {
+  encode(message: SecurityViolation, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.ruleId !== "") {
+      writer.uint32(10).string(message.ruleId);
+    }
+    if (message.longId !== "") {
+      writer.uint32(18).string(message.longId);
+    }
+    if (message.ruleDescription !== "") {
+      writer.uint32(26).string(message.ruleDescription);
+    }
+    if (message.ruleProvider !== "") {
+      writer.uint32(34).string(message.ruleProvider);
+    }
+    if (message.ruleService !== "") {
+      writer.uint32(42).string(message.ruleService);
+    }
+    if (message.impact !== "") {
+      writer.uint32(50).string(message.impact);
+    }
+    if (message.resolution !== "") {
+      writer.uint32(58).string(message.resolution);
+    }
+    for (const v of message.links) {
+      writer.uint32(66).string(v!);
+    }
+    if (message.description !== "") {
+      writer.uint32(74).string(message.description);
+    }
+    if (message.severity !== "") {
+      writer.uint32(82).string(message.severity);
+    }
+    if (message.warning === true) {
+      writer.uint32(88).bool(message.warning);
+    }
+    if (message.status !== 0) {
+      writer.uint32(96).int32(message.status);
+    }
+    if (message.resource !== "") {
+      writer.uint32(106).string(message.resource);
+    }
+    if (message.location !== undefined) {
+      SecurityViolation_Location.encode(message.location, writer.uint32(114).fork()).ldelim();
+    }
+    return writer;
+  },
+};
+
+export const SecurityViolation_Location = {
+  encode(message: SecurityViolation_Location, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
+    if (message.filename !== "") {
+      writer.uint32(10).string(message.filename);
+    }
+    if (message.startLine !== 0) {
+      writer.uint32(16).int32(message.startLine);
+    }
+    if (message.endLine !== 0) {
+      writer.uint32(24).int32(message.endLine);
+    }
+    return writer;
+  },
+};
+
 export const ParseComplete = {
   encode(message: ParseComplete, writer: _m0.Writer = _m0.Writer.create()): _m0.Writer {
     if (message.error !== "") {
@@ -957,6 +1044,9 @@ export const PlanComplete = {
     }
     for (const v of message.modules) {
       Module.encode(v!, writer.uint32(58).fork()).ldelim();
+    }
+    for (const v of message.securityViolations) {
+      SecurityViolation.encode(v!, writer.uint32(66).fork()).ldelim();
     }
     return writer;
   },

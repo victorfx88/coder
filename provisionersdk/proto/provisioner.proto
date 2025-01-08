@@ -262,6 +262,30 @@ message Config {
 message ParseRequest {
 }
 
+message SecurityViolation {
+	string rule_id = 1;
+	string long_id = 2;
+	string rule_description = 3;
+	string rule_provider = 4;
+	string rule_service = 5;
+	string impact = 6;
+	string resolution = 7;
+	repeated string links = 8;
+	string description = 9;
+	string severity = 10;
+	bool warning = 11;
+	int32 status = 12;
+	string resource = 13;
+
+	message Location {
+		string filename = 1;
+		int32 start_line = 2;
+		int32 end_line = 3;
+	}
+
+	Location location = 14;
+}
+
 // ParseComplete indicates a request to parse completed.
 message ParseComplete {
     string error = 1;
@@ -286,6 +310,7 @@ message PlanComplete {
     repeated ExternalAuthProviderResource external_auth_providers = 4;
     repeated Timing timings = 6;
     repeated Module modules = 7;
+		repeated SecurityViolation securityViolations = 8;
 }
 
 // ApplyRequest asks the provisioner to apply the changes.  Apply MUST be preceded by a successful plan request/response

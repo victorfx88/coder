@@ -590,6 +590,7 @@ func (r *Runner) runTemplateImport(ctx context.Context) (*proto.CompletedJob, *p
 				ExternalAuthProviders:      startProvision.ExternalAuthProviders,
 				StartModules:               startProvision.Modules,
 				StopModules:                stopProvision.Modules,
+				SecurityViolations:         startProvision.SecurityViolations, // TODO: merge start & stop? probably not necessary.
 			},
 		},
 	}, nil
@@ -650,6 +651,7 @@ type templateImportProvision struct {
 	Parameters            []*sdkproto.RichParameter
 	ExternalAuthProviders []*sdkproto.ExternalAuthProviderResource
 	Modules               []*sdkproto.Module
+	SecurityViolations    []*sdkproto.SecurityViolation
 }
 
 // Performs a dry-run provision when importing a template.
@@ -742,6 +744,7 @@ func (r *Runner) runTemplateImportProvisionWithRichParameters(
 				Parameters:            c.Parameters,
 				ExternalAuthProviders: c.ExternalAuthProviders,
 				Modules:               c.Modules,
+				SecurityViolations:    c.SecurityViolations,
 			}, nil
 		default:
 			return nil, xerrors.Errorf("invalid message type %q received from provisioner",
@@ -803,8 +806,9 @@ func (r *Runner) runTemplateDryRun(ctx context.Context) (*proto.CompletedJob, *p
 		JobId: r.job.JobId,
 		Type: &proto.CompletedJob_TemplateDryRun_{
 			TemplateDryRun: &proto.CompletedJob_TemplateDryRun{
-				Resources: provision.Resources,
-				Modules:   provision.Modules,
+				Resources:          provision.Resources,
+				Modules:            provision.Modules,
+				SecurityViolations: provision.SecurityViolations,
 			},
 		},
 	}, nil
