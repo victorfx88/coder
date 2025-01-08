@@ -13,6 +13,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/coder/coder/v2/provisioner/tfsec"
 	"io"
 	"log"
 	"math/big"
@@ -1397,11 +1398,21 @@ func newProvisionerDaemon(
 				defer wg.Done()
 				defer cancel()
 
-				err := terraform.Serve(ctx, &terraform.ServeOptions{
+				// TODO: find a better place to run this (and fail gracefully!)
+				tfsecBin, err := tfsec.Install(ctx, logger.Named("tfsec"), workDir, "v1.28.12")
+				if err != nil && !xerrors.Is(err, context.Canceled) {
+					select {
+					case errCh <- err:
+					default:
+					}
+				}
+
+				err = terraform.Serve(ctx, &terraform.ServeOptions{
 					ServeOptions: &provisionersdk.ServeOptions{
-						Listener:      terraformServer,
-						Logger:        provisionerLogger,
-						WorkDirectory: workDir,
+						Listener:        terraformServer,
+						Logger:          provisionerLogger,
+						WorkDirectory:   workDir,
+						TfsecBinaryPath: tfsecBin,
 					},
 					CachePath: tfDir,
 					Tracer:    tracer,

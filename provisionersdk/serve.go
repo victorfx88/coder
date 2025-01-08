@@ -28,6 +28,8 @@ type ServeOptions struct {
 	Conn          drpc.Transport
 	Logger        slog.Logger
 	WorkDirectory string
+
+	TfsecBinaryPath string
 }
 
 type Server interface {

@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -38,7 +39,8 @@ type executor struct {
 	cachePath string
 	workdir   string
 	// used to capture execution times at various stages
-	timings *timingAggregator
+	timings         *timingAggregator
+	tfsecBinaryPath string
 }
 
 func (e *executor) basicEnv() []string {
@@ -151,6 +153,60 @@ func (e *executor) execParseJSON(ctx, killCtx context.Context, args, env []strin
 	err = dec.Decode(v)
 	if err != nil {
 		return xerrors.Errorf("decode terraform json: %w", err)
+	}
+	return nil
+}
+
+// execParseTfsecJSON must only be called while the lock is held.
+func (e *executor) execParseTfsecJSON(ctx, killCtx context.Context, args, env []string, v interface{}) error {
+	ctx, span := e.server.startTrace(ctx, fmt.Sprintf("exec - %s %s", e.tfsecBinaryPath, args[0]))
+	defer span.End()
+	span.SetAttributes(attribute.StringSlice("args", args))
+
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+
+	// #nosec
+	cmd := exec.CommandContext(killCtx, e.tfsecBinaryPath, args...)
+	cmd.Dir = e.workdir
+	cmd.Env = env
+	out := &bytes.Buffer{}
+	stdErr := &bytes.Buffer{}
+	cmd.Stdout = out
+	cmd.Stderr = stdErr
+
+	e.server.logger.Debug(ctx, "executing command with JSON result",
+		slog.F("binary_path", e.tfsecBinaryPath),
+		slog.F("args", args),
+	)
+	err := cmd.Start()
+	if err != nil {
+		return err
+	}
+	interruptCommandOnCancel(ctx, killCtx, e.logger, cmd)
+
+	err = cmd.Wait()
+	if err != nil {
+		var e *exec.ExitError
+		if errors.As(err, &e) {
+			switch e.ExitCode() {
+			case 1:
+				// This is expected when there are rule violations.
+				goto decode
+			}
+		}
+
+		errString, _ := io.ReadAll(stdErr)
+		return xerrors.Errorf("%s: %w", errString, err)
+	}
+
+decode:
+	dec := json.NewDecoder(out)
+	dec.UseNumber()
+	err = dec.Decode(v)
+	if err != nil {
+		return xerrors.Errorf("decode json: %w", err)
 	}
 	return nil
 }
@@ -300,6 +356,12 @@ func (e *executor) plan(ctx, killCtx context.Context, env, vars []string, logr l
 		graphTimings.ingest(createGraphTimingsEvent(timingGraphErrored))
 		return nil, err
 	}
+
+	violations, err := e.runSecurityScan(ctx, killCtx)
+	if err != nil {
+		// Log.
+	}
+	_ = violations
 
 	graphTimings.ingest(createGraphTimingsEvent(timingGraphComplete))
 

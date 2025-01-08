@@ -116,22 +116,24 @@ func Serve(ctx context.Context, options *ServeOptions) error {
 		options.ExitTimeout = unhanger.HungJobExitTimeout
 	}
 	return provisionersdk.Serve(ctx, &server{
-		execMut:     &sync.Mutex{},
-		binaryPath:  options.BinaryPath,
-		cachePath:   options.CachePath,
-		logger:      options.Logger,
-		tracer:      options.Tracer,
-		exitTimeout: options.ExitTimeout,
+		execMut:         &sync.Mutex{},
+		binaryPath:      options.BinaryPath,
+		cachePath:       options.CachePath,
+		logger:          options.Logger,
+		tracer:          options.Tracer,
+		exitTimeout:     options.ExitTimeout,
+		tfsecBinaryPath: options.TfsecBinaryPath,
 	}, options.ServeOptions)
 }
 
 type server struct {
-	execMut     *sync.Mutex
-	binaryPath  string
-	cachePath   string
-	logger      slog.Logger
-	tracer      trace.Tracer
-	exitTimeout time.Duration
+	execMut         *sync.Mutex
+	binaryPath      string
+	cachePath       string
+	logger          slog.Logger
+	tracer          trace.Tracer
+	exitTimeout     time.Duration
+	tfsecBinaryPath string
 }
 
 func (s *server) startTrace(ctx context.Context, name string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
@@ -142,12 +144,13 @@ func (s *server) startTrace(ctx context.Context, name string, opts ...trace.Span
 
 func (s *server) executor(workdir string, stage database.ProvisionerJobTimingStage) *executor {
 	return &executor{
-		server:     s,
-		mut:        s.execMut,
-		binaryPath: s.binaryPath,
-		cachePath:  s.cachePath,
-		workdir:    workdir,
-		logger:     s.logger.Named("executor"),
-		timings:    newTimingAggregator(stage),
+		server:          s,
+		mut:             s.execMut,
+		binaryPath:      s.binaryPath,
+		cachePath:       s.cachePath,
+		workdir:         workdir,
+		logger:          s.logger.Named("executor"),
+		timings:         newTimingAggregator(stage),
+		tfsecBinaryPath: s.tfsecBinaryPath,
 	}
 }
