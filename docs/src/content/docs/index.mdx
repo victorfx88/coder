@@ -1,0 +1,49 @@
+---
+title: Coder Docs
+description: Get started with Coder!
+template: splash
+hero:
+  image:
+    file: ../../assets/houston.webp
+  actions:
+    - text: Install Coder
+      link: install
+      icon: down-arrow
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## Next steps
+
+<CardGrid>
+	<LinkCard
+		title="Developers"
+		description="Learn how to create, access, and manage your workspaces in Coder."
+		href="user-guides"
+	/>
+	<LinkCard
+		title="Template Admins"
+		description="Discover how to write templates, define team access, and wrangle infrastructure costs."
+		href="admin/templates"
+	/>
+	<LinkCard
+		title="Deployment Admins"
+		description="Find out how to manage your deploymnets's users, control plabe, provisioners, security, and authentication."
+		href="admin"
+	/>
+</CardGrid>
+
+## Reference
+
+<CardGrid>
+	<LinkCard
+		title="API"
+		description="Get started with the Coder API."
+		href="reference/api"
+	/>
+	<LinkCard
+		title="CLI"
+		description="Get started with the Coder CLI."
+		href="reference/cli"
+	/>
+</CardGrid>

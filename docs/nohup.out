@@ -1,0 +1,164 @@
+
+> @0.0.1 dev /home/coder/repos/coder/coder/docs
+> astro dev
+
+19:36:52 [types] Generated 0ms
+19:36:54 [content] Syncing content
+19:36:54 [content] Synced content
+
+ astro  v5.1.6 ready in 2647 ms
+
+┃ Local    http://localhost:4321/
+┃ Network  use --host to expose
+
+19:36:54 watching for file changes...
+19:37:04 [200] /admin/infrastructure/ 233ms
+19:37:09 [200] /admin/integrations/island/ 67ms
+19:37:13 [200] /admin/provisioners/ 66ms
+19:37:15 [200] /admin/infrastructure/architecture/ 58ms
+19:37:20 [200] /admin/users/idp-sync/ 58ms
+19:37:20 [200] /admin/users/organizations/ 39ms
+19:37:22 [200] /admin/users/oidc-auth/ 53ms
+19:38:34 [200] /admin/users/oidc-auth/ 83ms
+19:45:43 [200] /admin/users/oidc-auth 78ms
+19:47:53 [200] /admin/users/oidc-auth 59ms
+19:48:21 [200] /admin/users/organizations/ 80ms
+19:48:21 [200] /admin/users/organizations/ 48ms
+19:48:22 [200] /_image 144ms
+19:48:22 [200] /admin/users/oidc-auth/ 50ms
+19:48:22 [200] /_image 498ms
+20:01:06 [200] /admin/users/oidc-auth 79ms
+20:03:24 [200] / 139ms
+20:03:25 [200] /_image 77ms
+20:04:07 [200] / 73ms
+20:04:08 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `/favicon.ico`.
+
+Possible dynamic routes being matched: node_modules/.pnpm/@astrojs+starlight@0.31.0_astro@5.1.6_rollup@4.30.1_typescript@5.7.3_/node_modules/@astrojs/starlight/routes/static/index.astro.
+Entry docs → 404 was not found.
+20:06:17 [200] /admin/users/oidc-auth 78ms
+20:06:34 [200] /admin/users/idp-sync/ 76ms
+20:06:35 [200] /admin/users/organizations/ 50ms
+20:06:36 [200] /_image 112ms
+20:06:36 [200] /_image 420ms
+20:06:36 [200] /_image 477ms
+20:06:36 [200] /admin/users/oidc-auth/ 41ms
+20:06:37 [200] /_image 385ms
+20:06:37 [200] /_image 273ms
+20:06:38 [200] /admin/users/headless-auth/ 55ms
+20:06:38 [200] /admin/users/groups-roles/ 53ms
+20:06:38 [200] /_image 455ms
+20:06:39 [200] /_image 310ms
+20:06:39 [200] /admin/users/password-auth/ 55ms
+20:06:41 [200] /admin/users/quotas/ 30ms
+20:06:42 [200] /admin/users/sessions-tokens/ 55ms
+20:06:52 [200] /guides/cloning-git-repositories/ 58ms
+20:06:53 [200] /guides/best-practices/ 53ms
+20:06:54 [200] /guides/best-practices/organizations/ 38ms
+20:06:55 [200] /_image 381ms
+20:06:57 [200] /guides/best-practices/security-best-practices/ 52ms
+20:07:04 [200] /admin/users/groups-roles/ 52ms
+20:07:05 [200] /admin/users/headless-auth/ 35ms
+20:08:18 [200] /admin/users/password-auth/ 61ms
+20:08:21 [200] /admin/ 47ms
+20:08:24 [200] /admin/external-auth/ 59ms
+20:08:25 [200] /admin/infrastructure/ 43ms
+20:08:25 [200] /admin/infrastructure/architecture/ 40ms
+20:08:26 [200] /_image 283ms
+20:08:26 [200] /_image 389ms
+20:08:27 [200] /_image 940ms
+20:08:36 [200] / 47ms
+20:24:27 [200] /admin/users/oidc-auth 73ms
+20:24:28 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `/favicon.ico`.
+
+Possible dynamic routes being matched: node_modules/.pnpm/@astrojs+starlight@0.31.0_astro@5.1.6_rollup@4.30.1_typescript@5.7.3_/node_modules/@astrojs/starlight/routes/static/index.astro.
+Entry docs → 404 was not found.
+20:26:15 [200] /admin/users/oidc-auth 72ms
+20:30:24 [200] /admin/users/oidc-auth/ 53ms
+20:32:06 [200] /admin/users/oidc-auth/ 76ms
+20:32:48 [200] / 59ms
+20:32:53 [200] /admin 58ms
+20:32:53 [200] /admin 50ms
+20:32:59 [200] / 50ms
+20:33:00 [200] /install 51ms
+20:33:01 [200] /_image 310ms
+20:33:02 [200] /_image 492ms
+20:33:04 [200] /install 53ms
+20:33:05 [200] /install 38ms
+20:33:22 [200] /install 42ms
+20:33:22 [200] /install 54ms
+20:33:38 [200] /user-guides 71ms
+20:33:39 [200] /user-guides 57ms
+20:33:45 [200] /guides/best-practices/ 57ms
+20:33:45 [200] /guides/best-practices/ 52ms
+20:33:47 [200] /guides/best-practices/security-best-practices/ 27ms
+20:33:48 [200] /guides/best-practices/security-best-practices/ 55ms
+20:33:50 [200] /guides/best-practices/speed-up-templates/ 58ms
+20:33:50 [200] /guides/best-practices/speed-up-templates/ 52ms
+20:33:51 [200] /guides/best-practices/ 48ms
+20:33:51 [200] /_image 72ms
+20:33:53 [200] /guides/best-practices/security-best-practices/ 52ms
+20:33:54 [200] /guides/best-practices/security-best-practices/ 55ms
+20:33:55 [200] /guides/cloning-git-repositories/ 37ms
+20:33:55 [200] /guides/cloning-git-repositories/ 30ms
+20:33:56 [200] /guides/example-guide/ 51ms
+20:33:57 [200] /guides/example-guide/ 51ms
+20:33:58 [200] /guides/faqs/ 41ms
+20:33:58 [200] /guides/faqs/ 53ms
+20:33:59 [200] /guides/postgres-ssl/ 24ms
+20:34:35 [200] /guides/reverse-proxy-apache/ 30ms
+20:34:35 [200] /guides/reverse-proxy-apache/ 72ms
+20:34:53 [200] /guides/postgres-ssl/ 70ms
+20:34:54 [200] /guides/postgres-ssl/ 54ms
+20:34:58 [200] /guides/image-pull-secret/ 54ms
+20:34:58 [200] /guides/image-pull-secret/ 51ms
+20:35:02 [200] /guides/faqs/ 50ms
+20:35:02 [200] /guides/faqs/ 53ms
+20:35:04 [200] /guides/reverse-proxy-caddy/ 49ms
+20:35:04 [200] /guides/reverse-proxy-caddy/ 57ms
+20:35:05 [200] /guides/template-from-scratch/ 52ms
+20:35:06 [200] /guides/template-from-scratch/ 25ms
+20:35:06 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `/guides/images/templates/coder-session-token.png`.
+
+Possible dynamic routes being matched: node_modules/.pnpm/@astrojs+starlight@0.31.0_astro@5.1.6_rollup@4.30.1_typescript@5.7.3_/node_modules/@astrojs/starlight/routes/static/index.astro.
+Entry docs → 404 was not found.
+20:35:06 [404] /guides/images/templates/coder-session-token.png 19ms
+20:35:06 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `/guides/images/templates/coder-login-web.png`.
+
+Possible dynamic routes being matched: node_modules/.pnpm/@astrojs+starlight@0.31.0_astro@5.1.6_rollup@4.30.1_typescript@5.7.3_/node_modules/@astrojs/starlight/routes/static/index.astro.
+Entry docs → 404 was not found.
+20:35:06 [404] /guides/images/templates/coder-login-web.png 20ms
+20:35:06 [200] /_image 58ms
+20:35:07 [200] /guides/template-from-scratch/ 50ms
+20:35:07 [200] /_image 70ms
+20:35:08 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `/guides/images/templates/coder-session-token.png`.
+
+Possible dynamic routes being matched: node_modules/.pnpm/@astrojs+starlight@0.31.0_astro@5.1.6_rollup@4.30.1_typescript@5.7.3_/node_modules/@astrojs/starlight/routes/static/index.astro.
+Entry docs → 404 was not found.
+20:35:08 [404] /guides/images/templates/coder-session-token.png 40ms
+20:35:08 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `/guides/images/templates/coder-login-web.png`.
+
+Possible dynamic routes being matched: node_modules/.pnpm/@astrojs+starlight@0.31.0_astro@5.1.6_rollup@4.30.1_typescript@5.7.3_/node_modules/@astrojs/starlight/routes/static/index.astro.
+Entry docs → 404 was not found.
+20:35:08 [404] /guides/images/templates/coder-login-web.png 28ms
+20:35:09 [200] /_image 72ms
+20:35:09 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `/guides/images/templates/coder-login-web.png`.
+
+Possible dynamic routes being matched: node_modules/.pnpm/@astrojs+starlight@0.31.0_astro@5.1.6_rollup@4.30.1_typescript@5.7.3_/node_modules/@astrojs/starlight/routes/static/index.astro.
+Entry docs → 404 was not found.
+20:35:09 [404] /guides/images/templates/coder-login-web.png 41ms
+20:35:09 [200] /guides/testing-templates/ 49ms
+20:35:10 [200] /guides/testing-templates/ 49ms
+20:35:12 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `/guides/images/templates/coder-login-web.png`.
+
+Possible dynamic routes being matched: node_modules/.pnpm/@astrojs+starlight@0.31.0_astro@5.1.6_rollup@4.30.1_typescript@5.7.3_/node_modules/@astrojs/starlight/routes/static/index.astro.
+Entry docs → 404 was not found.
+20:35:12 [404] /guides/images/templates/coder-login-web.png 39ms
+20:35:12 [WARN] [router] A `getStaticPaths()` route pattern was matched, but no matching static path was found for requested path `/guides/images/templates/coder-session-token.png`.
+
+Possible dynamic routes being matched: node_modules/.pnpm/@astrojs+starlight@0.31.0_astro@5.1.6_rollup@4.30.1_typescript@5.7.3_/node_modules/@astrojs/starlight/routes/static/index.astro.
+Entry docs → 404 was not found.
+20:35:13 [404] /guides/images/templates/coder-session-token.png 40ms
+20:35:13 [200] /guides/reverse-proxy-caddy/ 49ms
+20:35:13 [200] /_image 139ms
+20:35:31 [200] /admin/users/oidc-auth/ 49ms
+20:37:28 [200] /admin/users/oidc-auth 71ms
