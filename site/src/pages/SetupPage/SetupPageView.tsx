@@ -121,7 +121,12 @@ export const SetupPageView: FC<SetupPageViewProps> = ({
 	return (
 		<SignInLayout>
 			<header css={{ textAlign: "center", marginBottom: 32 }}>
-				<CoderIcon className="w-12 h-12" />
+				<CoderIcon
+					css={(theme) => ({
+						color: theme.palette.text.primary,
+						fontSize: 64,
+					})}
+				/>
 				<h1
 					css={{
 						fontWeight: 400,

@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	ping "github.com/prometheus-community/pro-bing"
+	"github.com/go-ping/ping"
 	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"

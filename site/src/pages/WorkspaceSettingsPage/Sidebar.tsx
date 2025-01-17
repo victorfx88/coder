@@ -20,11 +20,7 @@ export const Sidebar: FC<SidebarProps> = ({ username, workspace }) => {
 		<BaseSidebar>
 			<SidebarHeader
 				avatar={
-					<Avatar
-						variant="icon"
-						src={workspace.template_icon}
-						fallback={workspace.name}
-					/>
+					<Avatar src={workspace.template_icon} variant="square" fitImage />
 				}
 				title={workspace.name}
 				linkTo={`/@${username}/${workspace.name}`}

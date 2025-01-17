@@ -1,4 +1,5 @@
 <!-- DO NOT EDIT | GENERATED CONTENT -->
+
 # ping
 
 Ping a workspace
@@ -14,7 +15,7 @@ coder ping [flags] <workspace>
 ### --wait
 
 |         |                       |
-|---------|-----------------------|
+| ------- | --------------------- |
 | Type    | <code>duration</code> |
 | Default | <code>1s</code>       |
 
@@ -23,7 +24,7 @@ Specifies how long to wait between pings.
 ### -t, --timeout
 
 |         |                       |
-|---------|-----------------------|
+| ------- | --------------------- |
 | Type    | <code>duration</code> |
 | Default | <code>5s</code>       |
 
@@ -32,7 +33,7 @@ Specifies how long to wait for a ping to complete.
 ### -n, --num
 
 |      |                  |
-|------|------------------|
+| ---- | ---------------- |
 | Type | <code>int</code> |
 
 Specifies the number of pings to perform. By default, pings will continue until interrupted.

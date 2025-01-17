@@ -14,7 +14,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"cdr.dev/slog"
-	"github.com/coder/coder/v2/coderd/database/db2sdk"
 
 	"github.com/coder/coder/v2/coderd/audit"
 	"github.com/coder/coder/v2/coderd/database"
@@ -383,7 +382,7 @@ func (api *API) postTemplateByOrganization(rw http.ResponseWriter, r *http.Reque
 	if !createTemplate.DisableEveryoneGroupAccess {
 		// The organization ID is used as the group ID for the everyone group
 		// in this organization.
-		defaultsGroups[organization.ID.String()] = db2sdk.TemplateRoleActions(codersdk.TemplateRoleUse)
+		defaultsGroups[organization.ID.String()] = []policy.Action{policy.ActionRead}
 	}
 	err = api.Database.InTx(func(tx database.Store) error {
 		now := dbtime.Now()

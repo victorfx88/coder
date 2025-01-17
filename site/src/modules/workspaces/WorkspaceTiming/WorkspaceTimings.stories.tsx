@@ -118,11 +118,3 @@ export const DuplicatedScriptTiming: Story = {
 		],
 	},
 };
-
-// Loading when agent script timings are empty
-// Test case for https://github.com/coder/coder/issues/15273
-export const LoadingWhenAgentScriptTimingsAreEmpty: Story = {
-	args: {
-		agentScriptTimings: undefined,
-	},
-};

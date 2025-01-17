@@ -15,11 +15,10 @@ import (
 
 	"github.com/coder/coder/v2/pty"
 	"github.com/coder/coder/v2/pty/ptytest"
-	"github.com/coder/coder/v2/testutil"
 )
 
 func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m, testutil.GoleakOptions...)
+	goleak.VerifyTestMain(m)
 }
 
 func TestStart(t *testing.T) {

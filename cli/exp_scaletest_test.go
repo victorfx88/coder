@@ -18,10 +18,6 @@ import (
 func TestScaleTestCreateWorkspaces(t *testing.T) {
 	t.Parallel()
 
-	if testutil.RaceEnabled() {
-		t.Skip("Skipping due to race detector")
-	}
-
 	// This test only validates that the CLI command accepts known arguments.
 	// More thorough testing is done in scaletest/createworkspaces/run_test.go.
 	ctx, cancelFunc := context.WithTimeout(context.Background(), testutil.WaitLong)
@@ -69,10 +65,6 @@ func TestScaleTestCreateWorkspaces(t *testing.T) {
 func TestScaleTestWorkspaceTraffic(t *testing.T) {
 	t.Parallel()
 
-	if testutil.RaceEnabled() {
-		t.Skip("Skipping due to race detector")
-	}
-
 	ctx, cancelFunc := context.WithTimeout(context.Background(), testutil.WaitMedium)
 	defer cancelFunc()
 
@@ -103,10 +95,6 @@ func TestScaleTestWorkspaceTraffic(t *testing.T) {
 func TestScaleTestWorkspaceTraffic_Template(t *testing.T) {
 	t.Parallel()
 
-	if testutil.RaceEnabled() {
-		t.Skip("Skipping due to race detector")
-	}
-
 	ctx, cancelFunc := context.WithTimeout(context.Background(), testutil.WaitMedium)
 	defer cancelFunc()
 
@@ -131,10 +119,6 @@ func TestScaleTestWorkspaceTraffic_Template(t *testing.T) {
 // This test just validates that the CLI command accepts its known arguments.
 func TestScaleTestWorkspaceTraffic_TargetWorkspaces(t *testing.T) {
 	t.Parallel()
-
-	if testutil.RaceEnabled() {
-		t.Skip("Skipping due to race detector")
-	}
 
 	ctx, cancelFunc := context.WithTimeout(context.Background(), testutil.WaitMedium)
 	defer cancelFunc()
@@ -161,10 +145,6 @@ func TestScaleTestWorkspaceTraffic_TargetWorkspaces(t *testing.T) {
 func TestScaleTestCleanup_Template(t *testing.T) {
 	t.Parallel()
 
-	if testutil.RaceEnabled() {
-		t.Skip("Skipping due to race detector")
-	}
-
 	ctx, cancelFunc := context.WithTimeout(context.Background(), testutil.WaitMedium)
 	defer cancelFunc()
 
@@ -189,10 +169,6 @@ func TestScaleTestCleanup_Template(t *testing.T) {
 // This test just validates that the CLI command accepts its known arguments.
 func TestScaleTestDashboard(t *testing.T) {
 	t.Parallel()
-	if testutil.RaceEnabled() {
-		t.Skip("Skipping due to race detector")
-	}
-
 	t.Run("MinWait", func(t *testing.T) {
 		t.Parallel()
 		ctx, cancelFunc := context.WithTimeout(context.Background(), testutil.WaitShort)

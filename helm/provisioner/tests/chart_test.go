@@ -121,7 +121,6 @@ func TestRenderChart(t *testing.T) {
 	helmPath := lookupHelm(t)
 	err := updateHelmDependencies(t, helmPath, "..")
 	require.NoError(t, err, "failed to build Helm dependencies")
-
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
@@ -163,9 +162,6 @@ func TestUpdateGoldenFiles(t *testing.T) {
 	}
 
 	helmPath := lookupHelm(t)
-	err := updateHelmDependencies(t, helmPath, "..")
-	require.NoError(t, err, "failed to build Helm dependencies")
-
 	for _, tc := range testCases {
 		if tc.expectedError != "" {
 			t.Logf("skipping test case %q with render error", tc.name)
@@ -175,8 +171,7 @@ func TestUpdateGoldenFiles(t *testing.T) {
 		valuesPath := tc.valuesFilePath()
 		templateOutput, err := runHelmTemplate(t, helmPath, "..", valuesPath)
 		if err != nil {
-			t.Logf("error running `helm template -f %q`: %v", valuesPath, err)
-			t.Logf("output: %s", templateOutput)
+			t.Logf("Command output:\n%s", templateOutput)
 		}
 		require.NoError(t, err, "failed to run `helm template -f %q`", valuesPath)
 

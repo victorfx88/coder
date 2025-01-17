@@ -16,8 +16,7 @@ import type {
 	User,
 } from "api/typesGenerated";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
-import { Avatar } from "components/Avatar/Avatar";
-import { AvatarData } from "components/Avatar/AvatarData";
+import { AvatarData } from "components/AvatarData/AvatarData";
 import { displayError, displaySuccess } from "components/GlobalSnackbar/utils";
 import {
 	MoreMenu,
@@ -29,6 +28,7 @@ import {
 import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import { Stack } from "components/Stack/Stack";
 import { UserAutocomplete } from "components/UserAutocomplete/UserAutocomplete";
+import { UserAvatar } from "components/UserAvatar/UserAvatar";
 import { UserGroupsCell } from "pages/UsersPage/UsersTable/UserGroupsCell";
 import { type FC, useState } from "react";
 import { TableColumnHelpTooltip } from "./UserTable/TableColumnHelpTooltip";
@@ -42,6 +42,7 @@ interface OrganizationMembersPageViewProps {
 	isUpdatingMemberRoles: boolean;
 	me: User;
 	members: Array<OrganizationMemberTableEntry> | undefined;
+	groupsByUserId: GroupsByUserId | undefined;
 	addMember: (user: User) => Promise<void>;
 	removeMember: (member: OrganizationMemberWithUserData) => void;
 	updateMemberRoles: (
@@ -56,28 +57,17 @@ interface OrganizationMemberTableEntry extends OrganizationMemberWithUserData {
 
 export const OrganizationMembersPageView: FC<
 	OrganizationMembersPageViewProps
-> = ({
-	allAvailableRoles,
-	canEditMembers,
-	error,
-	isAddingMember,
-	isUpdatingMemberRoles,
-	me,
-	members,
-	addMember,
-	removeMember,
-	updateMemberRoles,
-}) => {
+> = (props) => {
 	return (
 		<div>
 			<SettingsHeader title="Members" />
 			<Stack>
-				{Boolean(error) && <ErrorAlert error={error} />}
+				{Boolean(props.error) && <ErrorAlert error={props.error} />}
 
-				{canEditMembers && (
+				{props.canEditMembers && (
 					<AddOrganizationMember
-						isLoading={isAddingMember}
-						onSubmit={addMember}
+						isLoading={props.isAddingMember}
+						onSubmit={props.addMember}
 					/>
 				)}
 
@@ -102,14 +92,14 @@ export const OrganizationMembersPageView: FC<
 							</TableRow>
 						</TableHead>
 						<TableBody>
-							{members?.map((member) => (
+							{props.members?.map((member) => (
 								<TableRow key={member.user_id}>
 									<TableCell>
 										<AvatarData
 											avatar={
-												<Avatar
-													fallback={member.username}
-													src={member.avatar_url}
+												<UserAvatar
+													username={member.username}
+													avatarURL={member.avatar_url}
 												/>
 											}
 											title={member.name || member.username}
@@ -119,13 +109,13 @@ export const OrganizationMembersPageView: FC<
 									<UserRoleCell
 										inheritedRoles={member.global_roles}
 										roles={member.roles}
-										allAvailableRoles={allAvailableRoles}
+										allAvailableRoles={props.allAvailableRoles}
 										oidcRoleSyncEnabled={false}
-										isLoading={isUpdatingMemberRoles}
-										canEditUsers={canEditMembers}
+										isLoading={props.isUpdatingMemberRoles}
+										canEditUsers={props.canEditMembers}
 										onEditRoles={async (roles) => {
 											try {
-												await updateMemberRoles(member, roles);
+												await props.updateMemberRoles(member, roles);
 												displaySuccess("Roles updated successfully.");
 											} catch (error) {
 												displayError(
@@ -136,7 +126,7 @@ export const OrganizationMembersPageView: FC<
 									/>
 									<UserGroupsCell userGroups={member.groups} />
 									<TableCell>
-										{member.user_id !== me.id && canEditMembers && (
+										{member.user_id !== props.me.id && props.canEditMembers && (
 											<MoreMenu>
 												<MoreMenuTrigger>
 													<ThreeDotsButton />
@@ -144,7 +134,7 @@ export const OrganizationMembersPageView: FC<
 												<MoreMenuContent>
 													<MoreMenuItem
 														danger
-														onClick={() => removeMember(member)}
+														onClick={() => props.removeMember(member)}
 													>
 														Remove
 													</MoreMenuItem>

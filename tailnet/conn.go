@@ -14,7 +14,6 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	"github.com/google/uuid"
-	"github.com/tailscale/wireguard-go/tun"
 	"golang.org/x/xerrors"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -114,8 +113,6 @@ type Options struct {
 	DNSConfigurator dns.OSConfigurator
 	// Router is optional, and is passed to the underlying wireguard engine.
 	Router router.Router
-	// TUNDev is optional, and is passed to the underlying wireguard engine.
-	TUNDev tun.Device
 }
 
 // TelemetrySink allows tailnet.Conn to send network telemetry to the Coder
@@ -145,8 +142,6 @@ func NewConn(options *Options) (conn *Conn, err error) {
 	if len(options.Addresses) == 0 {
 		return nil, xerrors.New("At least one IP range must be provided")
 	}
-
-	netns.SetEnabled(options.TUNDev != nil)
 
 	var telemetryStore *TelemetryStore
 	if options.TelemetrySink != nil {
@@ -192,7 +187,6 @@ func NewConn(options *Options) (conn *Conn, err error) {
 		SetSubsystem: sys.Set,
 		DNS:          options.DNSConfigurator,
 		Router:       options.Router,
-		Tun:          options.TUNDev,
 	})
 	if err != nil {
 		return nil, xerrors.Errorf("create wgengine: %w", err)
@@ -203,14 +197,11 @@ func NewConn(options *Options) (conn *Conn, err error) {
 		}
 	}()
 	wireguardEngine.InstallCaptureHook(options.CaptureHook)
-	if options.TUNDev == nil {
-		dialer.UseNetstackForIP = func(ip netip.Addr) bool {
-			_, ok := wireguardEngine.PeerForIP(ip)
-			return ok
-		}
+	dialer.UseNetstackForIP = func(ip netip.Addr) bool {
+		_, ok := wireguardEngine.PeerForIP(ip)
+		return ok
 	}
 
-	wireguardEngine = wgengine.NewWatchdog(wireguardEngine)
 	sys.Set(wireguardEngine)
 
 	magicConn := sys.MagicSock.Get()
@@ -253,12 +244,11 @@ func NewConn(options *Options) (conn *Conn, err error) {
 		return nil, xerrors.Errorf("create netstack: %w", err)
 	}
 
-	if options.TUNDev == nil {
-		dialer.NetstackDialTCP = func(ctx context.Context, dst netip.AddrPort) (net.Conn, error) {
-			return netStack.DialContextTCP(ctx, dst)
-		}
-		netStack.ProcessLocalIPs = true
+	dialer.NetstackDialTCP = func(ctx context.Context, dst netip.AddrPort) (net.Conn, error) {
+		return netStack.DialContextTCP(ctx, dst)
 	}
+	netStack.ProcessLocalIPs = true
+	wireguardEngine = wgengine.NewWatchdog(wireguardEngine)
 
 	cfgMaps := newConfigMaps(
 		options.Logger,

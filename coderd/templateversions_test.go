@@ -172,8 +172,8 @@ func TestPostTemplateVersionsByOrganization(t *testing.T) {
 		require.Equal(t, provisionersdk.ScopeOrganization, version.Job.Tags[provisionersdk.TagScope])
 		if assert.Equal(t, version.Job.Status, codersdk.ProvisionerJobPending) {
 			assert.NotNil(t, version.MatchedProvisioners)
-			assert.Equal(t, 1, version.MatchedProvisioners.Available)
-			assert.Equal(t, 1, version.MatchedProvisioners.Count)
+			assert.Equal(t, version.MatchedProvisioners.Available, 1)
+			assert.Equal(t, version.MatchedProvisioners.Count, 1)
 			assert.True(t, version.MatchedProvisioners.MostRecentlySeen.Valid)
 		}
 
@@ -355,38 +355,7 @@ func TestPostTemplateVersionsByOrganization(t *testing.T) {
 				wantTags: map[string]string{"owner": "", "scope": "organization", "foo": "bar", "a": "1", "b": "2"},
 			},
 			{
-				name: "main.tf with request tags not clobbering workspace tags",
-				files: map[string]string{
-					`main.tf`: `
-						// This file is, once again, the same as the above, except
-						// for a slightly different comment.
-						variable "a" {
-							type = string
-							default = "1"
-						}
-						data "coder_parameter" "b" {
-							type = string
-							default = "2"
-						}
-						data "coder_parameter" "unrelated" {
-							name    = "unrelated"
-							type    = "list(string)"
-							default = jsonencode(["a", "b"])
-						}
-						resource "null_resource" "test" {}
-						data "coder_workspace_tags" "tags" {
-							tags = {
-								"foo": "bar",
-								"a": var.a,
-								"b": data.coder_parameter.b.value,
-							}
-						}`,
-				},
-				reqTags:  map[string]string{"baz": "zap"},
-				wantTags: map[string]string{"owner": "", "scope": "organization", "foo": "bar", "baz": "zap", "a": "1", "b": "2"},
-			},
-			{
-				name: "main.tf with request tags clobbering workspace tags",
+				name: "main.tf with workspace tags and request tags",
 				files: map[string]string{
 					`main.tf`: `
 						// This file is the same as the above, except for this comment.
@@ -412,26 +381,8 @@ func TestPostTemplateVersionsByOrganization(t *testing.T) {
 							}
 						}`,
 				},
-				reqTags:  map[string]string{"baz": "zap", "foo": "clobbered"},
-				wantTags: map[string]string{"owner": "", "scope": "organization", "foo": "clobbered", "baz": "zap", "a": "1", "b": "2"},
-			},
-			// FIXME(cian): we should skip evaluating tags for which values have already been provided.
-			{
-				name: "main.tf with variable missing default value but value is passed in request",
-				files: map[string]string{
-					`main.tf`: `
-						variable "a" {
-							type = string
-						}
-						data "coder_workspace_tags" "tags" {
-							tags = {
-								"a": var.a,
-							}
-						}`,
-				},
-				reqTags: map[string]string{"a": "b"},
-				// wantTags: map[string]string{"owner": "", "scope": "organization", "a": "b"},
-				expectError: `provisioner tag "a" evaluated to an empty value`,
+				reqTags:  map[string]string{"baz": "zap", "foo": "noclobber"},
+				wantTags: map[string]string{"owner": "", "scope": "organization", "foo": "bar", "baz": "zap", "a": "1", "b": "2"},
 			},
 			{
 				name: "main.tf with disallowed workspace tag value",

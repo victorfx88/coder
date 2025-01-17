@@ -1398,40 +1398,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/insights/user-status-counts": {
-            "get": {
-                "security": [
-                    {
-                        "CoderSessionToken": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Insights"
-                ],
-                "summary": "Get insights about user status counts",
-                "operationId": "get-insights-about-user-status-counts",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "Time-zone offset (e.g. -2)",
-                        "name": "tz_offset",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/codersdk.GetUserStatusCountsResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/integrations/jfrog/xray-scan": {
             "get": {
                 "security": [
@@ -2963,7 +2929,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Provisioning"
+                    "Enterprise"
                 ],
                 "summary": "Get provisioner daemons",
                 "operationId": "get-provisioner-daemons",
@@ -3188,52 +3154,6 @@ const docTemplate = `{
                         "description": "Organization ID",
                         "name": "organization",
                         "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/organizations/{organization}/settings/idpsync/field-values": {
-            "get": {
-                "security": [
-                    {
-                        "CoderSessionToken": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Enterprise"
-                ],
-                "summary": "Get the organization idp sync claim field values",
-                "operationId": "get-the-organization-idp-sync-claim-field-values",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Organization ID",
-                        "name": "organization",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "format": "string",
-                        "description": "Claim Field",
-                        "name": "claimField",
-                        "in": "query",
                         "required": true
                     }
                 ],
@@ -3909,48 +3829,6 @@ const docTemplate = `{
                     }
                 }
             },
-            "put": {
-                "security": [
-                    {
-                        "Authorization": []
-                    }
-                ],
-                "produces": [
-                    "application/scim+json"
-                ],
-                "tags": [
-                    "Enterprise"
-                ],
-                "summary": "SCIM 2.0: Replace user account",
-                "operationId": "scim-replace-user-status",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "User ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Replace user request",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/coderd.SCIMUser"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/codersdk.User"
-                        }
-                    }
-                }
-            },
             "patch": {
                 "security": [
                     {
@@ -4016,52 +3894,6 @@ const docTemplate = `{
                         "description": "Organization ID",
                         "name": "organization",
                         "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/settings/idpsync/field-values": {
-            "get": {
-                "security": [
-                    {
-                        "CoderSessionToken": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Enterprise"
-                ],
-                "summary": "Get the idp sync claim field values",
-                "operationId": "get-the-idp-sync-claim-field-values",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Organization ID",
-                        "name": "organization",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "format": "string",
-                        "description": "Claim Field",
-                        "name": "claimField",
-                        "in": "query",
                         "required": true
                     }
                 ],
@@ -7822,13 +7654,13 @@ const docTemplate = `{
                     },
                     {
                         "type": "integer",
-                        "description": "Before log id",
+                        "description": "Before Unix timestamp",
                         "name": "before",
                         "in": "query"
                     },
                     {
                         "type": "integer",
-                        "description": "After log id",
+                        "description": "After Unix timestamp",
                         "name": "after",
                         "in": "query"
                     },
@@ -9294,7 +9126,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "active": {
-                    "description": "Active is a ptr to prevent the empty value from being interpreted as false.",
                     "type": "boolean"
                 },
                 "emails": {
@@ -11241,20 +11072,6 @@ const docTemplate = `{
                 }
             }
         },
-        "codersdk.GetUserStatusCountsResponse": {
-            "type": "object",
-            "properties": {
-                "status_counts": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/codersdk.UserStatusChangeCount"
-                        }
-                    }
-                }
-            }
-        },
         "codersdk.GetUsersResponse": {
             "type": "object",
             "properties": {
@@ -11352,7 +11169,7 @@ const docTemplate = `{
                     "type": "boolean"
                 },
                 "field": {
-                    "description": "Field is the name of the claim field that specifies what groups a user\nshould be in. If empty, no groups will be synced.",
+                    "description": "Field selects the claim field to be used as the created user's\ngroups. If the group field is the empty string, then no group updates\nwill ever come from the OIDC provider.",
                     "type": "string"
                 },
                 "legacy_group_name_mapping": {
@@ -11363,7 +11180,7 @@ const docTemplate = `{
                     }
                 },
                 "mapping": {
-                    "description": "Mapping is a map from OIDC groups to Coder group IDs",
+                    "description": "Mapping maps from an OIDC group --\u003e Coder group ID",
                     "type": "object",
                     "additionalProperties": {
                         "type": "array",
@@ -11711,9 +11528,6 @@ const docTemplate = `{
                 },
                 "body_template": {
                     "type": "string"
-                },
-                "enabled_by_default": {
-                    "type": "boolean"
                 },
                 "group": {
                     "type": "string"
@@ -12463,9 +12277,6 @@ const docTemplate = `{
                     "type": "string",
                     "format": "date-time"
                 },
-                "current_job": {
-                    "$ref": "#/definitions/codersdk.ProvisionerDaemonJob"
-                },
                 "id": {
                     "type": "string",
                     "format": "uuid"
@@ -12473,10 +12284,6 @@ const docTemplate = `{
                 "key_id": {
                     "type": "string",
                     "format": "uuid"
-                },
-                "key_name": {
-                    "description": "Optional fields.",
-                    "type": "string"
                 },
                 "last_seen_at": {
                     "type": "string",
@@ -12489,26 +12296,11 @@ const docTemplate = `{
                     "type": "string",
                     "format": "uuid"
                 },
-                "previous_job": {
-                    "$ref": "#/definitions/codersdk.ProvisionerDaemonJob"
-                },
                 "provisioners": {
                     "type": "array",
                     "items": {
                         "type": "string"
                     }
-                },
-                "status": {
-                    "enum": [
-                        "offline",
-                        "idle",
-                        "busy"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/codersdk.ProvisionerDaemonStatus"
-                        }
-                    ]
                 },
                 "tags": {
                     "type": "object",
@@ -12520,43 +12312,6 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
-        },
-        "codersdk.ProvisionerDaemonJob": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string",
-                    "format": "uuid"
-                },
-                "status": {
-                    "enum": [
-                        "pending",
-                        "running",
-                        "succeeded",
-                        "canceling",
-                        "canceled",
-                        "failed"
-                    ],
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/codersdk.ProvisionerJobStatus"
-                        }
-                    ]
-                }
-            }
-        },
-        "codersdk.ProvisionerDaemonStatus": {
-            "type": "string",
-            "enum": [
-                "offline",
-                "idle",
-                "busy"
-            ],
-            "x-enum-varnames": [
-                "ProvisionerDaemonOffline",
-                "ProvisionerDaemonIdle",
-                "ProvisionerDaemonBusy"
-            ]
         },
         "codersdk.ProvisionerJob": {
             "type": "object",
@@ -13139,12 +12894,7 @@ const docTemplate = `{
                 "organization",
                 "oauth2_provider_app",
                 "oauth2_provider_app_secret",
-                "custom_role",
-                "organization_member",
-                "notification_template",
-                "idp_sync_settings_organization",
-                "idp_sync_settings_group",
-                "idp_sync_settings_role"
+                "custom_role"
             ],
             "x-enum-varnames": [
                 "ResourceTypeTemplate",
@@ -13163,12 +12913,7 @@ const docTemplate = `{
                 "ResourceTypeOrganization",
                 "ResourceTypeOAuth2ProviderApp",
                 "ResourceTypeOAuth2ProviderAppSecret",
-                "ResourceTypeCustomRole",
-                "ResourceTypeOrganizationMember",
-                "ResourceTypeNotificationTemplate",
-                "ResourceTypeIdpSyncSettingsOrganization",
-                "ResourceTypeIdpSyncSettingsGroup",
-                "ResourceTypeIdpSyncSettingsRole"
+                "ResourceTypeCustomRole"
             ]
         },
         "codersdk.Response": {
@@ -13229,11 +12974,11 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "field": {
-                    "description": "Field is the name of the claim field that specifies what organization roles\na user should be given. If empty, no roles will be synced.",
+                    "description": "Field selects the claim field to be used as the created user's\ngroups. If the group field is the empty string, then no group updates\nwill ever come from the OIDC provider.",
                     "type": "string"
                 },
                 "mapping": {
-                    "description": "Mapping is a map from OIDC groups to Coder organization roles.",
+                    "description": "Mapping maps from an OIDC group --\u003e Coder organization role",
                     "type": "object",
                     "additionalProperties": {
                         "type": "array",
@@ -14680,19 +14425,6 @@ const docTemplate = `{
                 "UserStatusSuspended"
             ]
         },
-        "codersdk.UserStatusChangeCount": {
-            "type": "object",
-            "properties": {
-                "count": {
-                    "type": "integer",
-                    "example": 10
-                },
-                "date": {
-                    "type": "string",
-                    "format": "date-time"
-                }
-            }
-        },
         "codersdk.ValidateUserPasswordRequest": {
             "type": "object",
             "required": [
@@ -14810,10 +14542,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                },
-                "next_start_at": {
-                    "type": "string",
-                    "format": "date-time"
                 },
                 "organization_id": {
                     "type": "string",
@@ -15294,9 +15022,6 @@ const docTemplate = `{
                     "type": "string",
                     "format": "uuid"
                 },
-                "open_in": {
-                    "$ref": "#/definitions/codersdk.WorkspaceAppOpenIn"
-                },
                 "sharing_level": {
                     "enum": [
                         "owner",
@@ -15340,17 +15065,6 @@ const docTemplate = `{
                 "WorkspaceAppHealthInitializing",
                 "WorkspaceAppHealthHealthy",
                 "WorkspaceAppHealthUnhealthy"
-            ]
-        },
-        "codersdk.WorkspaceAppOpenIn": {
-            "type": "string",
-            "enum": [
-                "slim-window",
-                "tab"
-            ],
-            "x-enum-varnames": [
-                "WorkspaceAppOpenInSlimWindow",
-                "WorkspaceAppOpenInTab"
             ]
         },
         "codersdk.WorkspaceAppSharingLevel": {

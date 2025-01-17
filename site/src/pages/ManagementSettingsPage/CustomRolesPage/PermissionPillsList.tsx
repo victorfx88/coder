@@ -6,7 +6,7 @@ import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
-} from "components/deprecated/Popover/Popover";
+} from "components/Popover/Popover";
 import type { FC } from "react";
 
 function getUniqueResourceTypes(jsonObject: readonly Permission[]) {

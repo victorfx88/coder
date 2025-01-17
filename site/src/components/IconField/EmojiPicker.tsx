@@ -1,6 +1,6 @@
-import data from "@emoji-mart/data/sets/15/apple.json";
-import EmojiMart from "@emoji-mart/react";
-import type { ComponentProps, FC } from "react";
+import data from "@emoji-mart/data/sets/14/twitter.json";
+import EmojiMart, { type EmojiMartProps } from "@emoji-mart/react";
+import type { FC } from "react";
 import icons from "theme/icons.json";
 
 const custom = [
@@ -21,7 +21,7 @@ const custom = [
 ];
 
 type EmojiPickerProps = Omit<
-	ComponentProps<typeof EmojiMart>,
+	EmojiMartProps,
 	"custom" | "data" | "set" | "theme"
 >;
 
@@ -29,8 +29,7 @@ const EmojiPicker: FC<EmojiPickerProps> = (props) => {
 	return (
 		<EmojiMart
 			theme="dark"
-			set="apple"
-			emojiVersion="15"
+			set="twitter"
 			data={data}
 			custom={custom}
 			{...props}

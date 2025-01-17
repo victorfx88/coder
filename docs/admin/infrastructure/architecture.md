@@ -94,8 +94,7 @@ external PostgreSQL 13+ database for production deployments.
 
 A managed PostgreSQL database, with daily backups, is recommended:
 
-- For AWS: Amazon RDS for PostgreSQL (preferably using
-  [RDS IAM authentication](../../reference/cli/server.md#--postgres-auth)).
+- For AWS: Amazon RDS for PostgreSQL
 - For Azure: Azure Database for PostgreSQL
 - Flexible Server For GCP: Cloud SQL for PostgreSQL
 

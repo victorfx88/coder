@@ -13,10 +13,8 @@ export const formatTemplateActiveDevelopers = (num?: number): string => {
 	return num.toString();
 };
 
-export const formatTemplateBuildTime = (
-	buildTimeMs?: number | null,
-): string => {
-	return buildTimeMs === undefined || buildTimeMs === null
+export const formatTemplateBuildTime = (buildTimeMs?: number): string => {
+	return buildTimeMs === undefined
 		? "Unknown"
 		: `${Math.round(dayjs.duration(buildTimeMs, "milliseconds").asSeconds())}s`;
 };

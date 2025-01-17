@@ -1,11 +1,11 @@
 import type { Organization } from "api/typesGenerated";
-import { Avatar } from "components/Avatar/Avatar";
 import {
 	PageHeader,
 	PageHeaderSubtitle,
 	PageHeaderTitle,
 } from "components/PageHeader/PageHeader";
 import { Stack } from "components/Stack/Stack";
+import { UserAvatar } from "components/UserAvatar/UserAvatar";
 import type { FC } from "react";
 
 interface OrganizationSummaryPageViewProps {
@@ -23,14 +23,13 @@ export const OrganizationSummaryPageView: FC<
 					paddingTop: 0,
 				}}
 			>
-				<Stack direction="row">
-					<Avatar
-						size="lg"
-						variant="icon"
-						src={organization.icon}
-						fallback={organization.display_name || organization.name}
+				<Stack direction="row" spacing={3} alignItems="center">
+					<UserAvatar
+						key={organization.id}
+						size="xl"
+						username={organization.display_name || organization.name}
+						avatarURL={organization.icon}
 					/>
-
 					<div>
 						<PageHeaderTitle>
 							{organization.display_name || organization.name}

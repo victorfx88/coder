@@ -11,9 +11,11 @@ import { GeneralSettingsPageView } from "./GeneralSettingsPageView";
 
 const GeneralSettingsPage: FC = () => {
 	const { deploymentConfig } = useDeploymentSettings();
+	const deploymentDAUsQuery = useQuery(deploymentDAUs());
 	const safeExperimentsQuery = useQuery(availableExperiments());
 
 	const { metadata } = useEmbeddedMetadata();
+	const entitlementsQuery = useQuery(entitlements(metadata.entitlements));
 	const enabledExperimentsQuery = useQuery(experiments(metadata.experiments));
 
 	const safeExperiments = safeExperimentsQuery.data?.safe ?? [];
@@ -22,8 +24,6 @@ const GeneralSettingsPage: FC = () => {
 			return !safeExperiments.includes(exp);
 		}) ?? [];
 
-	const { data: dailyActiveUsers } = useQuery(deploymentDAUs());
-
 	return (
 		<>
 			<Helmet>
@@ -31,7 +31,9 @@ const GeneralSettingsPage: FC = () => {
 			</Helmet>
 			<GeneralSettingsPageView
 				deploymentOptions={deploymentConfig.options}
-				dailyActiveUsers={dailyActiveUsers}
+				deploymentDAUs={deploymentDAUsQuery.data}
+				deploymentDAUsError={deploymentDAUsQuery.error}
+				entitlements={entitlementsQuery.data}
 				invalidExperiments={invalidExperiments}
 				safeExperiments={safeExperiments}
 			/>

@@ -7,7 +7,6 @@ on:
   push:
     branches-ignore:
       - main
-      - "temp-cherry-pick-*"
   workflow_dispatch:
     inputs:
       experiments:

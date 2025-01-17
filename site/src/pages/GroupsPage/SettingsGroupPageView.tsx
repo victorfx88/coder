@@ -1,12 +1,10 @@
 import TextField from "@mui/material/TextField";
 import type { Group } from "api/typesGenerated";
-import { Button } from "components/Button/Button";
-import { FormFooter } from "components/Form/Form";
+import { FormFooter } from "components/FormFooter/FormFooter";
 import { FullPageForm } from "components/FullPageForm/FullPageForm";
 import { IconField } from "components/IconField/IconField";
 import { Loader } from "components/Loader/Loader";
 import { Margins } from "components/Margins/Margins";
-import { Spinner } from "components/Spinner/Spinner";
 import { Stack } from "components/Stack/Stack";
 import { useFormik } from "formik";
 import type { FC } from "react";
@@ -107,16 +105,7 @@ const UpdateGroupForm: FC<UpdateGroupFormProps> = ({
 					/>
 				</Stack>
 
-				<FormFooter>
-					<Button onClick={onCancel} variant="outline">
-						Cancel
-					</Button>
-
-					<Button type="submit" disabled={isLoading}>
-						<Spinner loading={isLoading} />
-						Save
-					</Button>
-				</FormFooter>
+				<FormFooter onCancel={onCancel} isLoading={isLoading} />
 			</form>
 		</FullPageForm>
 	);

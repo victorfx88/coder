@@ -154,5 +154,5 @@ func TestChecker_Latest(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m, testutil.GoleakOptions...)
+	goleak.VerifyTestMain(m)
 }

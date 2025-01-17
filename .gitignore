@@ -54,7 +54,6 @@ site/stats/
 
 # direnv
 .envrc
-.direnv
 *.test
 
 # Loadtesting

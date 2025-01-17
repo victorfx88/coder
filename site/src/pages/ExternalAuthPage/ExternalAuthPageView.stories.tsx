@@ -40,7 +40,6 @@ DeviceUnauthenticated.args = {
 		installations: [],
 		app_install_url: "",
 		app_installable: false,
-		user: null,
 	},
 	externalAuthDevice: {
 		device_code: "1234-5678",
@@ -60,7 +59,6 @@ Device429Error.args = {
 		installations: [],
 		app_install_url: "",
 		app_installable: false,
-		user: null,
 	},
 	// This is intentionally undefined.
 	// If we get a 429 on the first /device call, then this
@@ -82,7 +80,6 @@ DeviceUnauthenticatedError.args = {
 		installations: [],
 		app_install_url: "",
 		app_installable: false,
-		user: null,
 	},
 	externalAuthDevice: {
 		device_code: "1234-5678",

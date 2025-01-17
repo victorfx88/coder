@@ -24,7 +24,7 @@ If there is an issue, you may see one of the following errors reported:
 
 ### EACS01
 
-### Access URL not set
+_Access URL not set_
 
 **Problem:** no access URL has been configured.
 
@@ -32,7 +32,7 @@ If there is an issue, you may see one of the following errors reported:
 
 ### EACS02
 
-#### Access URL invalid
+_Access URL invalid_
 
 **Problem:** `${CODER_ACCESS_URL}/healthz` is not a valid URL.
 
@@ -44,7 +44,7 @@ If there is an issue, you may see one of the following errors reported:
 
 ### EACS03
 
-#### Failed to fetch `/healthz`
+_Failed to fetch `/healthz`_
 
 **Problem:** Coder was unable to execute a GET request to
 `${CODER_ACCESS_URL}/healthz`.
@@ -74,7 +74,7 @@ The output of this command should aid further diagnosis.
 
 ### EACS04
 
-#### /healthz did not return 200 OK
+_/healthz did not return 200 OK_
 
 **Problem:** Coder was able to execute a GET request to
 `${CODER_ACCESS_URL}/healthz`, but the response code was not `200 OK` as
@@ -97,7 +97,7 @@ its configured database, and also measures the median latency over 5 attempts.
 
 ### EDB01
 
-#### Database Ping Failed
+_Database Ping Failed_
 
 **Problem:** This error code is returned if any attempt to execute this database
 query fails.
@@ -106,7 +106,7 @@ query fails.
 
 ### EDB02
 
-#### Database Latency High
+_Database Latency High_
 
 **Problem:** This code is returned if the median latency is higher than the
 [configured threshold](../../reference/cli/server.md#--health-check-threshold-database).
@@ -117,15 +117,14 @@ Coder's current activity and usage. It may be necessary to increase the
 resources allocated to Coder's database. Alternatively, you can raise the
 configured threshold to a higher value (this will not address the root cause).
 
-<blockquote class="admonition tip">
-
-You can enable
-[detailed database metrics](../../reference/cli/server.md#--prometheus-collect-db-metrics)
-in Coder's Prometheus endpoint. If you have
-[tracing enabled](../../reference/cli/server.md#--trace), these traces may also
-contain useful information regarding Coder's database activity.
-
-</blockquote>
+> [!TIP]
+>
+> - You can enable
+>   [detailed database metrics](../../reference/cli/server.md#--prometheus-collect-db-metrics)
+>   in Coder's Prometheus endpoint.
+> - If you have [tracing enabled](../../reference/cli/server.md#--trace), these
+>   traces may also contain useful information regarding Coder's database
+>   activity.
 
 ## DERP
 
@@ -139,7 +138,7 @@ following:
 
 ### EDERP01
 
-#### DERP Node Uses Websocket
+_DERP Node Uses Websocket_
 
 **Problem:** When Coder attempts to establish a connection to one or more DERP
 servers, it sends a specific `Upgrade: derp` HTTP header. Some load balancers
@@ -150,19 +149,15 @@ This is not necessarily a fatal error, but a possible indication of a
 misconfigured reverse HTTP proxy. Additionally, while workspace users should
 still be able to reach their workspaces, connection performance may be degraded.
 
-<blockquote class="admonition note">
-
-**Note:** This may also be shown if you have
-[forced websocket connections for DERP](../../reference/cli/server.md#--derp-force-websockets).
-
-</blockquote>
+> **Note:** This may also be shown if you have
+> [forced websocket connections for DERP](../../reference/cli/server.md#--derp-force-websockets).
 
 **Solution:** ensure that any proxies you use allow connection upgrade with the
 `Upgrade: derp` header.
 
 ### EDERP02
 
-#### One or more DERP nodes are unhealthy
+_One or more DERP nodes are unhealthy_
 
 **Problem:** This is shown if Coder is unable to reach one or more configured
 DERP servers. Clients will fall back to use the remaining DERP servers, but
@@ -181,7 +176,7 @@ curl -v "https://coder.company.com/derp"
 
 ### ESTUN01
 
-#### No STUN servers available
+_No STUN servers available._
 
 **Problem:** This is shown if no STUN servers are available. Coder will use STUN
 to establish [direct connections](../networking/stun.md). Without at least one
@@ -194,7 +189,7 @@ configured port.
 
 ### ESTUN02
 
-#### STUN returned different addresses; you may be behind a hard NAT
+_STUN returned different addresses; you may be behind a hard NAT._
 
 **Problem:** This is a warning shown when multiple attempts to determine our
 public IP address/port via STUN resulted in different `ip:port` combinations.
@@ -223,7 +218,7 @@ message over the connection, and attempt to read back that same message.
 
 ### EWS01
 
-#### Failed to establish a WebSocket connection
+_Failed to establish a WebSocket connection_
 
 **Problem:** Coder was unable to establish a WebSocket connection over its own
 Access URL.
@@ -242,7 +237,7 @@ Access URL.
 
 ### EWS02
 
-#### Failed to echo a WebSocket message
+_Failed to echo a WebSocket message_
 
 **Problem:** Coder was able to establish a WebSocket connection, but was unable
 to write a message.
@@ -263,7 +258,7 @@ Coder will periodically query their availability and show their status here.
 
 ### EWP01
 
-#### Error Updating Workspace Proxy Health
+_Error Updating Workspace Proxy Health_
 
 **Problem:** Coder was unable to query the connected workspace proxies for their
 health status.
@@ -273,7 +268,7 @@ connectivity issue.
 
 ### EWP02
 
-#### Error Fetching Workspace Proxies
+_Error Fetching Workspace Proxies_
 
 **Problem:** Coder was unable to fetch the stored workspace proxy health data
 from the database.
@@ -283,7 +278,7 @@ issue with Coder's configured database.
 
 ### EWP04
 
-#### One or more Workspace Proxies Unhealthy
+_One or more Workspace Proxies Unhealthy_
 
 **Problem:** One or more workspace proxies are not reachable.
 
@@ -292,7 +287,7 @@ workspace proxies.
 
 ### EPD01
 
-#### No Provisioner Daemons Available
+_No Provisioner Daemons Available_
 
 **Problem:** No provisioner daemons are registered with Coder. No workspaces can
 be built until there is at least one provisioner daemon running.
@@ -305,16 +300,12 @@ that they are able to successfully connect to Coder. Otherwise, ensure
 [`--provisioner-daemons`](../../reference/cli/server.md#--provisioner-daemons)
 is set to a value greater than 0.
 
-<blockquote class="admonition note">
-
-**Note:** This may be a transient issue if you are currently in the process of
-updating your deployment.
-
-</blockquote>
+> Note: This may be a transient issue if you are currently in the process of
+> updating your deployment.
 
 ### EPD02
 
-#### Provisioner Daemon Version Mismatch
+_Provisioner Daemon Version Mismatch_
 
 **Problem:** One or more provisioner daemons are more than one major or minor
 version out of date with the main deployment. It is important that provisioner
@@ -324,16 +315,12 @@ of API incompatibility.
 **Solution:** Update the provisioner daemon to match the currently running
 version of Coder.
 
-<blockquote class="admonition note">
-
-**Note:** This may be a transient issue if you are currently in the process of
-updating your deployment.
-
-</blockquote>
+> Note: This may be a transient issue if you are currently in the process of
+> updating your deployment.
 
 ### EPD03
 
-#### Provisioner Daemon API Version Mismatch
+_Provisioner Daemon API Version Mismatch_
 
 **Problem:** One or more provisioner daemons are using APIs that are marked as
 deprecated. These deprecated APIs may be removed in a future release of Coder,
@@ -343,16 +330,12 @@ connect to Coder.
 **Solution:** Update the provisioner daemon to match the currently running
 version of Coder.
 
-<blockquote class="admonition note">
+> Note: This may be a transient issue if you are currently in the process of
+> updating your deployment.
 
-**Note:** This may be a transient issue if you are currently in the process of
-updating your deployment.
+## EUNKNOWN
 
-</blockquote>
-
-### EUNKNOWN
-
-#### Unknown Error
+_Unknown Error_
 
 **Problem:** This error is shown when an unexpected error occurred evaluating
 deployment health. It may resolve on its own.

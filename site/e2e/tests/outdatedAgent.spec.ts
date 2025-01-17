@@ -4,7 +4,6 @@ import {
 	createTemplate,
 	createWorkspace,
 	downloadCoderVersion,
-	login,
 	sshIntoWorkspace,
 	startAgentWithCommand,
 	stopAgent,
@@ -15,10 +14,7 @@ import { beforeCoderTest } from "../hooks";
 // we no longer support versions w/o DRPC
 const agentVersion = "v2.12.1";
 
-test.beforeEach(async ({ page }) => {
-	beforeCoderTest(page);
-	await login(page);
-});
+test.beforeEach(({ page }) => beforeCoderTest(page));
 
 test(`ssh with agent ${agentVersion}`, async ({ page }) => {
 	test.setTimeout(60_000);

@@ -9,7 +9,6 @@ import (
 
 	"github.com/coder/coder/v2/cli"
 	"github.com/coder/coder/v2/coderd/database/awsiamrds"
-	"github.com/coder/coder/v2/coderd/database/migrations"
 	"github.com/coder/coder/v2/coderd/database/pubsub"
 	"github.com/coder/coder/v2/testutil"
 )
@@ -33,7 +32,7 @@ func TestDriver(t *testing.T) {
 	sqlDriver, err := awsiamrds.Register(ctx, "postgres")
 	require.NoError(t, err)
 
-	db, err := cli.ConnectToPostgres(ctx, testutil.Logger(t), sqlDriver, url, migrations.Up)
+	db, err := cli.ConnectToPostgres(ctx, testutil.Logger(t), sqlDriver, url)
 	require.NoError(t, err)
 	defer func() {
 		_ = db.Close()

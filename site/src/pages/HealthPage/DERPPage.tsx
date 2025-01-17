@@ -5,7 +5,6 @@ import type {
 	HealthMessage,
 	HealthSeverity,
 	HealthcheckReport,
-	NetcheckReport,
 } from "api/typesGenerated";
 import { Alert } from "components/Alert/Alert";
 import type { FC } from "react";
@@ -25,7 +24,7 @@ import {
 import { DismissWarningButton } from "./DismissWarningButton";
 import { healthyColor } from "./healthyColor";
 
-const flags: BooleanKeys<NetcheckReport>[] = [
+const flags = [
 	"UDP",
 	"IPv6",
 	"IPv4",
@@ -40,14 +39,9 @@ const flags: BooleanKeys<NetcheckReport>[] = [
 	"PCP",
 ];
 
-type BooleanKeys<T> = {
-	[K in keyof T]: T[K] extends boolean | null ? K : never;
-}[keyof T];
-
 export const DERPPage: FC = () => {
 	const { derp } = useOutletContext<HealthcheckReport>();
 	const { netcheck, regions, netcheck_logs: logs } = derp;
-	const safeNetcheck = netcheck || ({} as NetcheckReport);
 	const theme = useTheme();
 
 	return (
@@ -81,7 +75,7 @@ export const DERPPage: FC = () => {
 					<SectionLabel>Flags</SectionLabel>
 					<div css={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
 						{flags.map((flag) => (
-							<BooleanPill key={flag} value={safeNetcheck[flag]}>
+							<BooleanPill key={flag} value={netcheck[flag]}>
 								{flag}
 							</BooleanPill>
 						))}
@@ -91,16 +85,11 @@ export const DERPPage: FC = () => {
 				<section>
 					<SectionLabel>Regions</SectionLabel>
 					<div css={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
-						{Object.values(regions!)
-							.filter((region) => {
-								// Values can technically be null
-								return region !== null;
-							})
+						{Object.values(regions)
 							.sort((a, b) => {
 								if (a.region && b.region) {
 									return a.region.RegionName.localeCompare(b.region.RegionName);
 								}
-								return 0;
 							})
 							.map(({ severity, region }) => {
 								return (
@@ -118,10 +107,10 @@ export const DERPPage: FC = () => {
 											/>
 										}
 										component={Link}
-										to={`/health/derp/regions/${region!.RegionID}`}
-										key={region!.RegionID}
+										to={`/health/derp/regions/${region.RegionID}`}
+										key={region.RegionID}
 									>
-										{region!.RegionName}
+										{region.RegionName}
 									</Button>
 								);
 							})}

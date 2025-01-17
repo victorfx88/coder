@@ -30,7 +30,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m, testutil.GoleakOptions...)
+	goleak.VerifyTestMain(m)
 }
 
 func closedWithin(c chan struct{}, d time.Duration) func() bool {
@@ -70,11 +70,8 @@ func TestProvisionerd(t *testing.T) {
 			close(done)
 		})
 		completeChan := make(chan struct{})
-		var completed sync.Once
 		closer := createProvisionerd(t, func(ctx context.Context) (proto.DRPCProvisionerDaemonClient, error) {
-			completed.Do(func() {
-				defer close(completeChan)
-			})
+			defer close(completeChan)
 			return nil, xerrors.New("an error")
 		}, provisionerd.LocalProvisioners{})
 		require.Condition(t, closedWithin(completeChan, testutil.WaitShort))

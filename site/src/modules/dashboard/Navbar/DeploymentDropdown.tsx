@@ -1,21 +1,21 @@
 import { type Interpolation, type Theme, css, useTheme } from "@emotion/react";
+import Button from "@mui/material/Button";
 import MenuItem from "@mui/material/MenuItem";
-import { Button } from "components/Button/Button";
-import { FeatureStageBadge } from "components/FeatureStageBadge/FeatureStageBadge";
+import { DropdownArrow } from "components/DropdownArrow/DropdownArrow";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 	usePopover,
-} from "components/deprecated/Popover/Popover";
-import { ChevronDownIcon } from "lucide-react";
-import { linkToAuditing } from "modules/navigation";
+} from "components/Popover/Popover";
+import { linkToAuditing, linkToUsers } from "modules/navigation";
 import type { FC } from "react";
 import { NavLink } from "react-router-dom";
 
 interface DeploymentDropdownProps {
 	canViewDeployment: boolean;
 	canViewOrganizations: boolean;
+	canViewAllUsers: boolean;
 	canViewAuditLog: boolean;
 	canViewHealth: boolean;
 }
@@ -23,6 +23,7 @@ interface DeploymentDropdownProps {
 export const DeploymentDropdown: FC<DeploymentDropdownProps> = ({
 	canViewDeployment,
 	canViewOrganizations,
+	canViewAllUsers,
 	canViewAuditLog,
 	canViewHealth,
 }) => {
@@ -32,6 +33,7 @@ export const DeploymentDropdown: FC<DeploymentDropdownProps> = ({
 		!canViewAuditLog &&
 		!canViewOrganizations &&
 		!canViewDeployment &&
+		!canViewAllUsers &&
 		!canViewHealth
 	) {
 		return null;
@@ -40,9 +42,17 @@ export const DeploymentDropdown: FC<DeploymentDropdownProps> = ({
 	return (
 		<Popover>
 			<PopoverTrigger>
-				<Button variant="outline" size="lg">
-					Admin settings
-					<ChevronDownIcon className="text-content-primary !size-icon-xs" />
+				<Button
+					size="small"
+					endIcon={
+						<DropdownArrow
+							color={theme.experimental.l2.fill.solid}
+							close={false}
+							margin={false}
+						/>
+					}
+				>
+					Administration
 				</Button>
 			</PopoverTrigger>
 
@@ -59,6 +69,7 @@ export const DeploymentDropdown: FC<DeploymentDropdownProps> = ({
 				<DeploymentDropdownContent
 					canViewDeployment={canViewDeployment}
 					canViewOrganizations={canViewOrganizations}
+					canViewAllUsers={canViewAllUsers}
 					canViewAuditLog={canViewAuditLog}
 					canViewHealth={canViewHealth}
 				/>
@@ -70,6 +81,7 @@ export const DeploymentDropdown: FC<DeploymentDropdownProps> = ({
 const DeploymentDropdownContent: FC<DeploymentDropdownProps> = ({
 	canViewDeployment,
 	canViewOrganizations,
+	canViewAllUsers,
 	canViewAuditLog,
 	canViewHealth,
 }) => {
@@ -86,7 +98,7 @@ const DeploymentDropdownContent: FC<DeploymentDropdownProps> = ({
 					css={styles.menuItem}
 					onClick={onPopoverClose}
 				>
-					Deployment
+					Settings
 				</MenuItem>
 			)}
 			{canViewOrganizations && (
@@ -97,7 +109,16 @@ const DeploymentDropdownContent: FC<DeploymentDropdownProps> = ({
 					onClick={onPopoverClose}
 				>
 					Organizations
-					<FeatureStageBadge contentType="beta" size="sm" showTooltip={false} />
+				</MenuItem>
+			)}
+			{canViewAllUsers && (
+				<MenuItem
+					component={NavLink}
+					to={linkToUsers}
+					css={styles.menuItem}
+					onClick={onPopoverClose}
+				>
+					Users
 				</MenuItem>
 			)}
 			{canViewAuditLog && (

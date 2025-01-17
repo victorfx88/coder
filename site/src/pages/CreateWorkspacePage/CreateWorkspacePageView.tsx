@@ -1,11 +1,11 @@
 import type { Interpolation, Theme } from "@emotion/react";
+import Button from "@mui/material/Button";
 import FormHelperText from "@mui/material/FormHelperText";
 import TextField from "@mui/material/TextField";
 import type * as TypesGen from "api/typesGenerated";
 import { Alert } from "components/Alert/Alert";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { Avatar } from "components/Avatar/Avatar";
-import { Button } from "components/Button/Button";
 import {
 	FormFields,
 	FormFooter,
@@ -20,7 +20,6 @@ import {
 } from "components/PageHeader/PageHeader";
 import { Pill } from "components/Pill/Pill";
 import { RichParameterInput } from "components/RichParameterInput/RichParameterInput";
-import { Spinner } from "components/Spinner/Spinner";
 import { Stack } from "components/Stack/Stack";
 import { UserAutocomplete } from "components/UserAutocomplete/UserAutocomplete";
 import { type FormikContextType, useFormik } from "formik";
@@ -147,20 +146,13 @@ export const CreateWorkspacePageView: FC<CreateWorkspacePageViewProps> = ({
 
 	return (
 		<Margins size="medium">
-			<PageHeader
-				actions={
-					<Button size="sm" variant="outline" onClick={onCancel}>
-						Cancel
-					</Button>
-				}
-			>
-				<Stack direction="row">
-					<Avatar
-						variant="icon"
-						size="lg"
-						src={template.icon}
-						fallback={template.name}
-					/>
+			<PageHeader actions={<Button onClick={onCancel}>Cancel</Button>}>
+				<Stack direction="row" spacing={3} alignItems="center">
+					{template.icon !== "" ? (
+						<Avatar size="xl" src={template.icon} variant="square" fitImage />
+					) : (
+						<Avatar size="xl">{template.name}</Avatar>
+					)}
 
 					<div>
 						<PageHeaderTitle>
@@ -194,7 +186,7 @@ export const CreateWorkspacePageView: FC<CreateWorkspacePageViewProps> = ({
 					title="General"
 					description={
 						permissions.createWorkspaceForUser
-							? "The name of the workspace and its owner. Only admins can create workspaces for other users."
+							? "The name of the workspace and its owner. Only admins can create workspace for other users."
 							: "The name of your new workspace."
 					}
 				>
@@ -225,8 +217,7 @@ export const CreateWorkspacePageView: FC<CreateWorkspacePageViewProps> = ({
 							<FormHelperText data-chromatic="ignore">
 								Need a suggestion?{" "}
 								<Button
-									variant="subtle"
-									size="sm"
+									variant="text"
 									css={styles.nameSuggestion}
 									onClick={async () => {
 										await form.setFieldValue("name", suggestedName);
@@ -314,18 +305,12 @@ export const CreateWorkspacePageView: FC<CreateWorkspacePageViewProps> = ({
 					</FormSection>
 				)}
 
-				<FormFooter>
-					<Button onClick={onCancel} variant="outline">
-						Cancel
-					</Button>
-					<Button
-						type="submit"
-						disabled={creatingWorkspace || !hasAllRequiredExternalAuth}
-					>
-						<Spinner loading={creatingWorkspace} />
-						Create workspace
-					</Button>
-				</FormFooter>
+				<FormFooter
+					onCancel={onCancel}
+					isLoading={creatingWorkspace}
+					submitDisabled={!hasAllRequiredExternalAuth}
+					submitLabel="Create Workspace"
+				/>
 			</HorizontalForm>
 		</Margins>
 	);

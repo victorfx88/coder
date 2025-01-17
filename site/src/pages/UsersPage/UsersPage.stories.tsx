@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { screen, spyOn, userEvent, within } from "@storybook/test";
+import { spyOn, userEvent, within } from "@storybook/test";
 import { API } from "api/api";
 import { deploymentConfigQueryKey } from "api/queries/deployment";
 import { groupsQueryKey } from "api/queries/groups";
@@ -368,8 +368,12 @@ export const UpdateUserRoleSuccess: Story = {
 		});
 
 		await user.click(within(userRow).getByLabelText("Edit user roles"));
-		await user.click(screen.getByLabelText("Auditor", { exact: false }));
-		await screen.findByText("Successfully updated the user roles.");
+		await user.click(
+			within(userRow).getByLabelText("Auditor", { exact: false }),
+		);
+		await within(document.body).findByText(
+			"Successfully updated the user roles.",
+		);
 	},
 };
 
@@ -384,8 +388,10 @@ export const UpdateUserRoleError: Story = {
 		spyOn(API, "updateUserRoles").mockRejectedValue({});
 
 		await user.click(within(userRow).getByLabelText("Edit user roles"));
-		await user.click(screen.getByLabelText("Auditor", { exact: false }));
-		await screen.findByText("Error on updating the user roles.");
+		await user.click(
+			within(userRow).getByLabelText("Auditor", { exact: false }),
+		);
+		await within(document.body).findByText("Error on updating the user roles.");
 	},
 };
 

@@ -318,7 +318,7 @@ func ReloadBuiltinRoles(opts *RoleOptions) {
 		Identifier:  RoleTemplateAdmin(),
 		DisplayName: "Template Admin",
 		Site: Permissions(map[string][]policy.Action{
-			ResourceTemplate.Type: ResourceTemplate.AvailableActions(),
+			ResourceTemplate.Type: {policy.ActionCreate, policy.ActionRead, policy.ActionUpdate, policy.ActionDelete, policy.ActionViewInsights},
 			// CRUD all files, even those they did not upload.
 			ResourceFile.Type:      {policy.ActionCreate, policy.ActionRead},
 			ResourceWorkspace.Type: {policy.ActionRead},
@@ -476,7 +476,7 @@ func ReloadBuiltinRoles(opts *RoleOptions) {
 				Site:        []Permission{},
 				Org: map[string][]Permission{
 					organizationID.String(): Permissions(map[string][]policy.Action{
-						ResourceTemplate.Type:  ResourceTemplate.AvailableActions(),
+						ResourceTemplate.Type:  {policy.ActionCreate, policy.ActionRead, policy.ActionUpdate, policy.ActionDelete, policy.ActionViewInsights},
 						ResourceFile.Type:      {policy.ActionCreate, policy.ActionRead},
 						ResourceWorkspace.Type: {policy.ActionRead},
 						// Assigning template perms requires this permission.

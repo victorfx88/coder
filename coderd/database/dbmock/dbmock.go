@@ -145,20 +145,6 @@ func (mr *MockStoreMockRecorder) BatchUpdateWorkspaceLastUsedAt(arg0, arg1 any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchUpdateWorkspaceLastUsedAt", reflect.TypeOf((*MockStore)(nil).BatchUpdateWorkspaceLastUsedAt), arg0, arg1)
 }
 
-// BatchUpdateWorkspaceNextStartAt mocks base method.
-func (m *MockStore) BatchUpdateWorkspaceNextStartAt(arg0 context.Context, arg1 database.BatchUpdateWorkspaceNextStartAtParams) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "BatchUpdateWorkspaceNextStartAt", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// BatchUpdateWorkspaceNextStartAt indicates an expected call of BatchUpdateWorkspaceNextStartAt.
-func (mr *MockStoreMockRecorder) BatchUpdateWorkspaceNextStartAt(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BatchUpdateWorkspaceNextStartAt", reflect.TypeOf((*MockStore)(nil).BatchUpdateWorkspaceNextStartAt), arg0, arg1)
-}
-
 // BulkMarkNotificationMessagesFailed mocks base method.
 func (m *MockStore) BulkMarkNotificationMessagesFailed(arg0 context.Context, arg1 database.BulkMarkNotificationMessagesFailedParams) (int64, error) {
 	m.ctrl.T.Helper()
@@ -726,20 +712,6 @@ func (m *MockStore) DeleteWorkspaceAgentPortSharesByTemplate(arg0 context.Contex
 func (mr *MockStoreMockRecorder) DeleteWorkspaceAgentPortSharesByTemplate(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteWorkspaceAgentPortSharesByTemplate", reflect.TypeOf((*MockStore)(nil).DeleteWorkspaceAgentPortSharesByTemplate), arg0, arg1)
-}
-
-// DisableForeignKeysAndTriggers mocks base method.
-func (m *MockStore) DisableForeignKeysAndTriggers(arg0 context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DisableForeignKeysAndTriggers", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// DisableForeignKeysAndTriggers indicates an expected call of DisableForeignKeysAndTriggers.
-func (mr *MockStoreMockRecorder) DisableForeignKeysAndTriggers(arg0 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DisableForeignKeysAndTriggers", reflect.TypeOf((*MockStore)(nil).DisableForeignKeysAndTriggers), arg0)
 }
 
 // EnqueueNotificationMessage mocks base method.
@@ -2030,21 +2002,6 @@ func (mr *MockStoreMockRecorder) GetProvisionerDaemonsByOrganization(arg0, arg1 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProvisionerDaemonsByOrganization", reflect.TypeOf((*MockStore)(nil).GetProvisionerDaemonsByOrganization), arg0, arg1)
 }
 
-// GetProvisionerDaemonsWithStatusByOrganization mocks base method.
-func (m *MockStore) GetProvisionerDaemonsWithStatusByOrganization(arg0 context.Context, arg1 database.GetProvisionerDaemonsWithStatusByOrganizationParams) ([]database.GetProvisionerDaemonsWithStatusByOrganizationRow, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetProvisionerDaemonsWithStatusByOrganization", arg0, arg1)
-	ret0, _ := ret[0].([]database.GetProvisionerDaemonsWithStatusByOrganizationRow)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetProvisionerDaemonsWithStatusByOrganization indicates an expected call of GetProvisionerDaemonsWithStatusByOrganization.
-func (mr *MockStoreMockRecorder) GetProvisionerDaemonsWithStatusByOrganization(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetProvisionerDaemonsWithStatusByOrganization", reflect.TypeOf((*MockStore)(nil).GetProvisionerDaemonsWithStatusByOrganization), arg0, arg1)
-}
-
 // GetProvisionerJobByID mocks base method.
 func (m *MockStore) GetProvisionerJobByID(arg0 context.Context, arg1 uuid.UUID) (database.ProvisionerJob, error) {
 	m.ctrl.T.Helper()
@@ -2840,21 +2797,6 @@ func (mr *MockStoreMockRecorder) GetUserNotificationPreferences(arg0, arg1 any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserNotificationPreferences", reflect.TypeOf((*MockStore)(nil).GetUserNotificationPreferences), arg0, arg1)
 }
 
-// GetUserStatusCounts mocks base method.
-func (m *MockStore) GetUserStatusCounts(arg0 context.Context, arg1 database.GetUserStatusCountsParams) ([]database.GetUserStatusCountsRow, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUserStatusCounts", arg0, arg1)
-	ret0, _ := ret[0].([]database.GetUserStatusCountsRow)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetUserStatusCounts indicates an expected call of GetUserStatusCounts.
-func (mr *MockStoreMockRecorder) GetUserStatusCounts(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUserStatusCounts", reflect.TypeOf((*MockStore)(nil).GetUserStatusCounts), arg0, arg1)
-}
-
 // GetUserWorkspaceBuildParameters mocks base method.
 func (m *MockStore) GetUserWorkspaceBuildParameters(arg0 context.Context, arg1 database.GetUserWorkspaceBuildParametersParams) ([]database.GetUserWorkspaceBuildParametersRow, error) {
 	m.ctrl.T.Helper()
@@ -3603,21 +3545,6 @@ func (m *MockStore) GetWorkspacesAndAgentsByOwnerID(arg0 context.Context, arg1 u
 func (mr *MockStoreMockRecorder) GetWorkspacesAndAgentsByOwnerID(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkspacesAndAgentsByOwnerID", reflect.TypeOf((*MockStore)(nil).GetWorkspacesAndAgentsByOwnerID), arg0, arg1)
-}
-
-// GetWorkspacesByTemplateID mocks base method.
-func (m *MockStore) GetWorkspacesByTemplateID(arg0 context.Context, arg1 uuid.UUID) ([]database.WorkspaceTable, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetWorkspacesByTemplateID", arg0, arg1)
-	ret0, _ := ret[0].([]database.WorkspaceTable)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetWorkspacesByTemplateID indicates an expected call of GetWorkspacesByTemplateID.
-func (mr *MockStoreMockRecorder) GetWorkspacesByTemplateID(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWorkspacesByTemplateID", reflect.TypeOf((*MockStore)(nil).GetWorkspacesByTemplateID), arg0, arg1)
 }
 
 // GetWorkspacesEligibleForTransition mocks base method.
@@ -5473,20 +5400,6 @@ func (mr *MockStoreMockRecorder) UpdateWorkspaceLastUsedAt(arg0, arg1 any) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateWorkspaceLastUsedAt", reflect.TypeOf((*MockStore)(nil).UpdateWorkspaceLastUsedAt), arg0, arg1)
 }
 
-// UpdateWorkspaceNextStartAt mocks base method.
-func (m *MockStore) UpdateWorkspaceNextStartAt(arg0 context.Context, arg1 database.UpdateWorkspaceNextStartAtParams) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateWorkspaceNextStartAt", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateWorkspaceNextStartAt indicates an expected call of UpdateWorkspaceNextStartAt.
-func (mr *MockStoreMockRecorder) UpdateWorkspaceNextStartAt(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateWorkspaceNextStartAt", reflect.TypeOf((*MockStore)(nil).UpdateWorkspaceNextStartAt), arg0, arg1)
-}
-
 // UpdateWorkspaceProxy mocks base method.
 func (m *MockStore) UpdateWorkspaceProxy(arg0 context.Context, arg1 database.UpdateWorkspaceProxyParams) (database.WorkspaceProxy, error) {
 	m.ctrl.T.Helper()
@@ -5543,20 +5456,6 @@ func (m *MockStore) UpdateWorkspacesDormantDeletingAtByTemplateID(arg0 context.C
 func (mr *MockStoreMockRecorder) UpdateWorkspacesDormantDeletingAtByTemplateID(arg0, arg1 any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateWorkspacesDormantDeletingAtByTemplateID", reflect.TypeOf((*MockStore)(nil).UpdateWorkspacesDormantDeletingAtByTemplateID), arg0, arg1)
-}
-
-// UpdateWorkspacesTTLByTemplateID mocks base method.
-func (m *MockStore) UpdateWorkspacesTTLByTemplateID(arg0 context.Context, arg1 database.UpdateWorkspacesTTLByTemplateIDParams) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateWorkspacesTTLByTemplateID", arg0, arg1)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// UpdateWorkspacesTTLByTemplateID indicates an expected call of UpdateWorkspacesTTLByTemplateID.
-func (mr *MockStoreMockRecorder) UpdateWorkspacesTTLByTemplateID(arg0, arg1 any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateWorkspacesTTLByTemplateID", reflect.TypeOf((*MockStore)(nil).UpdateWorkspacesTTLByTemplateID), arg0, arg1)
 }
 
 // UpsertAnnouncementBanners mocks base method.

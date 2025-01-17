@@ -1,7 +1,7 @@
 coder v0.0.0-devel
 
 USAGE:
-  coder create [flags] [workspace]
+  coder create [flags] [name]
 
   Create a workspace
 

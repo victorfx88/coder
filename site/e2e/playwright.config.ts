@@ -13,6 +13,9 @@ import {
 
 export const wsEndpoint = process.env.CODER_E2E_WS_ENDPOINT;
 
+// This is where auth cookies are stored!
+export const storageState = path.join(__dirname, ".auth.json");
+
 // If running terraform tests, verify the requirements exist in the
 // environment.
 //
@@ -55,12 +58,13 @@ export default defineConfig({
 	projects: [
 		{
 			name: "testsSetup",
-			testMatch: /setup\/.*\.spec\.ts/,
+			testMatch: /global.setup\.ts/,
 		},
 		{
 			name: "tests",
-			testMatch: /tests\/.*\.spec\.ts/,
+			testMatch: /.*\.spec\.ts/,
 			dependencies: ["testsSetup"],
+			use: { storageState },
 			timeout: 30_000,
 		},
 	],

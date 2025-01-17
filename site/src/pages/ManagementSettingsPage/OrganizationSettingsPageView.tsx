@@ -1,4 +1,5 @@
 import type { Interpolation, Theme } from "@emotion/react";
+import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import { isApiValidationError } from "api/errors";
 import type {
@@ -6,7 +7,6 @@ import type {
 	UpdateOrganizationRequest,
 } from "api/typesGenerated";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
-import { Button } from "components/Button/Button";
 import { DeleteDialog } from "components/Dialogs/DeleteDialog/DeleteDialog";
 import {
 	FormFields,
@@ -16,7 +16,6 @@ import {
 } from "components/Form/Form";
 import { IconField } from "components/IconField/IconField";
 import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
-import { Spinner } from "components/Spinner/Spinner";
 import { useFormik } from "formik";
 import { type FC, useState } from "react";
 import {
@@ -116,13 +115,7 @@ export const OrganizationSettingsPageView: FC<
 						</FormFields>
 					</fieldset>
 				</FormSection>
-
-				<FormFooter>
-					<Button type="submit" disabled={form.isSubmitting}>
-						<Spinner loading={form.isSubmitting} />
-						Save
-					</Button>
-				</FormFooter>
+				<FormFooter isLoading={form.isSubmitting} />
 			</HorizontalForm>
 
 			{!organization.is_default && (
@@ -133,7 +126,11 @@ export const OrganizationSettingsPageView: FC<
 					>
 						<div css={styles.dangerSettings}>
 							<span>Deleting an organization is irreversible.</span>
-							<Button variant="destructive" onClick={() => setIsDeleting(true)}>
+							<Button
+								css={styles.dangerButton}
+								color="warning"
+								onClick={() => setIsDeleting(true)}
+							>
 								Delete this organization
 							</Button>
 						</div>

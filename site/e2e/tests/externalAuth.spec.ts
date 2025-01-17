@@ -8,7 +8,6 @@ import {
 	createTemplate,
 	createWorkspace,
 	echoResponsesWithExternalAuth,
-	login,
 } from "../helpers";
 import { beforeCoderTest, resetExternalAuthKey } from "../hooks";
 
@@ -32,11 +31,9 @@ test.beforeAll(async ({ baseURL }) => {
 	});
 });
 
-test.beforeEach(async ({ context, page }) => {
-	beforeCoderTest(page);
-	await login(page);
-	await resetExternalAuthKey(context);
-});
+test.beforeEach(async ({ context }) => resetExternalAuthKey(context));
+
+test.beforeEach(({ page }) => beforeCoderTest(page));
 
 // Ensures that a Git auth provider with the device flow functions and completes!
 test("external auth device", async ({ page }) => {
@@ -104,7 +101,7 @@ test("successful external auth from workspace", async ({ page }) => {
 		]),
 	);
 
-	await createWorkspace(page, templateName, { useExternalAuth: true });
+	await createWorkspace(page, templateName, [], [], gitAuth.webProvider);
 });
 
 const ghUser: Endpoints["GET /user"]["response"]["data"] = {

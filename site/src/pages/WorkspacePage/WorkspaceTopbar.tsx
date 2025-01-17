@@ -6,8 +6,8 @@ import Link from "@mui/material/Link";
 import Tooltip from "@mui/material/Tooltip";
 import { workspaceQuota } from "api/queries/workspaceQuota";
 import type * as TypesGen from "api/typesGenerated";
-import { Avatar } from "components/Avatar/Avatar";
-import { AvatarData } from "components/Avatar/AvatarData";
+import { ExternalAvatar } from "components/Avatar/Avatar";
+import { AvatarData } from "components/AvatarData/AvatarData";
 import {
 	Topbar,
 	TopbarAvatar,
@@ -17,13 +17,15 @@ import {
 	TopbarIconButton,
 } from "components/FullPageLayout/Topbar";
 import { HelpTooltipContent } from "components/HelpTooltip/HelpTooltip";
-import { Popover, PopoverTrigger } from "components/deprecated/Popover/Popover";
+import { Popover, PopoverTrigger } from "components/Popover/Popover";
+import { UserAvatar } from "components/UserAvatar/UserAvatar";
 import { useDashboard } from "modules/dashboard/useDashboard";
 import { linkToTemplate, useLinks } from "modules/navigation";
 import { WorkspaceStatusBadge } from "modules/workspaces/WorkspaceStatusBadge/WorkspaceStatusBadge";
 import type { FC } from "react";
 import { useQuery } from "react-query";
 import { Link as RouterLink } from "react-router-dom";
+import { isEmojiUrl } from "utils/appearance";
 import { displayDormantDeletion } from "utils/dormant";
 import { WorkspaceActions } from "./WorkspaceActions/WorkspaceActions";
 import { WorkspaceNotifications } from "./WorkspaceNotifications/WorkspaceNotifications";
@@ -232,7 +234,9 @@ export const WorkspaceTopbar: FC<WorkspaceProps> = ({
 					<WorkspaceScheduleControls
 						workspace={workspace}
 						template={template}
-						canUpdateSchedule={canUpdateWorkspace}
+						canUpdateSchedule={
+							canUpdateWorkspace && template.allow_user_autostop
+						}
 					/>
 					<WorkspaceNotifications
 						workspace={workspace}
@@ -283,7 +287,11 @@ const OwnerBreadcrumb: FC<OwnerBreadcrumbProps> = ({
 		<Popover mode="hover">
 			<PopoverTrigger>
 				<span css={styles.breadcrumbSegment}>
-					<Avatar size="sm" fallback={ownerName} src={ownerAvatarUrl} />
+					<UserAvatar
+						size="xs"
+						username={ownerName}
+						avatarURL={ownerAvatarUrl}
+					/>
 					<span css={styles.breadcrumbText}>{ownerName}</span>
 				</span>
 			</PopoverTrigger>
@@ -313,12 +321,7 @@ const OrganizationBreadcrumb: FC<OrganizationBreadcrumbProps> = ({
 		<Popover mode="hover">
 			<PopoverTrigger>
 				<span css={styles.breadcrumbSegment}>
-					<Avatar
-						size="sm"
-						variant="icon"
-						src={orgIconUrl}
-						fallback={orgName}
-					/>
+					<UserAvatar size="xs" src={orgIconUrl ?? ""} username={orgName} />
 					<span css={styles.breadcrumbText}>{orgName}</span>
 				</span>
 			</PopoverTrigger>
@@ -344,7 +347,12 @@ const OrganizationBreadcrumb: FC<OrganizationBreadcrumbProps> = ({
 					subtitle="Organization"
 					avatar={
 						orgIconUrl && (
-							<Avatar variant="icon" src={orgIconUrl} fallback={orgName} />
+							<ExternalAvatar
+								src={orgIconUrl}
+								title={orgName}
+								variant={isEmojiUrl(orgIconUrl) ? "square" : "circular"}
+								fitImage
+							/>
 						)
 					}
 					imgFallbackText={orgName}
@@ -375,7 +383,7 @@ const WorkspaceBreadcrumb: FC<WorkspaceBreadcrumbProps> = ({
 		<Popover mode="hover">
 			<PopoverTrigger>
 				<span css={styles.breadcrumbSegment}>
-					<TopbarAvatar src={templateIconUrl} fallback={templateDisplayName} />
+					<TopbarAvatar src={templateIconUrl} />
 					<span css={[styles.breadcrumbText, { fontWeight: 500 }]}>
 						{workspaceName}
 					</span>
@@ -406,10 +414,11 @@ const WorkspaceBreadcrumb: FC<WorkspaceBreadcrumbProps> = ({
 						</Link>
 					}
 					avatar={
-						<Avatar
-							variant="icon"
+						<ExternalAvatar
 							src={templateIconUrl}
-							fallback={templateDisplayName}
+							title={workspaceName}
+							variant={isEmojiUrl(templateIconUrl) ? "square" : "circular"}
+							fitImage
 						/>
 					}
 					imgFallbackText={templateDisplayName}
@@ -433,7 +442,6 @@ const styles = {
 
 	breadcrumbSegment: {
 		display: "flex",
-		alignItems: "center",
 		flexFlow: "row nowrap",
 		gap: "8px",
 		maxWidth: "160px",

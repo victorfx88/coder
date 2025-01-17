@@ -14,7 +14,6 @@ import (
 
 	"cdr.dev/slog"
 
-	"github.com/coder/coder/v2/agent/agentexec"
 	"github.com/coder/coder/v2/pty"
 )
 
@@ -40,7 +39,7 @@ type bufferedReconnectingPTY struct {
 
 // newBuffered starts the buffered pty.  If the context ends the process will be
 // killed.
-func newBuffered(ctx context.Context, logger slog.Logger, execer agentexec.Execer, cmd *pty.Cmd, options *Options) *bufferedReconnectingPTY {
+func newBuffered(ctx context.Context, cmd *pty.Cmd, options *Options, logger slog.Logger) *bufferedReconnectingPTY {
 	rpty := &bufferedReconnectingPTY{
 		activeConns: map[string]net.Conn{},
 		command:     cmd,
@@ -59,7 +58,7 @@ func newBuffered(ctx context.Context, logger slog.Logger, execer agentexec.Exece
 
 	// Add TERM then start the command with a pty.  pty.Cmd duplicates Path as the
 	// first argument so remove it.
-	cmdWithEnv := execer.PTYCommandContext(ctx, cmd.Path, cmd.Args[1:]...)
+	cmdWithEnv := pty.CommandContext(ctx, cmd.Path, cmd.Args[1:]...)
 	cmdWithEnv.Env = append(rpty.command.Env, "TERM=xterm-256color")
 	cmdWithEnv.Dir = rpty.command.Dir
 	ptty, process, err := pty.Start(cmdWithEnv)

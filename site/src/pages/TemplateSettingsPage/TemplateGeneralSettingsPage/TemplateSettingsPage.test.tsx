@@ -2,6 +2,7 @@ import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { API, withDefaultFeatures } from "api/api";
 import type { Template, UpdateTemplateMeta } from "api/typesGenerated";
+import { Language as FooterFormLanguage } from "components/FormFooter/FormFooter";
 import { http, HttpResponse } from "msw";
 import {
 	MockEntitlements,
@@ -98,7 +99,9 @@ const fillAndSubmitForm = async ({
 		await userEvent.click(allowCancelJobsField);
 	}
 
-	const submitButton = await screen.findByText(/save/i);
+	const submitButton = await screen.findByText(
+		FooterFormLanguage.defaultSubmitLabel,
+	);
 	await userEvent.click(submitButton);
 };
 
@@ -171,7 +174,7 @@ describe("TemplateSettingsPage", () => {
 			const deprecationMessage = "This template is deprecated";
 
 			await renderTemplateSettingsPage();
-			await deprecateTemplate(deprecationMessage);
+			await deprecateTemplate(MockTemplate, deprecationMessage);
 
 			const [templateId, data] = updateTemplateMetaSpy.mock.calls[0];
 
@@ -195,7 +198,10 @@ describe("TemplateSettingsPage", () => {
 			const updateTemplateMetaSpy = jest.spyOn(API, "updateTemplateMeta");
 
 			await renderTemplateSettingsPage();
-			await deprecateTemplate("This template should not be able to deprecate");
+			await deprecateTemplate(
+				MockTemplate,
+				"This template should not be able to deprecate",
+			);
 
 			const [templateId, data] = updateTemplateMetaSpy.mock.calls[0];
 
@@ -207,9 +213,12 @@ describe("TemplateSettingsPage", () => {
 	});
 });
 
-async function deprecateTemplate(message: string) {
+async function deprecateTemplate(template: Template, message: string) {
 	const deprecationField = screen.getByLabelText("Deprecation Message");
 	await userEvent.type(deprecationField, message);
-	const submitButton = await screen.findByRole("button", { name: /save/i });
+
+	const submitButton = await screen.findByText(
+		FooterFormLanguage.defaultSubmitLabel,
+	);
 	await userEvent.click(submitButton);
 }

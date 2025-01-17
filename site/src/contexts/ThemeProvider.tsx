@@ -60,6 +60,7 @@ export const ThemeProvider: FC<PropsWithChildren> = ({ children }) => {
 
 	useEffect(() => {
 		const root = document.documentElement;
+
 		if (themePreference === "auto") {
 			root.classList.add(preferredColorScheme);
 		} else {

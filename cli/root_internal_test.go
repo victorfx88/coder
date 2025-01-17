@@ -19,7 +19,6 @@ import (
 	"github.com/coder/coder/v2/cli/cliui"
 	"github.com/coder/coder/v2/cli/telemetry"
 	"github.com/coder/coder/v2/codersdk"
-	"github.com/coder/coder/v2/testutil"
 	"github.com/coder/pretty"
 	"github.com/coder/serpent"
 )
@@ -30,7 +29,15 @@ func TestMain(m *testing.M) {
 		// See: https://github.com/coder/coder/issues/8954
 		os.Exit(m.Run())
 	}
-	goleak.VerifyTestMain(m, testutil.GoleakOptions...)
+	goleak.VerifyTestMain(m,
+		// The lumberjack library is used by by agent and seems to leave
+		// goroutines after Close(), fails TestGitSSH tests.
+		// https://github.com/natefinch/lumberjack/pull/100
+		goleak.IgnoreTopFunction("gopkg.in/natefinch/lumberjack%2ev2.(*Logger).millRun"),
+		goleak.IgnoreTopFunction("gopkg.in/natefinch/lumberjack%2ev2.(*Logger).mill.func1"),
+		// The pq library appears to leave around a goroutine after Close().
+		goleak.IgnoreTopFunction("github.com/lib/pq.NewDialListener"),
+	)
 }
 
 func Test_formatExamples(t *testing.T) {

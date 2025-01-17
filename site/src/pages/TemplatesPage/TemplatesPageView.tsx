@@ -1,6 +1,7 @@
 import type { Interpolation, Theme } from "@emotion/react";
+import AddIcon from "@mui/icons-material/AddOutlined";
 import ArrowForwardOutlined from "@mui/icons-material/ArrowForwardOutlined";
-import MuiButton from "@mui/material/Button";
+import Button from "@mui/material/Button";
 import Skeleton from "@mui/material/Skeleton";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -11,11 +12,10 @@ import TableRow from "@mui/material/TableRow";
 import { hasError, isApiValidationError } from "api/errors";
 import type { Template, TemplateExample } from "api/typesGenerated";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
-import { Avatar } from "components/Avatar/Avatar";
-import { AvatarData } from "components/Avatar/AvatarData";
-import { AvatarDataSkeleton } from "components/Avatar/AvatarDataSkeleton";
+import { ExternalAvatar } from "components/Avatar/Avatar";
+import { AvatarData } from "components/AvatarData/AvatarData";
+import { AvatarDataSkeleton } from "components/AvatarData/AvatarDataSkeleton";
 import { DeprecatedBadge } from "components/Badges/Badges";
-import { Button } from "components/Button/Button";
 import type { useFilter } from "components/Filter/Filter";
 import {
 	HelpTooltip,
@@ -38,10 +38,9 @@ import {
 	TableRowSkeleton,
 } from "components/TableLoader/TableLoader";
 import { useClickableTableRow } from "hooks/useClickableTableRow";
-import { PlusIcon } from "lucide-react";
 import { linkToTemplate, useLinks } from "modules/navigation";
 import type { FC } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { createDayString } from "utils/createDayString";
 import { docs } from "utils/docs";
 import {
@@ -111,14 +110,16 @@ const TemplateRow: FC<TemplateRowProps> = ({ showOrganizations, template }) => {
 		>
 			<TableCell>
 				<AvatarData
-					title={template.display_name || template.name}
+					title={
+						template.display_name.length > 0
+							? template.display_name
+							: template.name
+					}
 					subtitle={template.description}
 					avatar={
-						<Avatar
-							variant="icon"
-							src={template.icon}
-							fallback={template.display_name || template.name}
-						/>
+						hasIcon && (
+							<ExternalAvatar variant="square" fitImage src={template.icon} />
+						)
 					}
 				/>
 			</TableCell>
@@ -155,7 +156,7 @@ const TemplateRow: FC<TemplateRowProps> = ({ showOrganizations, template }) => {
 				{template.deprecated ? (
 					<DeprecatedBadge />
 				) : (
-					<MuiButton
+					<Button
 						size="small"
 						css={styles.actionButton}
 						className="actionButton"
@@ -167,7 +168,7 @@ const TemplateRow: FC<TemplateRowProps> = ({ showOrganizations, template }) => {
 						}}
 					>
 						Create Workspace
-					</MuiButton>
+					</Button>
 				)}
 			</TableCell>
 		</TableRow>
@@ -196,11 +197,14 @@ export const TemplatesPageView: FC<TemplatesPageViewProps> = ({
 	const navigate = useNavigate();
 
 	const createTemplateAction = showOrganizations ? (
-		<Button asChild size="lg">
-			<Link to="/starter-templates">
-				<PlusIcon />
-				New template
-			</Link>
+		<Button
+			startIcon={<AddIcon />}
+			variant="contained"
+			onClick={() => {
+				navigate("/starter-templates");
+			}}
+		>
+			Create Template
 		</Button>
 	) : (
 		<CreateTemplateButton onNavigate={navigate} />

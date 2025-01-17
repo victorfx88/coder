@@ -6,7 +6,6 @@ import NotificationsIcon from "@mui/icons-material/NotificationsNoneOutlined";
 import AccountIcon from "@mui/icons-material/Person";
 import VpnKeyOutlined from "@mui/icons-material/VpnKeyOutlined";
 import type { User } from "api/typesGenerated";
-import { Avatar } from "components/Avatar/Avatar";
 import { FeatureStageBadge } from "components/FeatureStageBadge/FeatureStageBadge";
 import { GitIcon } from "components/Icons/GitIcon";
 import {
@@ -14,6 +13,7 @@ import {
 	SidebarHeader,
 	SidebarNavItem,
 } from "components/Sidebar/Sidebar";
+import { UserAvatar } from "components/UserAvatar/UserAvatar";
 import { useDashboard } from "modules/dashboard/useDashboard";
 import type { FC } from "react";
 
@@ -29,7 +29,9 @@ export const Sidebar: FC<SidebarProps> = ({ user }) => {
 	return (
 		<BaseSidebar>
 			<SidebarHeader
-				avatar={<Avatar fallback={user.username} src={user.avatar_url} />}
+				avatar={
+					<UserAvatar username={user.username} avatarURL={user.avatar_url} />
+				}
 				title={user.username}
 				subtitle={user.email}
 			/>

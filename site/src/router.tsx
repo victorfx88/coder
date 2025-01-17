@@ -1,4 +1,3 @@
-import { GlobalErrorBoundary } from "components/ErrorBoundary/GlobalErrorBoundary";
 import { TemplateRedirectController } from "pages/TemplatePage/TemplateRedirectController";
 import { Suspense, lazy } from "react";
 import {
@@ -28,21 +27,14 @@ import WorkspacesPage from "./pages/WorkspacesPage/WorkspacesPage";
 // - Pages that are secondary, not in the main navigation or not usually accessed
 // - Pages that use heavy dependencies like charts or time libraries
 const NotFoundPage = lazy(() => import("./pages/404Page/404Page"));
-const DeploymentSettingsLayout = lazy(
-	() => import("./modules/management/DeploymentSettingsLayout"),
+const ManagementSettingsLayout = lazy(
+	() => import("./modules/management/ManagementSettingsLayout"),
 );
 const DeploymentSettingsProvider = lazy(
 	() => import("./modules/management/DeploymentSettingsProvider"),
 );
-const OrganizationSidebarLayout = lazy(
-	() => import("./modules/management/OrganizationSidebarLayout"),
-);
-const OrganizationSettingsLayout = lazy(
-	() => import("./modules/management/OrganizationSettingsLayout"),
-);
-const CliAuthPage = lazy(() => import("./pages/CliAuthPage/CliAuthPage"));
-const CliInstallPage = lazy(
-	() => import("./pages/CliInstallPage/CliInstallPage"),
+const CliAuthenticationPage = lazy(
+	() => import("./pages/CliAuthPage/CliAuthPage"),
 );
 const AccountPage = lazy(
 	() => import("./pages/UserSettingsPage/AccountPage/AccountPage"),
@@ -309,9 +301,6 @@ const RequestOTPPage = lazy(
 const ChangePasswordPage = lazy(
 	() => import("./pages/ResetPasswordPage/ChangePasswordPage"),
 );
-const IdpOrgSyncPage = lazy(
-	() => import("./pages/DeploymentSettingsPage/IdpOrgSyncPage/IdpOrgSyncPage"),
-);
 
 const RoutesWithSuspense = () => {
 	return (
@@ -370,10 +359,7 @@ const groupsRouter = () => {
 
 export const router = createBrowserRouter(
 	createRoutesFromChildren(
-		<Route
-			element={<RoutesWithSuspense />}
-			errorElement={<GlobalErrorBoundary />}
-		>
+		<Route element={<RoutesWithSuspense />}>
 			<Route path="login" element={<LoginPage />} />
 			<Route path="setup" element={<SetupPage />} />
 			<Route path="reset-password">
@@ -425,14 +411,15 @@ export const router = createBrowserRouter(
 
 					<Route path="/audit" element={<AuditPage />} />
 
-					<Route path="/organizations" element={<OrganizationSettingsLayout />}>
+					<Route path="/organizations" element={<ManagementSettingsLayout />}>
 						<Route path="new" element={<CreateOrganizationPage />} />
 
 						{/* General settings for the default org can omit the organization name */}
 						<Route index element={<OrganizationSettingsPage />} />
 
-						<Route path=":organization" element={<OrganizationSidebarLayout />}>
-							<Route index element={<OrganizationMembersPage />} />
+						<Route path=":organization">
+							<Route index element={<OrganizationSettingsPage />} />
+							<Route path="members" element={<OrganizationMembersPage />} />
 							{groupsRouter()}
 							<Route path="roles">
 								<Route index element={<OrganizationCustomRolesPage />} />
@@ -444,11 +431,10 @@ export const router = createBrowserRouter(
 								element={<OrganizationProvisionersPage />}
 							/>
 							<Route path="idp-sync" element={<OrganizationIdPSyncPage />} />
-							<Route path="settings" element={<OrganizationSettingsPage />} />
 						</Route>
 					</Route>
 
-					<Route path="/deployment" element={<DeploymentSettingsLayout />}>
+					<Route path="/deployment" element={<ManagementSettingsLayout />}>
 						<Route element={<DeploymentSettingsProvider />}>
 							<Route path="general" element={<GeneralSettingsPage />} />
 							<Route path="security" element={<SecuritySettingsPage />} />
@@ -467,7 +453,6 @@ export const router = createBrowserRouter(
 								path="notifications"
 								element={<DeploymentNotificationsPage />}
 							/>
-							<Route path="idp-org-sync" element={<IdpOrgSyncPage />} />
 							<Route path="premium" element={<PremiumPage />} />
 						</Route>
 
@@ -543,9 +528,6 @@ export const router = createBrowserRouter(
 							element={<ProvisionerDaemonsHealthPage />}
 						/>
 					</Route>
-
-					<Route path="/install" element={<CliInstallPage />} />
-
 					{/* Using path="*"" means "match anything", so this route
               acts like a catch-all for URLs that we don't have explicit
               routes for. */}
@@ -566,7 +548,7 @@ export const router = createBrowserRouter(
 					path="/:username/:workspace/terminal"
 					element={<TerminalPage />}
 				/>
-				<Route path="/cli-auth" element={<CliAuthPage />} />
+				<Route path="/cli-auth" element={<CliAuthenticationPage />} />
 				<Route path="/icons" element={<IconsPage />} />
 			</Route>
 		</Route>,

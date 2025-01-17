@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"maps"
 	"sync"
 	"time"
 
@@ -33,7 +32,7 @@ type statsDest interface {
 // statsDest (agent API in prod)
 type statsReporter struct {
 	*sync.Cond
-	networkStats map[netlogtype.Connection]netlogtype.Counts
+	networkStats *map[netlogtype.Connection]netlogtype.Counts
 	unreported   bool
 	lastInterval time.Duration
 
@@ -55,15 +54,8 @@ func (s *statsReporter) callback(_, _ time.Time, virtual, _ map[netlogtype.Conne
 	s.L.Lock()
 	defer s.L.Unlock()
 	s.logger.Debug(context.Background(), "got stats callback")
-	// Accumulate stats until they've been reported.
-	if s.unreported && len(s.networkStats) > 0 {
-		for k, v := range virtual {
-			s.networkStats[k] = s.networkStats[k].Add(v)
-		}
-	} else {
-		s.networkStats = maps.Clone(virtual)
-		s.unreported = true
-	}
+	s.networkStats = &virtual
+	s.unreported = true
 	s.Broadcast()
 }
 
@@ -104,8 +96,9 @@ func (s *statsReporter) reportLoop(ctx context.Context, dest statsDest) error {
 		if ctxDone {
 			return nil
 		}
+		networkStats := *s.networkStats
 		s.unreported = false
-		if err = s.reportLocked(ctx, dest, s.networkStats); err != nil {
+		if err = s.reportLocked(ctx, dest, networkStats); err != nil {
 			return xerrors.Errorf("report stats: %w", err)
 		}
 	}

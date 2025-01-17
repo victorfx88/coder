@@ -18,6 +18,5 @@ ignorePatterns:
   - pattern: "i.imgur.com"
   - pattern: "code.visualstudio.com"
   - pattern: "www.emacswiki.org"
-  - pattern: "linux.die.net/man"
 aliveStatusCodes:
   - 200

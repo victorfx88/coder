@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"golang.org/x/xerrors"
+	"nhooyr.io/websocket"
 	"tailscale.com/tailcfg"
 
 	"cdr.dev/slog"
@@ -18,7 +19,6 @@ import (
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/codersdk/workspacesdk"
 	agpl "github.com/coder/coder/v2/tailnet"
-	"github.com/coder/websocket"
 )
 
 // Client is a HTTP client for a subset of Coder API routes that external

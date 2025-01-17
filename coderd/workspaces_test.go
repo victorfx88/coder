@@ -571,76 +571,6 @@ func TestPostWorkspacesByOrganization(t *testing.T) {
 		require.Equal(t, http.StatusConflict, apiErr.StatusCode())
 	})
 
-	t.Run("CreateSendsNotification", func(t *testing.T) {
-		t.Parallel()
-
-		enqueuer := notificationstest.FakeEnqueuer{}
-		client := coderdtest.New(t, &coderdtest.Options{IncludeProvisionerDaemon: true, NotificationsEnqueuer: &enqueuer})
-		user := coderdtest.CreateFirstUser(t, client)
-		templateAdminClient, templateAdmin := coderdtest.CreateAnotherUser(t, client, user.OrganizationID, rbac.RoleTemplateAdmin())
-		memberClient, memberUser := coderdtest.CreateAnotherUser(t, client, user.OrganizationID)
-
-		version := coderdtest.CreateTemplateVersion(t, templateAdminClient, user.OrganizationID, nil)
-		template := coderdtest.CreateTemplate(t, templateAdminClient, user.OrganizationID, version.ID)
-		coderdtest.AwaitTemplateVersionJobCompleted(t, templateAdminClient, version.ID)
-
-		workspace := coderdtest.CreateWorkspace(t, memberClient, template.ID)
-		coderdtest.AwaitWorkspaceBuildJobCompleted(t, memberClient, workspace.LatestBuild.ID)
-
-		sent := enqueuer.Sent(notificationstest.WithTemplateID(notifications.TemplateWorkspaceCreated))
-		require.Len(t, sent, 2)
-
-		receivers := make([]uuid.UUID, len(sent))
-		for idx, notif := range sent {
-			receivers[idx] = notif.UserID
-		}
-
-		// Check the notification was sent to the first user and template admin
-		require.Contains(t, receivers, templateAdmin.ID)
-		require.Contains(t, receivers, user.UserID)
-		require.NotContains(t, receivers, memberUser.ID)
-
-		require.Contains(t, sent[0].Targets, template.ID)
-		require.Contains(t, sent[0].Targets, workspace.ID)
-		require.Contains(t, sent[0].Targets, workspace.OrganizationID)
-		require.Contains(t, sent[0].Targets, workspace.OwnerID)
-
-		require.Contains(t, sent[1].Targets, template.ID)
-		require.Contains(t, sent[1].Targets, workspace.ID)
-		require.Contains(t, sent[1].Targets, workspace.OrganizationID)
-		require.Contains(t, sent[1].Targets, workspace.OwnerID)
-	})
-
-	t.Run("CreateSendsNotificationToCorrectUser", func(t *testing.T) {
-		t.Parallel()
-
-		enqueuer := notificationstest.FakeEnqueuer{}
-		client := coderdtest.New(t, &coderdtest.Options{IncludeProvisionerDaemon: true, NotificationsEnqueuer: &enqueuer})
-		user := coderdtest.CreateFirstUser(t, client)
-		templateAdminClient, _ := coderdtest.CreateAnotherUser(t, client, user.OrganizationID, rbac.RoleTemplateAdmin(), rbac.RoleOwner())
-		_, memberUser := coderdtest.CreateAnotherUser(t, client, user.OrganizationID)
-
-		version := coderdtest.CreateTemplateVersion(t, templateAdminClient, user.OrganizationID, nil)
-		template := coderdtest.CreateTemplate(t, templateAdminClient, user.OrganizationID, version.ID)
-		coderdtest.AwaitTemplateVersionJobCompleted(t, templateAdminClient, version.ID)
-
-		ctx := testutil.Context(t, testutil.WaitShort)
-		workspace, err := templateAdminClient.CreateUserWorkspace(ctx, memberUser.Username, codersdk.CreateWorkspaceRequest{
-			TemplateID: template.ID,
-			Name:       coderdtest.RandomUsername(t),
-		})
-		require.NoError(t, err)
-		coderdtest.AwaitWorkspaceBuildJobCompleted(t, client, workspace.LatestBuild.ID)
-
-		sent := enqueuer.Sent(notificationstest.WithTemplateID(notifications.TemplateWorkspaceCreated))
-		require.Len(t, sent, 1)
-		require.Equal(t, user.UserID, sent[0].UserID)
-		require.Contains(t, sent[0].Targets, template.ID)
-		require.Contains(t, sent[0].Targets, workspace.ID)
-		require.Contains(t, sent[0].Targets, workspace.OrganizationID)
-		require.Contains(t, sent[0].Targets, workspace.OwnerID)
-	})
-
 	t.Run("CreateWithAuditLogs", func(t *testing.T) {
 		t.Parallel()
 		auditor := audit.NewMock()
@@ -2411,93 +2341,6 @@ func TestWorkspaceUpdateTTL(t *testing.T) {
 		})
 	}
 
-	t.Run("ModifyAutostopWithRunningWorkspace", func(t *testing.T) {
-		t.Parallel()
-
-		testCases := []struct {
-			name        string
-			fromTTL     *int64
-			toTTL       *int64
-			afterUpdate func(t *testing.T, before, after codersdk.NullTime)
-		}{
-			{
-				name:    "RemoveAutostopRemovesDeadline",
-				fromTTL: ptr.Ref((8 * time.Hour).Milliseconds()),
-				toTTL:   nil,
-				afterUpdate: func(t *testing.T, before, after codersdk.NullTime) {
-					require.NotZero(t, before)
-					require.Zero(t, after)
-				},
-			},
-			{
-				name:    "AddAutostopDoesNotAddDeadline",
-				fromTTL: nil,
-				toTTL:   ptr.Ref((8 * time.Hour).Milliseconds()),
-				afterUpdate: func(t *testing.T, before, after codersdk.NullTime) {
-					require.Zero(t, before)
-					require.Zero(t, after)
-				},
-			},
-			{
-				name:    "IncreaseAutostopDoesNotModifyDeadline",
-				fromTTL: ptr.Ref((4 * time.Hour).Milliseconds()),
-				toTTL:   ptr.Ref((8 * time.Hour).Milliseconds()),
-				afterUpdate: func(t *testing.T, before, after codersdk.NullTime) {
-					require.NotZero(t, before)
-					require.NotZero(t, after)
-					require.Equal(t, before, after)
-				},
-			},
-			{
-				name:    "DecreaseAutostopDoesNotModifyDeadline",
-				fromTTL: ptr.Ref((8 * time.Hour).Milliseconds()),
-				toTTL:   ptr.Ref((4 * time.Hour).Milliseconds()),
-				afterUpdate: func(t *testing.T, before, after codersdk.NullTime) {
-					require.NotZero(t, before)
-					require.NotZero(t, after)
-					require.Equal(t, before, after)
-				},
-			},
-		}
-
-		for _, testCase := range testCases {
-			testCase := testCase
-
-			t.Run(testCase.name, func(t *testing.T) {
-				t.Parallel()
-
-				var (
-					client    = coderdtest.New(t, &coderdtest.Options{IncludeProvisionerDaemon: true})
-					user      = coderdtest.CreateFirstUser(t, client)
-					version   = coderdtest.CreateTemplateVersion(t, client, user.OrganizationID, nil)
-					_         = coderdtest.AwaitTemplateVersionJobCompleted(t, client, version.ID)
-					template  = coderdtest.CreateTemplate(t, client, user.OrganizationID, version.ID)
-					workspace = coderdtest.CreateWorkspace(t, client, template.ID, func(cwr *codersdk.CreateWorkspaceRequest) {
-						cwr.TTLMillis = testCase.fromTTL
-					})
-					build = coderdtest.AwaitWorkspaceBuildJobCompleted(t, client, workspace.LatestBuild.ID)
-				)
-
-				ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
-				defer cancel()
-
-				err := client.UpdateWorkspaceTTL(ctx, workspace.ID, codersdk.UpdateWorkspaceTTLRequest{
-					TTLMillis: testCase.toTTL,
-				})
-				require.NoError(t, err)
-
-				deadlineBefore := build.Deadline
-
-				build, err = client.WorkspaceBuild(ctx, build.ID)
-				require.NoError(t, err)
-
-				deadlineAfter := build.Deadline
-
-				testCase.afterUpdate(t, deadlineBefore, deadlineAfter)
-			})
-		}
-	})
-
 	t.Run("CustomAutostopDisabledByTemplate", func(t *testing.T) {
 		t.Parallel()
 		var (
@@ -3753,14 +3596,15 @@ func TestWorkspaceNotifications(t *testing.T) {
 
 			// Then
 			require.NoError(t, err, "mark workspace as dormant")
-			sent := notifyEnq.Sent(notificationstest.WithTemplateID(notifications.TemplateWorkspaceDormant))
-			require.Len(t, sent, 1)
-			require.Equal(t, sent[0].TemplateID, notifications.TemplateWorkspaceDormant)
-			require.Equal(t, sent[0].UserID, workspace.OwnerID)
-			require.Contains(t, sent[0].Targets, template.ID)
-			require.Contains(t, sent[0].Targets, workspace.ID)
-			require.Contains(t, sent[0].Targets, workspace.OrganizationID)
-			require.Contains(t, sent[0].Targets, workspace.OwnerID)
+			sent := notifyEnq.Sent()
+			require.Len(t, sent, 2)
+			// notifyEnq.Sent[0] is an event for created user account
+			require.Equal(t, sent[1].TemplateID, notifications.TemplateWorkspaceDormant)
+			require.Equal(t, sent[1].UserID, workspace.OwnerID)
+			require.Contains(t, sent[1].Targets, template.ID)
+			require.Contains(t, sent[1].Targets, workspace.ID)
+			require.Contains(t, sent[1].Targets, workspace.OrganizationID)
+			require.Contains(t, sent[1].Targets, workspace.OwnerID)
 		})
 
 		t.Run("InitiatorIsOwner", func(t *testing.T) {
@@ -3791,7 +3635,7 @@ func TestWorkspaceNotifications(t *testing.T) {
 
 			// Then
 			require.NoError(t, err, "mark workspace as dormant")
-			require.Len(t, notifyEnq.Sent(notificationstest.WithTemplateID(notifications.TemplateWorkspaceDormant)), 0)
+			require.Len(t, notifyEnq.Sent(), 0)
 		})
 
 		t.Run("ActivateDormantWorkspace", func(t *testing.T) {

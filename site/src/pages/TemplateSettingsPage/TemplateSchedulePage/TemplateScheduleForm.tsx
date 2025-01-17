@@ -4,7 +4,6 @@ import MenuItem from "@mui/material/MenuItem";
 import Switch from "@mui/material/Switch";
 import TextField from "@mui/material/TextField";
 import type { Template, UpdateTemplateMeta } from "api/typesGenerated";
-import { Button } from "components/Button/Button";
 import { DurationField } from "components/DurationField/DurationField";
 import {
 	FormFields,
@@ -12,7 +11,6 @@ import {
 	FormSection,
 	HorizontalForm,
 } from "components/Form/Form";
-import { Spinner } from "components/Spinner/Spinner";
 import { Stack } from "components/Stack/Stack";
 import {
 	StackLabel,
@@ -630,19 +628,11 @@ export const TemplateScheduleForm: FC<TemplateScheduleForm> = ({
 				/>
 			)}
 
-			<FormFooter>
-				<Button onClick={onCancel} variant="outline">
-					Cancel
-				</Button>
-
-				<Button
-					type="submit"
-					disabled={isSubmitting || !form.isValid || !form.dirty}
-				>
-					<Spinner loading={isSubmitting} />
-					Save
-				</Button>
-			</FormFooter>
+			<FormFooter
+				onCancel={onCancel}
+				isLoading={isSubmitting}
+				submitDisabled={!form.isValid || !form.dirty}
+			/>
 		</HorizontalForm>
 	);
 };

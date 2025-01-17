@@ -1209,68 +1209,6 @@ func AllPortShareProtocolValues() []PortShareProtocol {
 	}
 }
 
-// The status of a provisioner daemon.
-type ProvisionerDaemonStatus string
-
-const (
-	ProvisionerDaemonStatusOffline ProvisionerDaemonStatus = "offline"
-	ProvisionerDaemonStatusIdle    ProvisionerDaemonStatus = "idle"
-	ProvisionerDaemonStatusBusy    ProvisionerDaemonStatus = "busy"
-)
-
-func (e *ProvisionerDaemonStatus) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = ProvisionerDaemonStatus(s)
-	case string:
-		*e = ProvisionerDaemonStatus(s)
-	default:
-		return fmt.Errorf("unsupported scan type for ProvisionerDaemonStatus: %T", src)
-	}
-	return nil
-}
-
-type NullProvisionerDaemonStatus struct {
-	ProvisionerDaemonStatus ProvisionerDaemonStatus `json:"provisioner_daemon_status"`
-	Valid                   bool                    `json:"valid"` // Valid is true if ProvisionerDaemonStatus is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullProvisionerDaemonStatus) Scan(value interface{}) error {
-	if value == nil {
-		ns.ProvisionerDaemonStatus, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.ProvisionerDaemonStatus.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullProvisionerDaemonStatus) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.ProvisionerDaemonStatus), nil
-}
-
-func (e ProvisionerDaemonStatus) Valid() bool {
-	switch e {
-	case ProvisionerDaemonStatusOffline,
-		ProvisionerDaemonStatusIdle,
-		ProvisionerDaemonStatusBusy:
-		return true
-	}
-	return false
-}
-
-func AllProvisionerDaemonStatusValues() []ProvisionerDaemonStatus {
-	return []ProvisionerDaemonStatus{
-		ProvisionerDaemonStatusOffline,
-		ProvisionerDaemonStatusIdle,
-		ProvisionerDaemonStatusBusy,
-	}
-}
-
 // Computed status of a provisioner job. Jobs could be stuck in a hung state, these states do not guarantee any transition to another state.
 type ProvisionerJobStatus string
 
@@ -1586,28 +1524,25 @@ func AllProvisionerTypeValues() []ProvisionerType {
 type ResourceType string
 
 const (
-	ResourceTypeOrganization                ResourceType = "organization"
-	ResourceTypeTemplate                    ResourceType = "template"
-	ResourceTypeTemplateVersion             ResourceType = "template_version"
-	ResourceTypeUser                        ResourceType = "user"
-	ResourceTypeWorkspace                   ResourceType = "workspace"
-	ResourceTypeGitSshKey                   ResourceType = "git_ssh_key"
-	ResourceTypeApiKey                      ResourceType = "api_key"
-	ResourceTypeGroup                       ResourceType = "group"
-	ResourceTypeWorkspaceBuild              ResourceType = "workspace_build"
-	ResourceTypeLicense                     ResourceType = "license"
-	ResourceTypeWorkspaceProxy              ResourceType = "workspace_proxy"
-	ResourceTypeConvertLogin                ResourceType = "convert_login"
-	ResourceTypeHealthSettings              ResourceType = "health_settings"
-	ResourceTypeOauth2ProviderApp           ResourceType = "oauth2_provider_app"
-	ResourceTypeOauth2ProviderAppSecret     ResourceType = "oauth2_provider_app_secret"
-	ResourceTypeCustomRole                  ResourceType = "custom_role"
-	ResourceTypeOrganizationMember          ResourceType = "organization_member"
-	ResourceTypeNotificationsSettings       ResourceType = "notifications_settings"
-	ResourceTypeNotificationTemplate        ResourceType = "notification_template"
-	ResourceTypeIdpSyncSettingsOrganization ResourceType = "idp_sync_settings_organization"
-	ResourceTypeIdpSyncSettingsGroup        ResourceType = "idp_sync_settings_group"
-	ResourceTypeIdpSyncSettingsRole         ResourceType = "idp_sync_settings_role"
+	ResourceTypeOrganization            ResourceType = "organization"
+	ResourceTypeTemplate                ResourceType = "template"
+	ResourceTypeTemplateVersion         ResourceType = "template_version"
+	ResourceTypeUser                    ResourceType = "user"
+	ResourceTypeWorkspace               ResourceType = "workspace"
+	ResourceTypeGitSshKey               ResourceType = "git_ssh_key"
+	ResourceTypeApiKey                  ResourceType = "api_key"
+	ResourceTypeGroup                   ResourceType = "group"
+	ResourceTypeWorkspaceBuild          ResourceType = "workspace_build"
+	ResourceTypeLicense                 ResourceType = "license"
+	ResourceTypeWorkspaceProxy          ResourceType = "workspace_proxy"
+	ResourceTypeConvertLogin            ResourceType = "convert_login"
+	ResourceTypeHealthSettings          ResourceType = "health_settings"
+	ResourceTypeOauth2ProviderApp       ResourceType = "oauth2_provider_app"
+	ResourceTypeOauth2ProviderAppSecret ResourceType = "oauth2_provider_app_secret"
+	ResourceTypeCustomRole              ResourceType = "custom_role"
+	ResourceTypeOrganizationMember      ResourceType = "organization_member"
+	ResourceTypeNotificationsSettings   ResourceType = "notifications_settings"
+	ResourceTypeNotificationTemplate    ResourceType = "notification_template"
 )
 
 func (e *ResourceType) Scan(src interface{}) error {
@@ -1665,10 +1600,7 @@ func (e ResourceType) Valid() bool {
 		ResourceTypeCustomRole,
 		ResourceTypeOrganizationMember,
 		ResourceTypeNotificationsSettings,
-		ResourceTypeNotificationTemplate,
-		ResourceTypeIdpSyncSettingsOrganization,
-		ResourceTypeIdpSyncSettingsGroup,
-		ResourceTypeIdpSyncSettingsRole:
+		ResourceTypeNotificationTemplate:
 		return true
 	}
 	return false
@@ -1695,9 +1627,6 @@ func AllResourceTypeValues() []ResourceType {
 		ResourceTypeOrganizationMember,
 		ResourceTypeNotificationsSettings,
 		ResourceTypeNotificationTemplate,
-		ResourceTypeIdpSyncSettingsOrganization,
-		ResourceTypeIdpSyncSettingsGroup,
-		ResourceTypeIdpSyncSettingsRole,
 	}
 }
 
@@ -2213,67 +2142,6 @@ func AllWorkspaceAppHealthValues() []WorkspaceAppHealth {
 	}
 }
 
-type WorkspaceAppOpenIn string
-
-const (
-	WorkspaceAppOpenInTab        WorkspaceAppOpenIn = "tab"
-	WorkspaceAppOpenInWindow     WorkspaceAppOpenIn = "window"
-	WorkspaceAppOpenInSlimWindow WorkspaceAppOpenIn = "slim-window"
-)
-
-func (e *WorkspaceAppOpenIn) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = WorkspaceAppOpenIn(s)
-	case string:
-		*e = WorkspaceAppOpenIn(s)
-	default:
-		return fmt.Errorf("unsupported scan type for WorkspaceAppOpenIn: %T", src)
-	}
-	return nil
-}
-
-type NullWorkspaceAppOpenIn struct {
-	WorkspaceAppOpenIn WorkspaceAppOpenIn `json:"workspace_app_open_in"`
-	Valid              bool               `json:"valid"` // Valid is true if WorkspaceAppOpenIn is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullWorkspaceAppOpenIn) Scan(value interface{}) error {
-	if value == nil {
-		ns.WorkspaceAppOpenIn, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.WorkspaceAppOpenIn.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullWorkspaceAppOpenIn) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.WorkspaceAppOpenIn), nil
-}
-
-func (e WorkspaceAppOpenIn) Valid() bool {
-	switch e {
-	case WorkspaceAppOpenInTab,
-		WorkspaceAppOpenInWindow,
-		WorkspaceAppOpenInSlimWindow:
-		return true
-	}
-	return false
-}
-
-func AllWorkspaceAppOpenInValues() []WorkspaceAppOpenIn {
-	return []WorkspaceAppOpenIn{
-		WorkspaceAppOpenInTab,
-		WorkspaceAppOpenInWindow,
-		WorkspaceAppOpenInSlimWindow,
-	}
-}
-
 type WorkspaceTransition string
 
 const (
@@ -2542,9 +2410,8 @@ type NotificationTemplate struct {
 	Actions       []byte         `db:"actions" json:"actions"`
 	Group         sql.NullString `db:"group" json:"group"`
 	// NULL defers to the deployment-level method
-	Method           NullNotificationMethod   `db:"method" json:"method"`
-	Kind             NotificationTemplateKind `db:"kind" json:"kind"`
-	EnabledByDefault bool                     `db:"enabled_by_default" json:"enabled_by_default"`
+	Method NullNotificationMethod   `db:"method" json:"method"`
+	Kind   NotificationTemplateKind `db:"kind" json:"kind"`
 }
 
 // A table used to configure apps that can use Coder as an OAuth2 provider, the reverse of what we are calling external authentication.
@@ -3016,13 +2883,6 @@ type User struct {
 	OneTimePasscodeExpiresAt sql.NullTime `db:"one_time_passcode_expires_at" json:"one_time_passcode_expires_at"`
 }
 
-// Tracks when users were deleted
-type UserDeleted struct {
-	ID        uuid.UUID `db:"id" json:"id"`
-	UserID    uuid.UUID `db:"user_id" json:"user_id"`
-	DeletedAt time.Time `db:"deleted_at" json:"deleted_at"`
-}
-
 type UserLink struct {
 	UserID            uuid.UUID `db:"user_id" json:"user_id"`
 	LoginType         LoginType `db:"login_type" json:"login_type"`
@@ -3036,14 +2896,6 @@ type UserLink struct {
 	OAuthRefreshTokenKeyID sql.NullString `db:"oauth_refresh_token_key_id" json:"oauth_refresh_token_key_id"`
 	// Claims from the IDP for the linked user. Includes both id_token and userinfo claims.
 	Claims UserLinkClaims `db:"claims" json:"claims"`
-}
-
-// Tracks the history of user status changes
-type UserStatusChange struct {
-	ID        uuid.UUID  `db:"id" json:"id"`
-	UserID    uuid.UUID  `db:"user_id" json:"user_id"`
-	NewStatus UserStatus `db:"new_status" json:"new_status"`
-	ChangedAt time.Time  `db:"changed_at" json:"changed_at"`
 }
 
 // Visible fields of users are allowed to be joined with other tables for including context of other resources.
@@ -3070,7 +2922,6 @@ type Workspace struct {
 	DeletingAt              sql.NullTime     `db:"deleting_at" json:"deleting_at"`
 	AutomaticUpdates        AutomaticUpdates `db:"automatic_updates" json:"automatic_updates"`
 	Favorite                bool             `db:"favorite" json:"favorite"`
-	NextStartAt             sql.NullTime     `db:"next_start_at" json:"next_start_at"`
 	OwnerAvatarUrl          string           `db:"owner_avatar_url" json:"owner_avatar_url"`
 	OwnerUsername           string           `db:"owner_username" json:"owner_username"`
 	OrganizationName        string           `db:"organization_name" json:"organization_name"`
@@ -3231,8 +3082,7 @@ type WorkspaceApp struct {
 	// Specifies the order in which to display agent app in user interfaces.
 	DisplayOrder int32 `db:"display_order" json:"display_order"`
 	// Determines if the app is not shown in user interfaces.
-	Hidden bool               `db:"hidden" json:"hidden"`
-	OpenIn WorkspaceAppOpenIn `db:"open_in" json:"open_in"`
+	Hidden bool `db:"hidden" json:"hidden"`
 }
 
 // A record of workspace app usage statistics
@@ -3375,6 +3225,5 @@ type WorkspaceTable struct {
 	DeletingAt        sql.NullTime     `db:"deleting_at" json:"deleting_at"`
 	AutomaticUpdates  AutomaticUpdates `db:"automatic_updates" json:"automatic_updates"`
 	// Favorite is true if the workspace owner has favorited the workspace.
-	Favorite    bool         `db:"favorite" json:"favorite"`
-	NextStartAt sql.NullTime `db:"next_start_at" json:"next_start_at"`
+	Favorite bool `db:"favorite" json:"favorite"`
 }

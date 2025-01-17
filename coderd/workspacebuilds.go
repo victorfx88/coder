@@ -27,7 +27,6 @@ import (
 	"github.com/coder/coder/v2/coderd/database/provisionerjobs"
 	"github.com/coder/coder/v2/coderd/httpapi"
 	"github.com/coder/coder/v2/coderd/httpmw"
-	"github.com/coder/coder/v2/coderd/notifications"
 	"github.com/coder/coder/v2/coderd/provisionerdserver"
 	"github.com/coder/coder/v2/coderd/rbac"
 	"github.com/coder/coder/v2/coderd/rbac/policy"
@@ -334,59 +333,37 @@ func (api *API) postWorkspaceBuilds(rw http.ResponseWriter, r *http.Request) {
 		LogLevel(string(createBuild.LogLevel)).
 		DeploymentValues(api.Options.DeploymentValues)
 
-	var (
-		previousWorkspaceBuild database.WorkspaceBuild
-		workspaceBuild         *database.WorkspaceBuild
-		provisionerJob         *database.ProvisionerJob
-		provisionerDaemons     []database.GetEligibleProvisionerDaemonsByProvisionerJobIDsRow
-	)
+	if createBuild.TemplateVersionID != uuid.Nil {
+		builder = builder.VersionID(createBuild.TemplateVersionID)
+	}
 
-	err := api.Database.InTx(func(tx database.Store) error {
-		var err error
-
-		previousWorkspaceBuild, err = tx.GetLatestWorkspaceBuildByWorkspaceID(ctx, workspace.ID)
-		if err != nil && !xerrors.Is(err, sql.ErrNoRows) {
-			api.Logger.Error(ctx, "failed fetching previous workspace build", slog.F("workspace_id", workspace.ID), slog.Error(err))
-			httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-				Message: "Internal error fetching previous workspace build",
-				Detail:  err.Error(),
+	if createBuild.Orphan {
+		if createBuild.Transition != codersdk.WorkspaceTransitionDelete {
+			httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+				Message: "Orphan is only permitted when deleting a workspace.",
 			})
-			return nil
-		}
-
-		if createBuild.TemplateVersionID != uuid.Nil {
-			builder = builder.VersionID(createBuild.TemplateVersionID)
-		}
-
-		if createBuild.Orphan {
-			if createBuild.Transition != codersdk.WorkspaceTransitionDelete {
-				httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
-					Message: "Orphan is only permitted when deleting a workspace.",
-				})
-				return nil
-			}
-			if len(createBuild.ProvisionerState) > 0 {
-				httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
-					Message: "ProvisionerState cannot be set alongside Orphan since state intent is unclear.",
-				})
-				return nil
-			}
-			builder = builder.Orphan()
+			return
 		}
 		if len(createBuild.ProvisionerState) > 0 {
-			builder = builder.State(createBuild.ProvisionerState)
+			httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+				Message: "ProvisionerState cannot be set alongside Orphan since state intent is unclear.",
+			})
+			return
 		}
+		builder = builder.Orphan()
+	}
+	if len(createBuild.ProvisionerState) > 0 {
+		builder = builder.State(createBuild.ProvisionerState)
+	}
 
-		workspaceBuild, provisionerJob, provisionerDaemons, err = builder.Build(
-			ctx,
-			tx,
-			func(action policy.Action, object rbac.Objecter) bool {
-				return api.Authorize(r, action, object)
-			},
-			audit.WorkspaceBuildBaggageFromRequest(r),
-		)
-		return err
-	}, nil)
+	workspaceBuild, provisionerJob, provisionerDaemons, err := builder.Build(
+		ctx,
+		api.Database,
+		func(action policy.Action, object rbac.Objecter) bool {
+			return api.Authorize(r, action, object)
+		},
+		audit.WorkspaceBuildBaggageFromRequest(r),
+	)
 	var buildErr wsbuilder.BuildError
 	if xerrors.As(err, &buildErr) {
 		var authErr dbauthz.NotAuthorizedError
@@ -443,99 +420,12 @@ func (api *API) postWorkspaceBuilds(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// If this workspace build has a different template version ID to the previous build
-	// we can assume it has just been updated.
-	if createBuild.TemplateVersionID != uuid.Nil && createBuild.TemplateVersionID != previousWorkspaceBuild.TemplateVersionID {
-		// nolint:gocritic // Need system context to fetch admins
-		admins, err := findTemplateAdmins(dbauthz.AsSystemRestricted(ctx), api.Database)
-		if err != nil {
-			api.Logger.Error(ctx, "find template admins", slog.Error(err))
-		} else {
-			for _, admin := range admins {
-				// Don't send notifications to user which initiated the event.
-				if admin.ID == apiKey.UserID {
-					continue
-				}
-
-				api.notifyWorkspaceUpdated(ctx, apiKey.UserID, admin.ID, workspace, createBuild.RichParameterValues)
-			}
-		}
-	}
-
 	api.publishWorkspaceUpdate(ctx, workspace.OwnerID, wspubsub.WorkspaceEvent{
 		Kind:        wspubsub.WorkspaceEventKindStateChange,
 		WorkspaceID: workspace.ID,
 	})
 
 	httpapi.Write(ctx, rw, http.StatusCreated, apiBuild)
-}
-
-func (api *API) notifyWorkspaceUpdated(
-	ctx context.Context,
-	initiatorID uuid.UUID,
-	receiverID uuid.UUID,
-	workspace database.Workspace,
-	parameters []codersdk.WorkspaceBuildParameter,
-) {
-	log := api.Logger.With(slog.F("workspace_id", workspace.ID))
-
-	template, err := api.Database.GetTemplateByID(ctx, workspace.TemplateID)
-	if err != nil {
-		log.Warn(ctx, "failed to fetch template for workspace creation notification", slog.F("template_id", workspace.TemplateID), slog.Error(err))
-		return
-	}
-
-	version, err := api.Database.GetTemplateVersionByID(ctx, template.ActiveVersionID)
-	if err != nil {
-		log.Warn(ctx, "failed to fetch template version for workspace creation notification", slog.F("template_id", workspace.TemplateID), slog.Error(err))
-		return
-	}
-
-	initiator, err := api.Database.GetUserByID(ctx, initiatorID)
-	if err != nil {
-		log.Warn(ctx, "failed to fetch user for workspace update notification", slog.F("initiator_id", initiatorID), slog.Error(err))
-		return
-	}
-
-	owner, err := api.Database.GetUserByID(ctx, workspace.OwnerID)
-	if err != nil {
-		log.Warn(ctx, "failed to fetch user for workspace update notification", slog.F("owner_id", workspace.OwnerID), slog.Error(err))
-		return
-	}
-
-	buildParameters := make([]map[string]any, len(parameters))
-	for idx, parameter := range parameters {
-		buildParameters[idx] = map[string]any{
-			"name":  parameter.Name,
-			"value": parameter.Value,
-		}
-	}
-
-	if _, err := api.NotificationsEnqueuer.EnqueueWithData(
-		// nolint:gocritic // Need notifier actor to enqueue notifications
-		dbauthz.AsNotifier(ctx),
-		receiverID,
-		notifications.TemplateWorkspaceManuallyUpdated,
-		map[string]string{
-			"organization": template.OrganizationName,
-			"initiator":    initiator.Name,
-			"workspace":    workspace.Name,
-			"template":     template.Name,
-			"version":      version.Name,
-		},
-		map[string]any{
-			"workspace":        map[string]any{"id": workspace.ID, "name": workspace.Name},
-			"template":         map[string]any{"id": template.ID, "name": template.Name},
-			"template_version": map[string]any{"id": version.ID, "name": version.Name},
-			"owner":            map[string]any{"id": owner.ID, "name": owner.Name},
-			"parameters":       buildParameters,
-		},
-		"api-workspaces-updated",
-		// Associate this notification with all the related entities
-		workspace.ID, workspace.OwnerID, workspace.TemplateID, workspace.OrganizationID,
-	); err != nil {
-		log.Warn(ctx, "failed to notify of workspace update", slog.Error(err))
-	}
 }
 
 // @Summary Cancel workspace build
@@ -669,8 +559,8 @@ func (api *API) workspaceBuildParameters(rw http.ResponseWriter, r *http.Request
 // @Produce json
 // @Tags Builds
 // @Param workspacebuild path string true "Workspace build ID"
-// @Param before query int false "Before log id"
-// @Param after query int false "After log id"
+// @Param before query int false "Before Unix timestamp"
+// @Param after query int false "After Unix timestamp"
 // @Param follow query bool false "Follow log stream"
 // @Success 200 {array} codersdk.ProvisionerJobLog
 // @Router /workspacebuilds/{workspacebuild}/logs [get]

@@ -26,7 +26,6 @@ import {
 	ActiveUserChart,
 	ActiveUsersTitle,
 } from "components/ActiveUserChart/ActiveUserChart";
-import { Avatar } from "components/Avatar/Avatar";
 import {
 	HelpTooltip,
 	HelpTooltipContent,
@@ -36,6 +35,7 @@ import {
 } from "components/HelpTooltip/HelpTooltip";
 import { Loader } from "components/Loader/Loader";
 import { Stack } from "components/Stack/Stack";
+import { UserAvatar } from "components/UserAvatar/UserAvatar";
 import {
 	addHours,
 	addWeeks,
@@ -316,7 +316,10 @@ const UsersLatencyPanel: FC<UsersLatencyPanelProps> = ({
 								}}
 							>
 								<div css={{ display: "flex", alignItems: "center", gap: 12 }}>
-									<Avatar fallback={row.username} src={row.avatar_url} />
+									<UserAvatar
+										username={row.username}
+										avatarURL={row.avatar_url}
+									/>
 									<div css={{ fontWeight: 500 }}>{row.username}</div>
 								</div>
 								<div
@@ -384,7 +387,10 @@ const UsersActivityPanel: FC<UsersActivityPanelProps> = ({
 								}}
 							>
 								<div css={{ display: "flex", alignItems: "center", gap: 12 }}>
-									<Avatar fallback={row.username} src={row.avatar_url} />
+									<UserAvatar
+										username={row.username}
+										avatarURL={row.avatar_url}
+									/>
 									<div css={{ fontWeight: 500 }}>{row.username}</div>
 								</div>
 								<div

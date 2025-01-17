@@ -20,13 +20,12 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/coder/coder/v2/coderd/database"
-	"github.com/coder/coder/v2/coderd/database/db2sdk"
 	"github.com/coder/coder/v2/coderd/database/dbauthz"
 	"github.com/coder/coder/v2/coderd/database/dbtime"
 	"github.com/coder/coder/v2/coderd/database/provisionerjobs"
 	"github.com/coder/coder/v2/coderd/database/pubsub"
 	"github.com/coder/coder/v2/coderd/rbac"
-	"github.com/coder/coder/v2/codersdk"
+	"github.com/coder/coder/v2/coderd/rbac/policy"
 	"github.com/coder/coder/v2/cryptorand"
 	"github.com/coder/coder/v2/testutil"
 )
@@ -76,7 +75,7 @@ func Template(t testing.TB, db database.Store, seed database.Template) database.
 	if seed.GroupACL == nil {
 		// By default, all users in the organization can read the template.
 		seed.GroupACL = database.TemplateACL{
-			seed.OrganizationID.String(): db2sdk.TemplateRoleActions(codersdk.TemplateRoleUse),
+			seed.OrganizationID.String(): []policy.Action{policy.ActionRead},
 		}
 	}
 	if seed.UserACL == nil {
@@ -261,7 +260,6 @@ func Workspace(t testing.TB, db database.Store, orig database.WorkspaceTable) da
 		AutostartSchedule: orig.AutostartSchedule,
 		Ttl:               orig.Ttl,
 		AutomaticUpdates:  takeFirst(orig.AutomaticUpdates, database.AutomaticUpdatesNever),
-		NextStartAt:       orig.NextStartAt,
 	})
 	require.NoError(t, err, "insert workspace")
 	return workspace
@@ -506,26 +504,8 @@ func GroupMember(t testing.TB, db database.Store, member database.GroupMemberTab
 
 // ProvisionerDaemon creates a provisioner daemon as far as the database is concerned. It does not run a provisioner daemon.
 // If no key is provided, it will create one.
-func ProvisionerDaemon(t testing.TB, db database.Store, orig database.ProvisionerDaemon) database.ProvisionerDaemon {
+func ProvisionerDaemon(t testing.TB, db database.Store, daemon database.ProvisionerDaemon) database.ProvisionerDaemon {
 	t.Helper()
-
-	var defOrgID uuid.UUID
-	if orig.OrganizationID == uuid.Nil {
-		defOrg, _ := db.GetDefaultOrganization(genCtx)
-		defOrgID = defOrg.ID
-	}
-
-	daemon := database.UpsertProvisionerDaemonParams{
-		Name:           takeFirst(orig.Name, testutil.GetRandomName(t)),
-		OrganizationID: takeFirst(orig.OrganizationID, defOrgID, uuid.New()),
-		CreatedAt:      takeFirst(orig.CreatedAt, dbtime.Now()),
-		Provisioners:   takeFirstSlice(orig.Provisioners, []database.ProvisionerType{database.ProvisionerTypeEcho}),
-		Tags:           takeFirstMap(orig.Tags, database.StringMap{}),
-		KeyID:          takeFirst(orig.KeyID, uuid.Nil),
-		LastSeenAt:     takeFirst(orig.LastSeenAt, sql.NullTime{Time: dbtime.Now(), Valid: true}),
-		Version:        takeFirst(orig.Version, "v0.0.0"),
-		APIVersion:     takeFirst(orig.APIVersion, "1.1"),
-	}
 
 	if daemon.KeyID == uuid.Nil {
 		key, err := db.InsertProvisionerKey(genCtx, database.InsertProvisionerKeyParams{
@@ -540,7 +520,24 @@ func ProvisionerDaemon(t testing.TB, db database.Store, orig database.Provisione
 		daemon.KeyID = key.ID
 	}
 
-	d, err := db.UpsertProvisionerDaemon(genCtx, daemon)
+	if daemon.CreatedAt.IsZero() {
+		daemon.CreatedAt = dbtime.Now()
+	}
+	if daemon.Name == "" {
+		daemon.Name = "test-daemon"
+	}
+
+	d, err := db.UpsertProvisionerDaemon(genCtx, database.UpsertProvisionerDaemonParams{
+		Name:           daemon.Name,
+		OrganizationID: daemon.OrganizationID,
+		CreatedAt:      daemon.CreatedAt,
+		Provisioners:   daemon.Provisioners,
+		Tags:           daemon.Tags,
+		KeyID:          daemon.KeyID,
+		LastSeenAt:     daemon.LastSeenAt,
+		Version:        daemon.Version,
+		APIVersion:     daemon.APIVersion,
+	})
 	require.NoError(t, err)
 	return d
 }
@@ -661,7 +658,6 @@ func WorkspaceApp(t testing.TB, db database.Store, orig database.WorkspaceApp) d
 		Health:               takeFirst(orig.Health, database.WorkspaceAppHealthHealthy),
 		DisplayOrder:         takeFirst(orig.DisplayOrder, 1),
 		Hidden:               orig.Hidden,
-		OpenIn:               takeFirst(orig.OpenIn, database.WorkspaceAppOpenInSlimWindow),
 	})
 	require.NoError(t, err, "insert app")
 	return resource
@@ -1108,12 +1104,6 @@ func takeFirstIP(values ...net.IPNet) net.IPNet {
 func takeFirstSlice[T any](values ...[]T) []T {
 	return takeFirstF(values, func(v []T) bool {
 		return len(v) != 0
-	})
-}
-
-func takeFirstMap[T, E comparable](values ...map[T]E) map[T]E {
-	return takeFirstF(values, func(v map[T]E) bool {
-		return v != nil
 	})
 }
 

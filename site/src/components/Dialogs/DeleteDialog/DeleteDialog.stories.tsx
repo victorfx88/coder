@@ -1,7 +1,5 @@
 import { action } from "@storybook/addon-actions";
 import type { Meta, StoryObj } from "@storybook/react";
-import { userEvent } from "@storybook/test";
-import { within } from "@testing-library/react";
 import { DeleteDialog } from "./DeleteDialog";
 
 const meta: Meta<typeof DeleteDialog> = {
@@ -21,28 +19,12 @@ export default meta;
 
 type Story = StoryObj<typeof DeleteDialog>;
 
-export const Idle: Story = {};
-
-export const FilledSuccessfully: Story = {
-	play: async ({ canvasElement }) => {
-		const user = userEvent.setup();
-		const body = within(canvasElement.ownerDocument.body);
-		const input = await body.findByLabelText("Name of the foo to delete");
-		await user.type(input, "MyFoo");
-	},
-};
-
-export const FilledWrong: Story = {
-	play: async ({ canvasElement }) => {
-		const user = userEvent.setup();
-		const body = within(canvasElement.ownerDocument.body);
-		const input = await body.findByLabelText("Name of the foo to delete");
-		await user.type(input, "InvalidFooName");
-	},
-};
+const Example: Story = {};
 
 export const Loading: Story = {
 	args: {
 		confirmLoading: true,
 	},
 };
+
+export { Example as DeleteDialog };

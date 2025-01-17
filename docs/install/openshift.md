@@ -1,5 +1,3 @@
-# OpenShift
-
 ## Requirements
 
 - OpenShift cluster running K8s 1.19+ (OpenShift 4.7+)
@@ -48,13 +46,13 @@ coder:
 - For `runAsUser` / `runAsGroup`, you can retrieve the correct values for
   project UID and project GID with the following command:
 
-    ```console
-    oc get project coder -o json | jq -r '.metadata.annotations'
-    {
+      ```console
+      oc get project coder -o json | jq -r '.metadata.annotations'
+      {
         "openshift.io/sa.scc.supplemental-groups": "1000680000/10000",
         "openshift.io/sa.scc.uid-range": "1000680000/10000"
-    }
-    ```
+      }
+      ```
 
   Alternatively, you can set these values to `null` to allow OpenShift to
   automatically select the correct value for the project.

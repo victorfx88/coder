@@ -19,11 +19,12 @@ locals {
     "eu-helsinki"   = "tcp://reinhard-hel-cdr-dev.tailscale.svc.cluster.local:2375"
     "ap-sydney"     = "tcp://wolfgang-syd-cdr-dev.tailscale.svc.cluster.local:2375"
     "sa-saopaulo"   = "tcp://oberstein-sao-cdr-dev.tailscale.svc.cluster.local:2375"
-    "za-cpt"        = "tcp://schonkopf-cpt-cdr-dev.tailscale.svc.cluster.local:2375"
+    "za-jnb"        = "tcp://greenhill-jnb-cdr-dev.tailscale.svc.cluster.local:2375"
+    "ja-tokyo"      = "tcp://reuenthal-tokyo-cdr-dev.tailscale.svc.cluster.local:2375"
   }
 
   repo_base_dir  = data.coder_parameter.repo_base_dir.value == "~" ? "/home/coder" : replace(data.coder_parameter.repo_base_dir.value, "/^~\\//", "/home/coder/")
-  repo_dir       = replace(try(module.git-clone[0].repo_dir, ""), "/^~\\//", "/home/coder/")
+  repo_dir       = replace(module.git-clone.repo_dir, "/^~\\//", "/home/coder/")
   container_name = "coder-${data.coder_workspace_owner.me.name}-${lower(data.coder_workspace.me.name)}"
 }
 
@@ -79,8 +80,13 @@ data "coder_parameter" "region" {
   }
   option {
     icon  = "/emojis/1f1ff-1f1e6.png"
-    name  = "Cape Town"
-    value = "za-cpt"
+    name  = "Johannesburg"
+    value = "za-jnb"
+  }
+  option {
+    icon  = "/emojis/1f1ef-1f1f5.png"
+    name  = "Tokyo"
+    value = "ja-tokyo"
   }
 }
 
@@ -96,31 +102,22 @@ data "coder_external_auth" "github" {
 
 data "coder_workspace" "me" {}
 data "coder_workspace_owner" "me" {}
-data "coder_workspace_tags" "tags" {
-  tags = {
-    "cluster" : "dogfood-v2"
-    "env" : "gke"
-  }
-}
 
 module "slackme" {
-  count            = data.coder_workspace.me.start_count
-  source           = "dev.registry.coder.com/modules/slackme/coder"
+  source           = "registry.coder.com/modules/slackme/coder"
   version          = ">= 1.0.0"
   agent_id         = coder_agent.dev.id
   auth_provider_id = "slack"
 }
 
 module "dotfiles" {
-  count    = data.coder_workspace.me.start_count
-  source   = "dev.registry.coder.com/modules/dotfiles/coder"
+  source   = "registry.coder.com/modules/dotfiles/coder"
   version  = ">= 1.0.0"
   agent_id = coder_agent.dev.id
 }
 
 module "git-clone" {
-  count    = data.coder_workspace.me.start_count
-  source   = "dev.registry.coder.com/modules/git-clone/coder"
+  source   = "registry.coder.com/modules/git-clone/coder"
   version  = ">= 1.0.0"
   agent_id = coder_agent.dev.id
   url      = "https://github.com/coder/coder"
@@ -128,35 +125,21 @@ module "git-clone" {
 }
 
 module "personalize" {
-  count    = data.coder_workspace.me.start_count
-  source   = "dev.registry.coder.com/modules/personalize/coder"
+  source   = "registry.coder.com/modules/personalize/coder"
   version  = ">= 1.0.0"
   agent_id = coder_agent.dev.id
 }
 
 module "code-server" {
-  count                   = data.coder_workspace.me.start_count
-  source                  = "dev.registry.coder.com/modules/code-server/coder"
+  source                  = "registry.coder.com/modules/code-server/coder"
   version                 = ">= 1.0.0"
   agent_id                = coder_agent.dev.id
   folder                  = local.repo_dir
   auto_install_extensions = true
 }
 
-module "vscode-web" {
-  count                   = data.coder_workspace.me.start_count
-  source                  = "registry.coder.com/modules/vscode-web/coder"
-  version                 = ">= 1.0.0"
-  agent_id                = coder_agent.dev.id
-  folder                  = local.repo_dir
-  extensions              = ["github.copilot"]
-  auto_install_extensions = true # will install extensions from the repos .vscode/extensions.json file
-  accept_license          = true
-}
-
 module "jetbrains_gateway" {
-  count          = data.coder_workspace.me.start_count
-  source         = "dev.registry.coder.com/modules/jetbrains-gateway/coder"
+  source         = "registry.coder.com/modules/jetbrains-gateway/coder"
   version        = ">= 1.0.0"
   agent_id       = coder_agent.dev.id
   agent_name     = "dev"
@@ -167,23 +150,20 @@ module "jetbrains_gateway" {
 }
 
 module "filebrowser" {
-  count      = data.coder_workspace.me.start_count
-  source     = "dev.registry.coder.com/modules/filebrowser/coder"
+  source     = "registry.coder.com/modules/filebrowser/coder"
   version    = ">= 1.0.0"
   agent_id   = coder_agent.dev.id
   agent_name = "dev"
 }
 
 module "coder-login" {
-  count    = data.coder_workspace.me.start_count
-  source   = "dev.registry.coder.com/modules/coder-login/coder"
+  source   = "registry.coder.com/modules/coder-login/coder"
   version  = ">= 1.0.0"
   agent_id = coder_agent.dev.id
 }
 
 module "cursor" {
-  count    = data.coder_workspace.me.start_count
-  source   = "dev.registry.coder.com/modules/cursor/coder"
+  source   = "registry.coder.com/modules/cursor/coder"
   version  = ">= 1.0.0"
   agent_id = coder_agent.dev.id
   folder   = local.repo_dir
@@ -363,9 +343,6 @@ resource "docker_container" "workspace" {
   env = [
     "CODER_AGENT_TOKEN=${coder_agent.dev.token}",
     "USE_CAP_NET_ADMIN=true",
-    "CODER_PROC_PRIO_MGMT=1",
-    "CODER_PROC_OOM_SCORE=10",
-    "CODER_PROC_NICE_SCORE=1",
   ]
   host {
     host = "host.docker.internal"

@@ -22,7 +22,7 @@ const (
 )
 
 // OpenTunnel creates a new VPN tunnel by `dup`ing the provided 'PIPE'
-// file descriptors for reading and writing.
+// file descriptors for reading, writing, and logging.
 //
 //export OpenTunnel
 func OpenTunnel(cReadFD, cWriteFD int32) int32 {
@@ -46,11 +46,8 @@ func OpenTunnel(cReadFD, cWriteFD int32) int32 {
 		return ErrOpenPipe
 	}
 
-	_, err = vpn.NewTunnel(ctx, slog.Make(), conn, vpn.NewClient(),
-		vpn.UseAsDNSConfig(),
-		vpn.UseAsRouter(),
-		vpn.UseAsLogger(),
-	)
+	// Logs will be sent over the protocol
+	_, err = vpn.NewTunnel(ctx, slog.Make(), conn)
 	if err != nil {
 		unix.Close(readFD)
 		unix.Close(writeFD)

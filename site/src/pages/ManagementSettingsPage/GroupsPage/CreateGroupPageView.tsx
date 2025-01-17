@@ -2,7 +2,6 @@ import TextField from "@mui/material/TextField";
 import { isApiValidationError } from "api/errors";
 import type { CreateGroupRequest } from "api/typesGenerated";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
-import { Button } from "components/Button/Button";
 import {
 	FormFields,
 	FormFooter,
@@ -11,19 +10,14 @@ import {
 } from "components/Form/Form";
 import { IconField } from "components/IconField/IconField";
 import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
-import { Spinner } from "components/Spinner/Spinner";
 import { useFormik } from "formik";
 import type { FC } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-	getFormHelpers,
-	nameValidator,
-	onChangeTrimmed,
-} from "utils/formUtils";
+import { getFormHelpers, onChangeTrimmed } from "utils/formUtils";
 import * as Yup from "yup";
 
 const validationSchema = Yup.object({
-	name: nameValidator("Name"),
+	name: Yup.string().required().label("Name"),
 });
 
 export type CreateGroupPageViewProps = {
@@ -73,8 +67,6 @@ export const CreateGroupPageView: FC<CreateGroupPageViewProps> = ({
 							autoFocus
 							fullWidth
 							label="Name"
-							onChange={onChangeTrimmed(form)}
-							autoComplete="name"
 						/>
 						<TextField
 							{...getFieldHelpers("display_name", {
@@ -82,7 +74,6 @@ export const CreateGroupPageView: FC<CreateGroupPageViewProps> = ({
 							})}
 							fullWidth
 							label="Display Name"
-							autoComplete="display_name"
 						/>
 						<IconField
 							{...getFieldHelpers("avatar_url")}
@@ -93,17 +84,7 @@ export const CreateGroupPageView: FC<CreateGroupPageViewProps> = ({
 						/>
 					</FormFields>
 				</FormSection>
-
-				<FormFooter>
-					<Button onClick={onCancel} variant="outline">
-						Cancel
-					</Button>
-
-					<Button type="submit" disabled={isLoading}>
-						<Spinner loading={isLoading} />
-						Save
-					</Button>
-				</FormFooter>
+				<FormFooter onCancel={onCancel} isLoading={isLoading} />
 			</HorizontalForm>
 		</>
 	);

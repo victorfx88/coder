@@ -6,11 +6,10 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/coder/coder/v2/coderd/coderdtest"
-	"github.com/coder/coder/v2/testutil"
 )
 
 func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m, testutil.GoleakOptions...)
+	goleak.VerifyTestMain(m)
 }
 
 func TestNew(t *testing.T) {

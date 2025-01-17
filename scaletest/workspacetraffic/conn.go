@@ -10,13 +10,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
-	gossh "golang.org/x/crypto/ssh"
-	"golang.org/x/xerrors"
+	"nhooyr.io/websocket"
 
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/codersdk/workspacesdk"
-	"github.com/coder/websocket"
+
+	"github.com/google/uuid"
+	gossh "golang.org/x/crypto/ssh"
+	"golang.org/x/xerrors"
 )
 
 const (

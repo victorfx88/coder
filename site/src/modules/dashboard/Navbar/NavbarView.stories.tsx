@@ -11,6 +11,7 @@ const meta: Meta<typeof NavbarView> = {
 	component: NavbarView,
 	args: {
 		user: MockUser,
+		canViewAllUsers: true,
 		canViewAuditLog: true,
 		canViewDeployment: true,
 		canViewHealth: true,
@@ -26,7 +27,7 @@ export const ForAdmin: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await userEvent.click(
-			canvas.getByRole("button", { name: "Admin settings" }),
+			canvas.getByRole("button", { name: "Administration" }),
 		);
 	},
 };
@@ -34,6 +35,7 @@ export const ForAdmin: Story = {
 export const ForAuditor: Story = {
 	args: {
 		user: MockUser2,
+		canViewAllUsers: false,
 		canViewAuditLog: true,
 		canViewDeployment: false,
 		canViewHealth: false,
@@ -42,7 +44,7 @@ export const ForAuditor: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await userEvent.click(
-			canvas.getByRole("button", { name: "Admin settings" }),
+			canvas.getByRole("button", { name: "Administration" }),
 		);
 	},
 };
@@ -50,6 +52,7 @@ export const ForAuditor: Story = {
 export const ForOrgAdmin: Story = {
 	args: {
 		user: MockUser2,
+		canViewAllUsers: false,
 		canViewAuditLog: true,
 		canViewDeployment: false,
 		canViewHealth: false,
@@ -58,7 +61,7 @@ export const ForOrgAdmin: Story = {
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);
 		await userEvent.click(
-			canvas.getByRole("button", { name: "Admin settings" }),
+			canvas.getByRole("button", { name: "Administration" }),
 		);
 	},
 };
@@ -66,6 +69,7 @@ export const ForOrgAdmin: Story = {
 export const ForMember: Story = {
 	args: {
 		user: MockUser2,
+		canViewAllUsers: false,
 		canViewAuditLog: false,
 		canViewDeployment: false,
 		canViewHealth: false,

@@ -8,13 +8,8 @@ module.exports = {
 	important: ["#root", "#storybook-root"],
 	theme: {
 		extend: {
-			size: {
-				"icon-lg": "1.5rem",
-				"icon-sm": "1.125rem",
-				"icon-xs": "0.875rem",
-			},
 			fontSize: {
-				"2xs": ["0.625rem", "0.875rem"],
+				"2xs": ["0.626rem", "0.875rem"],
 				sm: ["0.875rem", "1.5rem"],
 				"3xl": ["2rem", "2.5rem"],
 			},
@@ -37,31 +32,18 @@ module.exports = {
 					primary: "hsl(var(--surface-primary))",
 					secondary: "hsl(var(--surface-secondary))",
 					tertiary: "hsl(var(--surface-tertiary))",
-					quaternary: "hsl(var(--surface-quaternary))",
 					invert: {
 						primary: "hsl(var(--surface-invert-primary))",
 						secondary: "hsl(var(--surface-invert-secondary))",
 					},
-					destructive: "hsl(var(--surface-destructive))",
+					error: "hsl(var(--surface-error))",
 				},
 				border: {
 					DEFAULT: "hsl(var(--border-default))",
-					destructive: "hsl(var(--border-destructive))",
+					error: "hsl(var(--border-error))",
 				},
-				input: "hsl(var(--input))",
-				ring: "hsl(var(--ring))",
-				highlight: {
-					purple: "hsl(var(--highlight-purple))",
-					green: "hsl(var(--highlight-green))",
-				},
-			},
-			keyframes: {
-				loading: {
-					"0%": { opacity: 0.85 },
-					"25%": { opacity: 0.7 },
-					"50%": { opacity: 0.4 },
-					"75%": { opacity: 0.3 },
-					"100%": { opacity: 0.2 },
+				background: {
+					DEFAULT: "hsl(var(--background))",
 				},
 			},
 		},

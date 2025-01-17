@@ -1,6 +1,8 @@
-import MuiDialog, { type DialogProps } from "@mui/material/Dialog";
-import { Button } from "components/Button/Button";
-import { Spinner } from "components/Spinner/Spinner";
+import type { Interpolation, Theme } from "@emotion/react";
+import LoadingButton, { type LoadingButtonProps } from "@mui/lab/LoadingButton";
+import MuiDialog, {
+	type DialogProps as MuiDialogProps,
+} from "@mui/material/Dialog";
 import type { FC, ReactNode } from "react";
 import type { ConfirmDialogType } from "./types";
 
@@ -20,6 +22,13 @@ export interface DialogActionButtonsProps {
 	type?: ConfirmDialogType;
 }
 
+const typeToColor = (type: ConfirmDialogType): LoadingButtonProps["color"] => {
+	if (type === "delete") {
+		return "secondary";
+	}
+	return "primary";
+};
+
 /**
  * Quickly handles most modals actions, some combination of a cancel and confirm button
  */
@@ -35,29 +44,124 @@ export const DialogActionButtons: FC<DialogActionButtonsProps> = ({
 	return (
 		<>
 			{onCancel && (
-				<Button disabled={confirmLoading} onClick={onCancel} variant="outline">
+				<LoadingButton disabled={confirmLoading} onClick={onCancel} fullWidth>
 					{cancelText}
-				</Button>
+				</LoadingButton>
 			)}
 
 			{onConfirm && (
-				<Button
-					variant={type === "delete" ? "destructive" : undefined}
-					disabled={confirmLoading || disabled}
-					onClick={onConfirm}
+				<LoadingButton
+					fullWidth
 					data-testid="confirm-button"
+					variant="contained"
+					onClick={onConfirm}
+					color={typeToColor(type)}
+					loading={confirmLoading}
+					disabled={disabled}
 					type="submit"
+					css={[
+						type === "delete" && styles.dangerButton,
+						type === "success" && styles.successButton,
+					]}
 				>
-					<Spinner loading={confirmLoading} />
 					{confirmText}
-				</Button>
+				</LoadingButton>
 			)}
 		</>
 	);
 };
 
+const styles = {
+	dangerButton: (theme) => ({
+		"&.MuiButton-contained": {
+			backgroundColor: theme.roles.danger.fill.solid,
+			borderColor: theme.roles.danger.fill.outline,
+
+			"&:not(.MuiLoadingButton-loading)": {
+				color: theme.roles.danger.fill.text,
+			},
+
+			"&:hover:not(:disabled)": {
+				backgroundColor: theme.roles.danger.hover.fill.solid,
+				borderColor: theme.roles.danger.hover.fill.outline,
+			},
+
+			"&.Mui-disabled": {
+				backgroundColor: theme.roles.danger.disabled.background,
+				borderColor: theme.roles.danger.disabled.outline,
+
+				"&:not(.MuiLoadingButton-loading)": {
+					color: theme.roles.danger.disabled.fill.text,
+				},
+			},
+		},
+	}),
+	successButton: (theme) => ({
+		"&.MuiButton-contained": {
+			backgroundColor: theme.palette.success.dark,
+
+			"&:not(.MuiLoadingButton-loading)": {
+				color: theme.palette.primary.contrastText,
+			},
+
+			"&:hover": {
+				backgroundColor: theme.palette.success.main,
+
+				"@media (hover: none)": {
+					backgroundColor: "transparent",
+				},
+
+				"&.Mui-disabled": {
+					backgroundColor: "transparent",
+				},
+			},
+
+			"&.Mui-disabled": {
+				backgroundColor: theme.palette.success.dark,
+
+				"&:not(.MuiLoadingButton-loading)": {
+					color: theme.palette.text.secondary,
+				},
+			},
+		},
+
+		"&.MuiButton-outlined": {
+			color: theme.palette.success.main,
+			borderColor: theme.palette.success.main,
+			"&:hover": {
+				backgroundColor: theme.palette.success.dark,
+				"@media (hover: none)": {
+					backgroundColor: "transparent",
+				},
+				"&.Mui-disabled": {
+					backgroundColor: "transparent",
+				},
+			},
+			"&.Mui-disabled": {
+				color: theme.palette.text.secondary,
+				borderColor: theme.palette.action.disabled,
+			},
+		},
+
+		"&.MuiButton-text": {
+			color: theme.palette.success.main,
+			"&:hover": {
+				backgroundColor: theme.palette.success.dark,
+				"@media (hover: none)": {
+					backgroundColor: "transparent",
+				},
+			},
+			"&.Mui-disabled": {
+				color: theme.palette.text.secondary,
+			},
+		},
+	}),
+} satisfies Record<string, Interpolation<Theme>>;
+
+export type DialogProps = MuiDialogProps;
+
 /**
  * Re-export of MUI's Dialog component, for convenience.
  * @link See original documentation here: https://mui.com/material-ui/react-dialog/
  */
-export { MuiDialog as Dialog, type DialogProps };
+export { MuiDialog as Dialog };

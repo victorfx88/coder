@@ -118,10 +118,7 @@ export const WorkspaceSchedulePage: FC = () => {
 
 						await submitScheduleMutation.mutateAsync(data);
 
-						if (
-							data.autostopChanged &&
-							getAutostop(workspace).autostopEnabled
-						) {
+						if (data.autostopChanged) {
 							setIsConfirmingApply(true);
 						}
 					}}

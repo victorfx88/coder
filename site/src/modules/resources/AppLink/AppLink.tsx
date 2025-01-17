@@ -129,13 +129,12 @@ export const AppLink: FC<AppLinkProps> = ({ app, workspace, agent }) => {
 					}
 
 					event.preventDefault();
-
 					// This is an external URI like "vscode://", so
 					// it needs to be opened with the browser protocol handler.
-					const shouldOpenAppExternally =
-						app.external && !app.url.startsWith("http");
+					if (app.external && !app.url.startsWith("http")) {
+						// If the protocol is external the browser does not
+						// redirect the user from the page.
 
-					if (shouldOpenAppExternally) {
 						// This is a magic undocumented string that is replaced
 						// with a brand-new session token from the backend.
 						// This only exists for external URLs, and should only
@@ -150,22 +149,12 @@ export const AppLink: FC<AppLinkProps> = ({ app, workspace, agent }) => {
 							setFetchingSessionToken(false);
 						}
 						window.location.href = url;
-						return;
-					}
-
-					switch (app.open_in) {
-						case "slim-window": {
-							window.open(
-								href,
-								Language.appTitle(appDisplayName, generateRandomString(12)),
-								"width=900,height=600",
-							);
-							return;
-						}
-						default: {
-							window.open(href);
-							return;
-						}
+					} else {
+						window.open(
+							href,
+							Language.appTitle(appDisplayName, generateRandomString(12)),
+							"width=900,height=600",
+						);
 					}
 				}}
 			>

@@ -20,6 +20,7 @@ export const Navbar: FC = () => {
 	const canViewDeployment = Boolean(permissions.viewDeploymentValues);
 	const canViewOrganizations =
 		Boolean(permissions.editAnyOrganization) && showOrganizations;
+	const canViewAllUsers = Boolean(permissions.viewAllUsers);
 	const proxyContextValue = useProxy();
 	const canViewHealth = canViewDeployment;
 
@@ -32,10 +33,10 @@ export const Navbar: FC = () => {
 			onSignOut={signOut}
 			canViewDeployment={canViewDeployment}
 			canViewOrganizations={canViewOrganizations}
+			canViewAllUsers={canViewAllUsers}
 			canViewHealth={canViewHealth}
 			canViewAuditLog={canViewAuditLog}
 			proxyContextValue={proxyContextValue}
-			docsHref={appearance.docs_url}
 		/>
 	);
 };

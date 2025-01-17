@@ -33,7 +33,6 @@ import (
 
 	"cloud.google.com/go/compute/metadata"
 	"github.com/fullsailor/pkcs7"
-	"github.com/go-chi/chi/v5"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/moby/moby/pkg/namesgenerator"
@@ -146,11 +145,6 @@ type Options struct {
 	// test instances are running against the same database.
 	Database database.Store
 	Pubsub   pubsub.Pubsub
-
-	// APIMiddleware inserts middleware before api.RootHandler, this can be
-	// useful in certain tests where you want to intercept requests before
-	// passing them on to the API, e.g. for synchronization of execution.
-	APIMiddleware func(http.Handler) http.Handler
 
 	ConfigSSH codersdk.SSHConfigResponse
 
@@ -561,14 +555,7 @@ func NewWithAPI(t testing.TB, options *Options) (*codersdk.Client, io.Closer, *c
 	setHandler, cancelFunc, serverURL, newOptions := NewOptions(t, options)
 	// We set the handler after server creation for the access URL.
 	coderAPI := coderd.New(newOptions)
-	rootHandler := coderAPI.RootHandler
-	if options.APIMiddleware != nil {
-		r := chi.NewRouter()
-		r.Use(options.APIMiddleware)
-		r.Mount("/", rootHandler)
-		rootHandler = r
-	}
-	setHandler(rootHandler)
+	setHandler(coderAPI.RootHandler)
 	var provisionerCloser io.Closer = nopcloser{}
 	if options.IncludeProvisionerDaemon {
 		provisionerCloser = NewTaggedProvisionerDaemon(t, coderAPI, "test", options.ProvisionerDaemonTags)
@@ -644,7 +631,6 @@ func NewTaggedProvisionerDaemon(t testing.TB, coderAPI *coderd.API, name string,
 		assert.NoError(t, err)
 	}()
 
-	connectedCh := make(chan struct{})
 	daemon := provisionerd.New(func(dialCtx context.Context) (provisionerdproto.DRPCProvisionerDaemonClient, error) {
 		return coderAPI.CreateInMemoryTaggedProvisionerDaemon(dialCtx, name, []codersdk.ProvisionerType{codersdk.ProvisionerTypeEcho}, provisionerTags)
 	}, &provisionerd.Options{
@@ -654,12 +640,7 @@ func NewTaggedProvisionerDaemon(t testing.TB, coderAPI *coderd.API, name string,
 		Connector: provisionerd.LocalProvisioners{
 			string(database.ProvisionerTypeEcho): sdkproto.NewDRPCProvisionerClient(echoClient),
 		},
-		InitConnectionCh: connectedCh,
 	})
-	// Wait for the provisioner daemon to connect before continuing.
-	// Users of this function tend to assume that the provisioner is connected
-	// and ready to use when that may not strictly be the case.
-	<-connectedCh
 	closer := NewProvisionerDaemonCloser(daemon)
 	t.Cleanup(func() {
 		_ = closer.Close()

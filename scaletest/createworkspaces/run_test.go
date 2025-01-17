@@ -52,6 +52,9 @@ func Test_Runner(t *testing.T) {
 	t.Run("OK", func(t *testing.T) {
 		t.Parallel()
 
+		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
+		defer cancel()
+
 		client := coderdtest.New(t, &coderdtest.Options{
 			IncludeProvisionerDaemon: true,
 		})
@@ -105,8 +108,6 @@ func Test_Runner(t *testing.T) {
 
 		version = coderdtest.AwaitTemplateVersionJobCompleted(t, client, version.ID)
 		template := coderdtest.CreateTemplate(t, client, user.OrganizationID, version.ID)
-
-		ctx := testutil.Context(t, testutil.WaitLong)
 
 		closerCh := goEventuallyStartFakeAgent(ctx, t, client, authToken)
 
@@ -198,6 +199,9 @@ func Test_Runner(t *testing.T) {
 	t.Run("CleanupPendingBuild", func(t *testing.T) {
 		t.Parallel()
 
+		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
+		defer cancel()
+
 		// need to include our own logger because the provisioner (rightly) drops error logs when we shut down the
 		// test with a build in progress.
 		logger := slogtest.Make(t, &slogtest.Options{IgnoreErrors: true}).Leveled(slog.LevelDebug)
@@ -249,9 +253,7 @@ func Test_Runner(t *testing.T) {
 			},
 		})
 
-		ctx := testutil.Context(t, testutil.WaitLong)
 		cancelCtx, cancelFunc := context.WithCancel(ctx)
-
 		done := make(chan struct{})
 		logs := bytes.NewBuffer(nil)
 		go func() {
@@ -284,8 +286,6 @@ func Test_Runner(t *testing.T) {
 
 		cancelFunc()
 		<-done
-
-		ctx = testutil.Context(t, testutil.WaitLong) // Reset ctx to avoid timeouts.
 
 		// When we run the cleanup, it should be canceled
 		cleanupLogs := bytes.NewBuffer(nil)
@@ -339,6 +339,9 @@ func Test_Runner(t *testing.T) {
 
 	t.Run("NoCleanup", func(t *testing.T) {
 		t.Parallel()
+
+		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
+		defer cancel()
 
 		client := coderdtest.New(t, &coderdtest.Options{
 			IncludeProvisionerDaemon: true,
@@ -394,7 +397,6 @@ func Test_Runner(t *testing.T) {
 		version = coderdtest.AwaitTemplateVersionJobCompleted(t, client, version.ID)
 		template := coderdtest.CreateTemplate(t, client, user.OrganizationID, version.ID)
 
-		ctx := testutil.Context(t, testutil.WaitLong)
 		closeCh := goEventuallyStartFakeAgent(ctx, t, client, authToken)
 
 		const (
@@ -482,6 +484,9 @@ func Test_Runner(t *testing.T) {
 	t.Run("FailedBuild", func(t *testing.T) {
 		t.Parallel()
 
+		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
+		defer cancel()
+
 		logger := slogtest.Make(t, &slogtest.Options{IgnoreErrors: true})
 		client := coderdtest.New(t, &coderdtest.Options{
 			IncludeProvisionerDaemon: true,
@@ -528,8 +533,6 @@ func Test_Runner(t *testing.T) {
 				},
 			},
 		})
-
-		ctx := testutil.Context(t, testutil.WaitLong)
 
 		logs := bytes.NewBuffer(nil)
 		err := runner.Run(ctx, "1", logs)

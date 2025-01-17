@@ -186,7 +186,7 @@ export const Pill = forwardRef<HTMLDivElement, PillProps>((props, ref) => {
 });
 
 type BooleanPillProps = Omit<ComponentProps<typeof Pill>, "icon" | "value"> & {
-	value: boolean | null;
+	value: boolean;
 };
 
 export const BooleanPill: FC<BooleanPillProps> = ({

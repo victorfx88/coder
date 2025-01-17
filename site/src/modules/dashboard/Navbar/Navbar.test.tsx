@@ -7,6 +7,7 @@ import {
 	MockMemberPermissions,
 } from "testHelpers/entities";
 import { server } from "testHelpers/server";
+import { Language } from "./NavbarView";
 
 /**
  * The LicenseBanner, mounted above the AppRouter, fetches entitlements. Thus, to test their
@@ -21,20 +22,27 @@ describe("Navbar", () => {
 			}),
 		);
 		render(<App />);
-		const deploymentMenu = await screen.findByText("Admin settings");
+		const deploymentMenu = await screen.findByText("Administration");
 		await userEvent.click(deploymentMenu);
-		await screen.findByText("Audit Logs");
+		await waitFor(
+			() => {
+				const link = screen.getByText(Language.audit);
+				expect(link).toBeDefined();
+			},
+			{ timeout: 2000 },
+		);
 	});
 
 	it("does not show Audit Log link when not entitled", async () => {
 		// by default, user is an Admin with permission to see the audit log,
 		// but is unlicensed so not entitled to see the audit log
 		render(<App />);
-		const deploymentMenu = await screen.findByText("Admin settings");
+		const deploymentMenu = await screen.findByText("Administration");
 		await userEvent.click(deploymentMenu);
 		await waitFor(
 			() => {
-				expect(screen.queryByText("Audit Logs")).not.toBeInTheDocument();
+				const link = screen.queryByText(Language.audit);
+				expect(link).toBe(null);
 			},
 			{ timeout: 2000 },
 		);
@@ -56,7 +64,8 @@ describe("Navbar", () => {
 		render(<App />);
 		await waitFor(
 			() => {
-				expect(screen.queryByText("Deployment")).not.toBeInTheDocument();
+				const link = screen.queryByText("Deployment");
+				expect(link).toBe(null);
 			},
 			{ timeout: 2000 },
 		);

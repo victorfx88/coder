@@ -3,13 +3,16 @@ import {
 	organizationsPermissions,
 	updateOrganization,
 } from "api/queries/organizations";
+import type { Organization } from "api/typesGenerated";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { EmptyState } from "components/EmptyState/EmptyState";
 import { displaySuccess } from "components/GlobalSnackbar/utils";
 import { Loader } from "components/Loader/Loader";
 import { useFeatureVisibility } from "modules/dashboard/useFeatureVisibility";
-import { canEditOrganization } from "modules/management/OrganizationSettingsLayout";
-import { useOrganizationSettings } from "modules/management/OrganizationSettingsLayout";
+import {
+	canEditOrganization,
+	useManagementSettings,
+} from "modules/management/ManagementSettingsLayout";
 import type { FC } from "react";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { Navigate, useNavigate, useParams } from "react-router-dom";
@@ -20,7 +23,7 @@ const OrganizationSettingsPage: FC = () => {
 	const { organization: organizationName } = useParams() as {
 		organization?: string;
 	};
-	const { organizations } = useOrganizationSettings();
+	const { organizations } = useManagementSettings();
 	const feats = useFeatureVisibility();
 
 	const navigate = useNavigate();
@@ -89,7 +92,7 @@ const OrganizationSettingsPage: FC = () => {
 						organizationId: organization.id,
 						req: values,
 					});
-				navigate(`/organizations/${updatedOrganization.name}/settings`);
+				navigate(`/organizations/${updatedOrganization.name}`);
 				displaySuccess("Organization settings updated.");
 			}}
 			onDeleteOrganization={() => {

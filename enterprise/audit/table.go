@@ -5,10 +5,8 @@ import (
 	"os"
 	"reflect"
 	"runtime"
-	"strings"
 
 	"github.com/coder/coder/v2/coderd/database"
-	"github.com/coder/coder/v2/coderd/idpsync"
 	"github.com/coder/coder/v2/codersdk"
 )
 
@@ -167,7 +165,6 @@ var auditableResourcesTypes = map[any]map[string]Action{
 		"deleting_at":        ActionTrack,
 		"automatic_updates":  ActionTrack,
 		"favorite":           ActionTrack,
-		"next_start_at":      ActionTrack,
 	},
 	&database.WorkspaceBuild{}: {
 		"id":                      ActionIgnore,
@@ -279,32 +276,14 @@ var auditableResourcesTypes = map[any]map[string]Action{
 		"icon":         ActionTrack,
 	},
 	&database.NotificationTemplate{}: {
-		"id":                 ActionIgnore,
-		"name":               ActionTrack,
-		"title_template":     ActionTrack,
-		"body_template":      ActionTrack,
-		"actions":            ActionTrack,
-		"group":              ActionTrack,
-		"method":             ActionTrack,
-		"kind":               ActionTrack,
-		"enabled_by_default": ActionTrack,
-	},
-	&idpsync.OrganizationSyncSettings{}: {
-		"field":          ActionTrack,
-		"mapping":        ActionTrack,
-		"assign_default": ActionTrack,
-	},
-	&idpsync.GroupSyncSettings{}: {
-		"field":                      ActionTrack,
-		"mapping":                    ActionTrack,
-		"regex_filter":               ActionTrack,
-		"auto_create_missing_groups": ActionTrack,
-		// Configured in env vars
-		"legacy_group_name_mapping": ActionIgnore,
-	},
-	&idpsync.RoleSyncSettings{}: {
-		"field":   ActionTrack,
-		"mapping": ActionTrack,
+		"id":             ActionIgnore,
+		"name":           ActionTrack,
+		"title_template": ActionTrack,
+		"body_template":  ActionTrack,
+		"actions":        ActionTrack,
+		"group":          ActionTrack,
+		"method":         ActionTrack,
+		"kind":           ActionTrack,
 	},
 }
 
@@ -355,7 +334,6 @@ func entry(v any, f map[string]Action) (string, map[string]Action) {
 			// This field is explicitly ignored.
 			continue
 		}
-		jsonTag = strings.TrimSuffix(jsonTag, ",omitempty")
 		if _, ok := fcpy[jsonTag]; !ok {
 			_, _ = fmt.Fprintf(os.Stderr, "ERROR: Audit table entry missing action for field %q in type %q\nPlease update the auditable resource types in: %s\n", d.FieldType.Name, name, self())
 			//nolint:revive

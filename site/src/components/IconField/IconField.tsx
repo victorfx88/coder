@@ -6,12 +6,12 @@ import { visuallyHidden } from "@mui/utils";
 import { DropdownArrow } from "components/DropdownArrow/DropdownArrow";
 import { ExternalImage } from "components/ExternalImage/ExternalImage";
 import { Loader } from "components/Loader/Loader";
-import { Stack } from "components/Stack/Stack";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
-} from "components/deprecated/Popover/Popover";
+} from "components/Popover/Popover";
+import { Stack } from "components/Stack/Stack";
 import { type FC, Suspense, lazy, useState } from "react";
 
 // See: https://github.com/missive/emoji-mart/issues/51#issuecomment-287353222

@@ -122,7 +122,14 @@ export const WorkspacesEmpty: FC<WorkspacesEmptyProps> = ({
 								})}
 							>
 								<div css={{ flexShrink: 0, paddingTop: 4 }}>
-									<Avatar variant="icon" src={t.icon} fallback={t.name} />
+									<Avatar
+										variant={t.icon ? "square" : undefined}
+										fitImage={Boolean(t.icon)}
+										src={t.icon}
+										size="sm"
+									>
+										{t.name}
+									</Avatar>
 								</div>
 
 								<div css={{ width: "100%", minWidth: "0" }}>

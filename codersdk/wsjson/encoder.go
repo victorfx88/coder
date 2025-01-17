@@ -5,8 +5,7 @@ import (
 	"encoding/json"
 
 	"golang.org/x/xerrors"
-
-	"github.com/coder/websocket"
+	"nhooyr.io/websocket"
 )
 
 type Encoder[T any] struct {
@@ -28,7 +27,6 @@ func (e *Encoder[T]) Encode(v T) error {
 	return nil
 }
 
-// nolint: revive // complains that Decoder has the same function name
 func (e *Encoder[T]) Close(c websocket.StatusCode) error {
 	return e.conn.Close(c, "")
 }

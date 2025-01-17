@@ -165,15 +165,10 @@ func (s *Server) handleConn(ctx context.Context, logger slog.Logger, conn net.Co
 			return xerrors.Errorf("create command: %w", err)
 		}
 
-		rpty = New(ctx,
-			logger.With(slog.F("message_id", msg.ID)),
-			s.commandCreator.Execer,
-			cmd,
-			&Options{
-				Timeout: s.timeout,
-				Metrics: s.errorsTotal,
-			},
-		)
+		rpty = New(ctx, cmd, &Options{
+			Timeout: s.timeout,
+			Metrics: s.errorsTotal,
+		}, logger.With(slog.F("message_id", msg.ID)))
 
 		done := make(chan struct{})
 		go func() {

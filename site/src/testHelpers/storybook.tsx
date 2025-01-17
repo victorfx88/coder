@@ -9,7 +9,7 @@ import { AuthProvider } from "contexts/auth/AuthProvider";
 import { permissionsToCheck } from "contexts/auth/permissions";
 import { DashboardContext } from "modules/dashboard/DashboardProvider";
 import { DeploymentSettingsContext } from "modules/management/DeploymentSettingsProvider";
-import { OrganizationSettingsContext } from "modules/management/OrganizationSettingsLayout";
+import { ManagementSettingsContext } from "modules/management/ManagementSettingsLayout";
 import type { FC } from "react";
 import { useQueryClient } from "react-query";
 import {
@@ -155,7 +155,7 @@ export const withGlobalSnackbar = (Story: FC) => (
 
 export const withManagementSettingsProvider = (Story: FC) => {
 	return (
-		<OrganizationSettingsContext.Provider
+		<ManagementSettingsContext.Provider
 			value={{
 				organizations: [MockDefaultOrganization],
 				organization: MockDefaultOrganization,
@@ -166,6 +166,6 @@ export const withManagementSettingsProvider = (Story: FC) => {
 			>
 				<Story />
 			</DeploymentSettingsContext.Provider>
-		</OrganizationSettingsContext.Provider>
+		</ManagementSettingsContext.Provider>
 	);
 };

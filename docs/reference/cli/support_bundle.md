@@ -1,4 +1,5 @@
 <!-- DO NOT EDIT | GENERATED CONTENT -->
+
 # support bundle
 
 Generate a support bundle to troubleshoot issues connecting to a workspace.
@@ -20,7 +21,7 @@ This command generates a file containing detailed troubleshooting information ab
 ### -y, --yes
 
 |      |                   |
-|------|-------------------|
+| ---- | ----------------- |
 | Type | <code>bool</code> |
 
 Bypass prompts.
@@ -28,7 +29,7 @@ Bypass prompts.
 ### -O, --output-file
 
 |             |                                                |
-|-------------|------------------------------------------------|
+| ----------- | ---------------------------------------------- |
 | Type        | <code>string</code>                            |
 | Environment | <code>$CODER_SUPPORT_BUNDLE_OUTPUT_FILE</code> |
 
@@ -37,7 +38,7 @@ File path for writing the generated support bundle. Defaults to coder-support-$(
 ### --url-override
 
 |             |                                                 |
-|-------------|-------------------------------------------------|
+| ----------- | ----------------------------------------------- |
 | Type        | <code>string</code>                             |
 | Environment | <code>$CODER_SUPPORT_BUNDLE_URL_OVERRIDE</code> |
 

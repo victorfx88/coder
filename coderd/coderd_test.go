@@ -39,7 +39,7 @@ import (
 var updateGoldenFiles = flag.Bool("update", false, "Update golden files")
 
 func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m, testutil.GoleakOptions...)
+	goleak.VerifyTestMain(m)
 }
 
 func TestBuildInfo(t *testing.T) {

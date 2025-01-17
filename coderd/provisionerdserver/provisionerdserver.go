@@ -1438,11 +1438,9 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 				return getWorkspaceError
 			}
 
-			templateScheduleStore := *s.TemplateScheduleStore.Load()
-
 			autoStop, err := schedule.CalculateAutostop(ctx, schedule.CalculateAutostopParams{
 				Database:                    db,
-				TemplateScheduleStore:       templateScheduleStore,
+				TemplateScheduleStore:       *s.TemplateScheduleStore.Load(),
 				UserQuietHoursScheduleStore: *s.UserQuietHoursScheduleStore.Load(),
 				Now:                         now,
 				Workspace:                   workspace.WorkspaceTable(),
@@ -1451,24 +1449,6 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 			})
 			if err != nil {
 				return xerrors.Errorf("calculate auto stop: %w", err)
-			}
-
-			if workspace.AutostartSchedule.Valid {
-				templateScheduleOptions, err := templateScheduleStore.Get(ctx, db, workspace.TemplateID)
-				if err != nil {
-					return xerrors.Errorf("get template schedule options: %w", err)
-				}
-
-				nextStartAt, err := schedule.NextAllowedAutostart(now, workspace.AutostartSchedule.String, templateScheduleOptions)
-				if err == nil {
-					err = db.UpdateWorkspaceNextStartAt(ctx, database.UpdateWorkspaceNextStartAtParams{
-						ID:          workspace.ID,
-						NextStartAt: sql.NullTime{Valid: true, Time: nextStartAt.UTC()},
-					})
-					if err != nil {
-						return xerrors.Errorf("update workspace next start at: %w", err)
-					}
-				}
 			}
 
 			err = db.UpdateProvisionerJobWithCompleteByID(ctx, database.UpdateProvisionerJobWithCompleteByIDParams{
@@ -1509,7 +1489,6 @@ func (s *server) CompleteJob(ctx context.Context, completed *proto.CompletedJob)
 					dur := time.Duration(protoAgent.GetConnectionTimeoutSeconds()) * time.Second
 					agentTimeouts[dur] = true
 				}
-
 				err = InsertWorkspaceResource(ctx, db, job.ID, workspaceBuild.Transition, protoResource, telemetrySnapshot)
 				if err != nil {
 					return xerrors.Errorf("insert provisioner job: %w", err)
@@ -2013,14 +1992,6 @@ func InsertWorkspaceResource(ctx context.Context, db database.Store, jobID uuid.
 				sharingLevel = database.AppSharingLevelPublic
 			}
 
-			openIn := database.WorkspaceAppOpenInSlimWindow
-			switch app.OpenIn {
-			case sdkproto.AppOpenIn_TAB:
-				openIn = database.WorkspaceAppOpenInTab
-			case sdkproto.AppOpenIn_SLIM_WINDOW:
-				openIn = database.WorkspaceAppOpenInSlimWindow
-			}
-
 			dbApp, err := db.InsertWorkspaceApp(ctx, database.InsertWorkspaceAppParams{
 				ID:          uuid.New(),
 				CreatedAt:   dbtime.Now(),
@@ -2045,7 +2016,6 @@ func InsertWorkspaceResource(ctx context.Context, db database.Store, jobID uuid.
 				Health:               health,
 				DisplayOrder:         int32(app.Order),
 				Hidden:               app.Hidden,
-				OpenIn:               openIn,
 			})
 			if err != nil {
 				return xerrors.Errorf("insert app: %w", err)

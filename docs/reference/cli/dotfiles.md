@@ -1,4 +1,5 @@
 <!-- DO NOT EDIT | GENERATED CONTENT -->
+
 # dotfiles
 
 Personalize your workspace by applying a canonical dotfiles repository
@@ -22,7 +23,7 @@ coder dotfiles [flags] <git_repo_url>
 ### --symlink-dir
 
 |             |                                 |
-|-------------|---------------------------------|
+| ----------- | ------------------------------- |
 | Type        | <code>string</code>             |
 | Environment | <code>$CODER_SYMLINK_DIR</code> |
 
@@ -31,7 +32,7 @@ Specifies the directory for the dotfiles symlink destinations. If empty, will us
 ### -b, --branch
 
 |      |                     |
-|------|---------------------|
+| ---- | ------------------- |
 | Type | <code>string</code> |
 
 Specifies which branch to clone. If empty, will default to cloning the default branch or using the existing branch in the cloned repo on disk.
@@ -39,7 +40,7 @@ Specifies which branch to clone. If empty, will default to cloning the default b
 ### --repo-dir
 
 |             |                                       |
-|-------------|---------------------------------------|
+| ----------- | ------------------------------------- |
 | Type        | <code>string</code>                   |
 | Environment | <code>$CODER_DOTFILES_REPO_DIR</code> |
 | Default     | <code>dotfiles</code>                 |
@@ -49,7 +50,7 @@ Specifies the directory for the dotfiles repository, relative to global config d
 ### -y, --yes
 
 |      |                   |
-|------|-------------------|
+| ---- | ----------------- |
 | Type | <code>bool</code> |
 
 Bypass prompts.

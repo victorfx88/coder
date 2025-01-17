@@ -188,7 +188,7 @@ jobs:
 
       # Check for any typos
       - name: Check for typos
-        uses: crate-ci/typos@d1c850b2b5d502763520c25fb4a6a1128ad99bd9 # v1.28.3
+        uses: crate-ci/typos@b74202f74b4346efdbce7801d187ec57b266bac8 # v1.27.3
         with:
           config: .github/workflows/typos.toml
 
@@ -271,15 +271,6 @@ jobs:
         # coderd/rbac/object_gen.go:1:1: syntax error: package statement must be first
         run: "make --output-sync -B gen"
 
-      - name: make update-golden-files
-        run: |
-          make clean/golden-files
-          # Notifications require DB, we could start a DB instance here but
-          # let's just restore for now.
-          git checkout -- coderd/notifications/testdata/rendered-templates
-          # As above, skip `-j` flag.
-          make --output-sync -B update-golden-files
-
       - name: Check for unstaged files
         run: ./scripts/check_unstaged.sh
 
@@ -318,7 +309,7 @@ jobs:
         run: ./scripts/check_unstaged.sh
 
   test-go:
-    runs-on: ${{ matrix.os == 'ubuntu-latest' && github.repository_owner == 'coder' && 'depot-ubuntu-22.04-4' || matrix.os == 'macos-latest' && github.repository_owner == 'coder' && 'depot-macos-latest' || matrix.os == 'windows-2022' && github.repository_owner == 'coder' && 'windows-latest-16-cores' || matrix.os }}
+    runs-on: ${{ matrix.os == 'ubuntu-latest' && github.repository_owner == 'coder' && 'depot-ubuntu-22.04-4' || matrix.os == 'macos-latest' && github.repository_owner == 'coder' && 'macos-latest-xlarge' || matrix.os == 'windows-2022' && github.repository_owner == 'coder' && 'windows-latest-16-cores' || matrix.os }}
     needs: changes
     if: needs.changes.outputs.go == 'true' || needs.changes.outputs.ci == 'true' || github.ref == 'refs/heads/main'
     timeout-minutes: 20
@@ -379,20 +370,15 @@ jobs:
           api-key: ${{ secrets.DATADOG_API_KEY }}
 
   test-go-pg:
-    runs-on: ${{ matrix.os == 'ubuntu-latest' && github.repository_owner == 'coder' && 'depot-ubuntu-22.04-4' || matrix.os == 'macos-latest' && github.repository_owner == 'coder' && 'depot-macos-latest' || matrix.os == 'windows-2022' && github.repository_owner == 'coder' && 'windows-latest-16-cores' || matrix.os }}
-    needs: changes
+    runs-on: ${{ github.repository_owner == 'coder' && 'depot-ubuntu-22.04-8' || 'ubuntu-latest' }}
+    needs:
+      - changes
     if: needs.changes.outputs.go == 'true' || needs.changes.outputs.ci == 'true' || github.ref == 'refs/heads/main'
     # This timeout must be greater than the timeout set by `go test` in
     # `make test-postgres` to ensure we receive a trace of running
     # goroutines. Setting this to the timeout +5m should work quite well
     # even if some of the preceding steps are slow.
     timeout-minutes: 25
-    strategy:
-      matrix:
-        os:
-          - ubuntu-latest
-          - macos-latest
-          - windows-2022
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@0080882f6c36860b6ba35c610c98ce87d4e2f26f # v2.10.2
@@ -410,52 +396,12 @@ jobs:
       - name: Setup Terraform
         uses: ./.github/actions/setup-tf
 
-      # Sets up the ImDisk toolkit for Windows and creates a RAM disk on drive R:.
-      - name: Setup ImDisk
-        if: runner.os == 'Windows'
-        uses: ./.github/actions/setup-imdisk
-
       - name: Test with PostgreSQL Database
         env:
           POSTGRES_VERSION: "13"
           TS_DEBUG_DISCO: "true"
-          LC_CTYPE: "en_US.UTF-8"
-          LC_ALL: "en_US.UTF-8"
-        shell: bash
         run: |
-          # if macOS, install google-chrome for scaletests
-          # As another concern, should we really have this kind of external dependency
-          # requirement on standard CI?
-          if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            brew install google-chrome
-          fi
-
-          # By default Go will use the number of logical CPUs, which
-          # is a fine default.
-          PARALLEL_FLAG=""
-
-          # macOS will output "The default interactive shell is now zsh"
-          # intermittently in CI...
-          if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            touch ~/.bash_profile && echo "export BASH_SILENCE_DEPRECATION_WARNING=1" >> ~/.bash_profile
-          fi
-
-          if [ "${{ runner.os }}" == "Linux" ]; then
-            make test-postgres
-          elif [ "${{ runner.os }}" == "Windows" ]; then
-            # Create a temp dir on the R: ramdisk drive for Windows. The default
-            # C: drive is extremely slow: https://github.com/actions/runner-images/issues/8755
-            mkdir -p "R:/temp/embedded-pg"
-            go run scripts/embedded-pg/main.go -path "R:/temp/embedded-pg"
-            # Reduce test parallelism, mirroring what we do for race tests.
-            # We'd been encountering issues with timing related flakes, and
-            # this seems to help.
-            DB=ci gotestsum --format standard-quiet -- -v -short -count=1 -parallel 4 -p 4 ./...
-          else
-            go run scripts/embedded-pg/main.go
-            # Reduce test parallelism, like for Windows above.
-            DB=ci gotestsum --format standard-quiet -- -v -short -count=1 -parallel 4 -p 4 ./...
-          fi
+          make test-postgres
 
       - name: Upload test stats to Datadog
         timeout-minutes: 1
@@ -548,47 +494,6 @@ jobs:
         with:
           api-key: ${{ secrets.DATADOG_API_KEY }}
 
-  test-go-race-pg:
-    runs-on: ${{ github.repository_owner == 'coder' && 'depot-ubuntu-22.04-16' || 'ubuntu-latest' }}
-    needs: changes
-    if: needs.changes.outputs.go == 'true' || needs.changes.outputs.ci == 'true' || github.ref == 'refs/heads/main'
-    timeout-minutes: 25
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@0080882f6c36860b6ba35c610c98ce87d4e2f26f # v2.10.2
-        with:
-          egress-policy: audit
-
-      - name: Checkout
-        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
-        with:
-          fetch-depth: 1
-
-      - name: Setup Go
-        uses: ./.github/actions/setup-go
-
-      - name: Setup Terraform
-        uses: ./.github/actions/setup-tf
-
-      # We run race tests with reduced parallelism because they use more CPU and we were finding
-      # instances where tests appear to hang for multiple seconds, resulting in flaky tests when
-      # short timeouts are used.
-      # c.f. discussion on https://github.com/coder/coder/pull/15106
-      - name: Run Tests
-        env:
-          POSTGRES_VERSION: "16"
-        run: |
-          make test-postgres-docker
-          DB=ci gotestsum --junitfile="gotests.xml" -- -race -parallel 4 -p 4 ./...
-
-      - name: Upload test stats to Datadog
-        timeout-minutes: 1
-        continue-on-error: true
-        uses: ./.github/actions/upload-datadog
-        if: always()
-        with:
-          api-key: ${{ secrets.DATADOG_API_KEY }}
-
   # Tailnet integration tests only run when the `tailnet` directory or `go.sum`
   # and `go.mod` are changed. These tests are to ensure we don't add regressions
   # to tailnet, either due to our code or due to updating dependencies.
@@ -645,8 +550,11 @@ jobs:
         working-directory: site
 
   test-e2e:
+    # test-e2e fails on 2-core 8GB runners, so we use the 4-core 16GB runner
     runs-on: ${{ github.repository_owner == 'coder' && 'depot-ubuntu-22.04-4' || 'ubuntu-latest' }}
     needs: changes
+    if: needs.changes.outputs.go == 'true' || needs.changes.outputs.ts == 'true' || needs.changes.outputs.ci == 'true' || github.ref == 'refs/heads/main'
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -655,9 +563,6 @@ jobs:
             name: test-e2e
           - premium: true
             name: test-e2e-premium
-    # Skip test-e2e on forks as they don't have access to CI secrets
-    if: (needs.changes.outputs.go == 'true' || needs.changes.outputs.ts == 'true' || needs.changes.outputs.ci == 'true' || github.ref == 'refs/heads/main') && !(github.event.pull_request.head.repo.fork)
-    timeout-minutes: 20
     name: ${{ matrix.variant.name }}
     steps:
       - name: Harden Runner
@@ -681,8 +586,6 @@ jobs:
         name: make gen
 
       - run: pnpm build
-        env:
-          NODE_OPTIONS: ${{ github.repository_owner == 'coder' && '--max_old_space_size=8192' || '' }}
         working-directory: site
 
       - run: pnpm playwright:install
@@ -764,7 +667,7 @@ jobs:
           # Prevent excessive build runs on minor version changes
           skip: "@(renovate/**|dependabot/**)"
           # Run TurboSnap to trace file dependencies to related stories
-          # and tell chromatic to only take snapshots of relevant stories
+          # and tell chromatic to only take snapshots of relevent stories
           onlyChanged: true
           # Avoid uploading single files, because that's very slow
           zip: true
@@ -791,7 +694,7 @@ jobs:
           workingDir: "./site"
           storybookBaseDir: "./site"
           # Run TurboSnap to trace file dependencies to related stories
-          # and tell chromatic to only take snapshots of relevant stories
+          # and tell chromatic to only take snapshots of relevent stories
           onlyChanged: true
           # Avoid uploading single files, because that's very slow
           zip: true
@@ -868,7 +771,6 @@ jobs:
       - test-go
       - test-go-pg
       - test-go-race
-      - test-go-race-pg
       - test-js
       - test-e2e
       - offlinedocs
@@ -891,7 +793,6 @@ jobs:
           echo "- test-go: ${{ needs.test-go.result }}"
           echo "- test-go-pg: ${{ needs.test-go-pg.result }}"
           echo "- test-go-race: ${{ needs.test-go-race.result }}"
-          echo "- test-go-race-pg: ${{ needs.test-go-race-pg.result }}"
           echo "- test-js: ${{ needs.test-js.result }}"
           echo "- test-e2e: ${{ needs.test-e2e.result }}"
           echo "- offlinedocs: ${{ needs.offlinedocs.result }}"
@@ -910,7 +811,7 @@ jobs:
     needs: changes
     # We always build the dylibs on Go changes to verify we're not merging unbuildable code,
     # but they need only be signed and uploaded on coder/coder main.
-    if: needs.changes.outputs.go == 'true' || needs.changes.outputs.ci == 'true' || github.ref == 'refs/heads/main'
+    if: needs.changes.outputs.docs-only == 'false' || github.ref == 'refs/heads/main'
     runs-on: ${{ github.repository_owner == 'coder' && 'depot-macos-latest' || 'macos-latest' }}
     steps:
       - name: Harden Runner
@@ -991,7 +892,7 @@ jobs:
       - changes
       - build-dylib
     if: github.ref == 'refs/heads/main' && needs.changes.outputs.docs-only == 'false' && !github.event.pull_request.head.repo.fork
-    runs-on: ${{ github.repository_owner == 'coder' && 'depot-ubuntu-22.04-8' || 'ubuntu-22.04' }}
+    runs-on: ${{ github.repository_owner == 'coder' && 'depot-ubuntu-22.04-8' || 'ubuntu-latest' }}
     permissions:
       packages: write # Needed to push images to ghcr.io
     env:
@@ -1161,7 +1062,7 @@ jobs:
           version: "2.2.1"
 
       - name: Get Cluster Credentials
-        uses: google-github-actions/get-gke-credentials@9025e8f90f2d8e0c3dafc3128cc705a26d992a6a # v2.3.0
+        uses: google-github-actions/get-gke-credentials@206d64b64b0eba0a6e2f25113d044c31776ca8d6 # v2.2.2
         with:
           cluster_name: dogfood-v2
           location: us-central1-a
@@ -1251,50 +1152,3 @@ jobs:
       - name: Setup and run sqlc vet
         run: |
           make sqlc-vet
-
-  notify-slack-on-failure:
-    needs:
-      - required
-    runs-on: ubuntu-latest
-    if: failure() && github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Send Slack notification
-        run: |
-          curl -X POST -H 'Content-type: application/json' \
-          --data '{
-            "blocks": [
-              {
-                "type": "header",
-                "text": {
-                  "type": "plain_text",
-                  "text": "❌ CI Failure in main",
-                  "emoji": true
-                }
-              },
-              {
-                "type": "section",
-                "fields": [
-                  {
-                    "type": "mrkdwn",
-                    "text": "*Workflow:*\n${{ github.workflow }}"
-                  },
-                  {
-                    "type": "mrkdwn",
-                    "text": "*Committer:*\n${{ github.actor }}"
-                  },
-                  {
-                    "type": "mrkdwn",
-                    "text": "*Commit:*\n${{ github.sha }}"
-                  }
-                ]
-              },
-              {
-                "type": "section",
-                "text": {
-                  "type": "mrkdwn",
-                  "text": "*View failure:* <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Click here>"
-                }
-              }
-            ]
-          }' ${{ secrets.CI_FAILURE_SLACK_WEBHOOK }}

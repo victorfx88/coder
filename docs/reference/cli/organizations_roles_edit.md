@@ -1,4 +1,5 @@
 <!-- DO NOT EDIT | GENERATED CONTENT -->
+
 # organizations roles edit
 
 Edit an organization custom role
@@ -22,7 +23,7 @@ coder organizations roles edit [flags] <role_name>
 ### -y, --yes
 
 |      |                   |
-|------|-------------------|
+| ---- | ----------------- |
 | Type | <code>bool</code> |
 
 Bypass prompts.
@@ -30,7 +31,7 @@ Bypass prompts.
 ### --dry-run
 
 |      |                   |
-|------|-------------------|
+| ---- | ----------------- |
 | Type | <code>bool</code> |
 
 Does all the work, but does not submit the final updated role.
@@ -38,7 +39,7 @@ Does all the work, but does not submit the final updated role.
 ### --stdin
 
 |      |                   |
-|------|-------------------|
+| ---- | ----------------- |
 | Type | <code>bool</code> |
 
 Reads stdin for the json role definition to upload.
@@ -46,7 +47,7 @@ Reads stdin for the json role definition to upload.
 ### -c, --column
 
 |         |                                                                                                                  |
-|---------|------------------------------------------------------------------------------------------------------------------|
+| ------- | ---------------------------------------------------------------------------------------------------------------- |
 | Type    | <code>[name\|display name\|organization id\|site permissions\|organization permissions\|user permissions]</code> |
 | Default | <code>name,display name,site permissions,organization permissions,user permissions</code>                        |
 
@@ -55,7 +56,7 @@ Columns to display in table output.
 ### -o, --output
 
 |         |                          |
-|---------|--------------------------|
+| ------- | ------------------------ |
 | Type    | <code>table\|json</code> |
 | Default | <code>table</code>       |
 

@@ -12,11 +12,7 @@ export const portForwardURL = (
 	const suffix = protocol === "https" ? "s" : "";
 
 	const subdomain = `${port}${suffix}--${agentName}--${workspaceName}--${username}`;
-
-	const baseUrl = `${location.protocol}//${host.replace("*", subdomain)}`;
-	const url = new URL(baseUrl);
-
-	return url.toString();
+	return `${location.protocol}//${host}`.replace("*", subdomain);
 };
 
 // openMaybePortForwardedURL tries to open the provided URI through the

@@ -1,3 +1,4 @@
+import Button from "@mui/material/Button";
 import InputAdornment from "@mui/material/InputAdornment";
 import TextField from "@mui/material/TextField";
 import type { UpdateAppearanceConfig } from "api/typesGenerated";
@@ -6,14 +7,13 @@ import {
 	EnterpriseBadge,
 	PremiumBadge,
 } from "components/Badges/Badges";
-import { Button } from "components/Button/Button";
 import { PopoverPaywall } from "components/Paywall/PopoverPaywall";
-import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
-} from "components/deprecated/Popover/Popover";
+} from "components/Popover/Popover";
+import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import { useFormik } from "formik";
 import type { FC } from "react";
 import { getFormHelpers } from "utils/formUtils";

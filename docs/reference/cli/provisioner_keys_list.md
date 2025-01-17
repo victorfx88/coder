@@ -1,11 +1,12 @@
 <!-- DO NOT EDIT | GENERATED CONTENT -->
+
 # provisioner keys list
 
 List provisioner keys in an organization
 
 Aliases:
 
-* ls
+- ls
 
 ## Usage
 
@@ -18,7 +19,7 @@ coder provisioner keys list [flags]
 ### -O, --org
 
 |             |                                  |
-|-------------|----------------------------------|
+| ----------- | -------------------------------- |
 | Type        | <code>string</code>              |
 | Environment | <code>$CODER_ORGANIZATION</code> |
 

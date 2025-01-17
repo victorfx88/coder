@@ -92,19 +92,8 @@ EOF
 }
 
 echo_latest_stable_version() {
-	url="https://github.com/coder/coder/releases/latest"
 	# https://gist.github.com/lukechilds/a83e1d7127b78fef38c2914c4ececc3c#gistcomment-2758860
-	response=$(curl -sSLI -o /dev/null -w "\n%{http_code} %{url_effective}" ${url})
-	status_code=$(echo "$response" | tail -n1 | cut -d' ' -f1)
-	version=$(echo "$response" | tail -n1 | cut -d' ' -f2-)
-	body=$(echo "$response" | sed '$d')
-
-	if [ "$status_code" != "200" ]; then
-		echoerr "GitHub API returned status code: ${status_code}"
-		echoerr "URL: ${url}"
-		exit 1
-	fi
-
+	version="$(curl -fsSLI -o /dev/null -w "%{url_effective}" https://github.com/coder/coder/releases/latest)"
 	version="${version#https://github.com/coder/coder/releases/tag/v}"
 	echo "${version}"
 }
@@ -114,19 +103,7 @@ echo_latest_mainline_version() {
 	# and take the first result. Note that we're sorting by space-
 	# separated numbers and without utilizing the sort -V flag for the
 	# best compatibility.
-	url="https://api.github.com/repos/coder/coder/releases"
-	response=$(curl -sSL -w "\n%{http_code}" ${url})
-	status_code=$(echo "$response" | tail -n1)
-	body=$(echo "$response" | sed '$d')
-
-	if [ "$status_code" != "200" ]; then
-		echoerr "GitHub API returned status code: ${status_code}"
-		echoerr "URL: ${url}"
-		echoerr "Response body: ${body}"
-		exit 1
-	fi
-
-	echo "$body" |
+	curl -fsSL https://api.github.com/repos/coder/coder/releases |
 		awk -F'"' '/"tag_name"/ {print $4}' |
 		tr -d v |
 		tr . ' ' |
@@ -428,10 +405,8 @@ main() {
 	STABLE_VERSION=$(echo_latest_stable_version)
 	if [ "${MAINLINE}" = 1 ]; then
 		VERSION=$(echo_latest_mainline_version)
-		echoh "Resolved mainline version: v${VERSION}"
 	elif [ "${STABLE}" = 1 ]; then
 		VERSION=${STABLE_VERSION}
-		echoh "Resolved stable version: v${VERSION}"
 	fi
 
 	distro_name

@@ -1,11 +1,4 @@
-# Permissions
-
-<blockquote class="info">
-
-Template permissions are an Enterprise and Premium feature.
-[Learn more](https://coder.com/pricing#compare-plans).
-
-</blockquote>
+# Permissions (enterprise) (premium)
 
 Licensed Coder administrators can control who can use and modify the template.
 

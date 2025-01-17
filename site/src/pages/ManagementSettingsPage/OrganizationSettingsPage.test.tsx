@@ -6,7 +6,7 @@ import {
 	MockOrganization2,
 } from "testHelpers/entities";
 import {
-	renderWithOrganizationSettingsLayout,
+	renderWithManagementSettingsLayout,
 	waitForLoaderToBeRemoved,
 } from "testHelpers/renderHelpers";
 import { server } from "testHelpers/server";
@@ -15,7 +15,7 @@ import OrganizationSettingsPage from "./OrganizationSettingsPage";
 jest.spyOn(console, "error").mockImplementation(() => {});
 
 const renderPage = async () => {
-	renderWithOrganizationSettingsLayout(<OrganizationSettingsPage />, {
+	renderWithManagementSettingsLayout(<OrganizationSettingsPage />, {
 		route: "/organizations",
 		path: "/organizations/:organization?",
 	});

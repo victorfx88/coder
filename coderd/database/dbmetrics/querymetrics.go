@@ -126,13 +126,6 @@ func (m queryMetricsStore) BatchUpdateWorkspaceLastUsedAt(ctx context.Context, a
 	return r0
 }
 
-func (m queryMetricsStore) BatchUpdateWorkspaceNextStartAt(ctx context.Context, arg database.BatchUpdateWorkspaceNextStartAtParams) error {
-	start := time.Now()
-	r0 := m.s.BatchUpdateWorkspaceNextStartAt(ctx, arg)
-	m.queryLatencies.WithLabelValues("BatchUpdateWorkspaceNextStartAt").Observe(time.Since(start).Seconds())
-	return r0
-}
-
 func (m queryMetricsStore) BulkMarkNotificationMessagesFailed(ctx context.Context, arg database.BulkMarkNotificationMessagesFailedParams) (int64, error) {
 	start := time.Now()
 	r0, r1 := m.s.BulkMarkNotificationMessagesFailed(ctx, arg)
@@ -410,13 +403,6 @@ func (m queryMetricsStore) DeleteWorkspaceAgentPortSharesByTemplate(ctx context.
 	start := time.Now()
 	r0 := m.s.DeleteWorkspaceAgentPortSharesByTemplate(ctx, templateID)
 	m.queryLatencies.WithLabelValues("DeleteWorkspaceAgentPortSharesByTemplate").Observe(time.Since(start).Seconds())
-	return r0
-}
-
-func (m queryMetricsStore) DisableForeignKeysAndTriggers(ctx context.Context) error {
-	start := time.Now()
-	r0 := m.s.DisableForeignKeysAndTriggers(ctx)
-	m.queryLatencies.WithLabelValues("DisableForeignKeysAndTriggers").Observe(time.Since(start).Seconds())
 	return r0
 }
 
@@ -987,13 +973,6 @@ func (m queryMetricsStore) GetProvisionerDaemonsByOrganization(ctx context.Conte
 	return r0, r1
 }
 
-func (m queryMetricsStore) GetProvisionerDaemonsWithStatusByOrganization(ctx context.Context, arg database.GetProvisionerDaemonsWithStatusByOrganizationParams) ([]database.GetProvisionerDaemonsWithStatusByOrganizationRow, error) {
-	start := time.Now()
-	r0, r1 := m.s.GetProvisionerDaemonsWithStatusByOrganization(ctx, arg)
-	m.queryLatencies.WithLabelValues("GetProvisionerDaemonsWithStatusByOrganization").Observe(time.Since(start).Seconds())
-	return r0, r1
-}
-
 func (m queryMetricsStore) GetProvisionerJobByID(ctx context.Context, id uuid.UUID) (database.ProvisionerJob, error) {
 	start := time.Now()
 	job, err := m.s.GetProvisionerJobByID(ctx, id)
@@ -1351,13 +1330,6 @@ func (m queryMetricsStore) GetUserNotificationPreferences(ctx context.Context, u
 	return r0, r1
 }
 
-func (m queryMetricsStore) GetUserStatusCounts(ctx context.Context, arg database.GetUserStatusCountsParams) ([]database.GetUserStatusCountsRow, error) {
-	start := time.Now()
-	r0, r1 := m.s.GetUserStatusCounts(ctx, arg)
-	m.queryLatencies.WithLabelValues("GetUserStatusCounts").Observe(time.Since(start).Seconds())
-	return r0, r1
-}
-
 func (m queryMetricsStore) GetUserWorkspaceBuildParameters(ctx context.Context, ownerID database.GetUserWorkspaceBuildParametersParams) ([]database.GetUserWorkspaceBuildParametersRow, error) {
 	start := time.Now()
 	r0, r1 := m.s.GetUserWorkspaceBuildParameters(ctx, ownerID)
@@ -1705,13 +1677,6 @@ func (m queryMetricsStore) GetWorkspacesAndAgentsByOwnerID(ctx context.Context, 
 	start := time.Now()
 	r0, r1 := m.s.GetWorkspacesAndAgentsByOwnerID(ctx, ownerID)
 	m.queryLatencies.WithLabelValues("GetWorkspacesAndAgentsByOwnerID").Observe(time.Since(start).Seconds())
-	return r0, r1
-}
-
-func (m queryMetricsStore) GetWorkspacesByTemplateID(ctx context.Context, templateID uuid.UUID) ([]database.WorkspaceTable, error) {
-	start := time.Now()
-	r0, r1 := m.s.GetWorkspacesByTemplateID(ctx, templateID)
-	m.queryLatencies.WithLabelValues("GetWorkspacesByTemplateID").Observe(time.Since(start).Seconds())
 	return r0, r1
 }
 
@@ -2583,13 +2548,6 @@ func (m queryMetricsStore) UpdateWorkspaceLastUsedAt(ctx context.Context, arg da
 	return err
 }
 
-func (m queryMetricsStore) UpdateWorkspaceNextStartAt(ctx context.Context, arg database.UpdateWorkspaceNextStartAtParams) error {
-	start := time.Now()
-	r0 := m.s.UpdateWorkspaceNextStartAt(ctx, arg)
-	m.queryLatencies.WithLabelValues("UpdateWorkspaceNextStartAt").Observe(time.Since(start).Seconds())
-	return r0
-}
-
 func (m queryMetricsStore) UpdateWorkspaceProxy(ctx context.Context, arg database.UpdateWorkspaceProxyParams) (database.WorkspaceProxy, error) {
 	start := time.Now()
 	proxy, err := m.s.UpdateWorkspaceProxy(ctx, arg)
@@ -2616,13 +2574,6 @@ func (m queryMetricsStore) UpdateWorkspacesDormantDeletingAtByTemplateID(ctx con
 	r0, r1 := m.s.UpdateWorkspacesDormantDeletingAtByTemplateID(ctx, arg)
 	m.queryLatencies.WithLabelValues("UpdateWorkspacesDormantDeletingAtByTemplateID").Observe(time.Since(start).Seconds())
 	return r0, r1
-}
-
-func (m queryMetricsStore) UpdateWorkspacesTTLByTemplateID(ctx context.Context, arg database.UpdateWorkspacesTTLByTemplateIDParams) error {
-	start := time.Now()
-	r0 := m.s.UpdateWorkspacesTTLByTemplateID(ctx, arg)
-	m.queryLatencies.WithLabelValues("UpdateWorkspacesTTLByTemplateID").Observe(time.Since(start).Seconds())
-	return r0
 }
 
 func (m queryMetricsStore) UpsertAnnouncementBanners(ctx context.Context, value string) error {

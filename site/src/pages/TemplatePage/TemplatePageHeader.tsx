@@ -201,13 +201,12 @@ export const TemplatePageHeader: FC<TemplatePageHeaderProps> = ({
 					</>
 				}
 			>
-				<Stack direction="row">
-					<Avatar
-						size="lg"
-						variant="icon"
-						src={template.icon}
-						fallback={template.name}
-					/>
+				<Stack direction="row" spacing={3} alignItems="center">
+					{hasIcon ? (
+						<Avatar size="xl" src={template.icon} variant="square" fitImage />
+					) : (
+						<Avatar size="xl">{template.name}</Avatar>
+					)}
 
 					<div>
 						<Stack direction="row" alignItems="center" spacing={1}>

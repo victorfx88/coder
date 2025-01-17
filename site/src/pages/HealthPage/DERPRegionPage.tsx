@@ -4,8 +4,6 @@ import CodeOutlined from "@mui/icons-material/CodeOutlined";
 import TagOutlined from "@mui/icons-material/TagOutlined";
 import Tooltip from "@mui/material/Tooltip";
 import type {
-	DERPNodeReport,
-	DERPRegionReport,
 	HealthMessage,
 	HealthSeverity,
 	HealthcheckReport,
@@ -37,12 +35,12 @@ export const DERPRegionPage: FC = () => {
 		node_reports: reports,
 		warnings,
 		severity,
-	} = healthStatus.derp.regions[regionId] as DERPRegionReport;
+	} = healthStatus.derp.regions[regionId];
 
 	return (
 		<>
 			<Helmet>
-				<title>{pageTitle(region!.RegionName, "Health")}</title>
+				<title>{pageTitle(region.RegionName, "Health")}</title>
 			</Helmet>
 
 			<Header>
@@ -70,7 +68,7 @@ export const DERPRegionPage: FC = () => {
 					</Link>
 					<HeaderTitle>
 						<HealthyDot severity={severity as HealthSeverity} />
-						{region!.RegionName}
+						{region.RegionName}
 					</HeaderTitle>
 				</hgroup>
 			</Header>
@@ -91,19 +89,18 @@ export const DERPRegionPage: FC = () => {
 				<section>
 					<div css={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
 						<Tooltip title="Region ID">
-							<Pill icon={<TagOutlined />}>{region!.RegionID}</Pill>
+							<Pill icon={<TagOutlined />}>{region.RegionID}</Pill>
 						</Tooltip>
 						<Tooltip title="Region Code">
-							<Pill icon={<CodeOutlined />}>{region!.RegionCode}</Pill>
+							<Pill icon={<CodeOutlined />}>{region.RegionCode}</Pill>
 						</Tooltip>
-						<BooleanPill value={region!.EmbeddedRelay}>
+						<BooleanPill value={region.EmbeddedRelay}>
 							Embedded Relay
 						</BooleanPill>
 					</div>
 				</section>
 
 				{reports.map((report) => {
-					report = report as DERPNodeReport; // Can technically be null
 					const { node, client_logs: logs } = report;
 					const latencyColor = getLatencyColor(
 						theme,
@@ -111,7 +108,7 @@ export const DERPRegionPage: FC = () => {
 					);
 					return (
 						<section
-							key={node!.HostName}
+							key={node.HostName}
 							css={{
 								border: `1px solid ${theme.palette.divider}`,
 								borderRadius: 8,
@@ -120,10 +117,10 @@ export const DERPRegionPage: FC = () => {
 						>
 							<header css={reportStyles.header}>
 								<div>
-									<h4 css={reportStyles.title}>{node!.HostName}</h4>
+									<h4 css={reportStyles.title}>{node.HostName}</h4>
 									<div css={reportStyles.ports}>
-										<span>DERP Port: {node!.DERPPort ?? "None"}</span>
-										<span>STUN Port: {node!.STUNPort ?? "None"}</span>
+										<span>DERP Port: {node.DERPPort ?? "None"}</span>
+										<span>STUN Port: {node.STUNPort ?? "None"}</span>
 									</div>
 								</div>
 

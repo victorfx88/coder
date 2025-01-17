@@ -4,7 +4,7 @@ import SecurityIcon from "@mui/icons-material/LockOutlined";
 import AccountIcon from "@mui/icons-material/Person";
 import VpnKeyOutlined from "@mui/icons-material/VpnKeyOutlined";
 import type { Meta, StoryObj } from "@storybook/react";
-import { Avatar } from "components/Avatar/Avatar";
+import { UserAvatar } from "components/UserAvatar/UserAvatar";
 import { Sidebar, SidebarHeader, SidebarNavItem } from "./Sidebar";
 
 const meta: Meta<typeof Sidebar> = {
@@ -20,7 +20,7 @@ export const Default: Story = {
 		children: (
 			<Sidebar>
 				<SidebarHeader
-					avatar={<Avatar fallback="Jon" />}
+					avatar={<UserAvatar username="Jon" />}
 					title="Jon"
 					subtitle="jon@coder.com"
 				/>

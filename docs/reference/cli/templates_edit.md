@@ -1,4 +1,5 @@
 <!-- DO NOT EDIT | GENERATED CONTENT -->
+
 # templates edit
 
 Edit the metadata of a template by name.
@@ -14,7 +15,7 @@ coder templates edit [flags] <template>
 ### --name
 
 |      |                     |
-|------|---------------------|
+| ---- | ------------------- |
 | Type | <code>string</code> |
 
 Edit the template name.
@@ -22,7 +23,7 @@ Edit the template name.
 ### --display-name
 
 |      |                     |
-|------|---------------------|
+| ---- | ------------------- |
 | Type | <code>string</code> |
 
 Edit the template display name.
@@ -30,7 +31,7 @@ Edit the template display name.
 ### --description
 
 |      |                     |
-|------|---------------------|
+| ---- | ------------------- |
 | Type | <code>string</code> |
 
 Edit the template description.
@@ -38,7 +39,7 @@ Edit the template description.
 ### --deprecated
 
 |      |                     |
-|------|---------------------|
+| ---- | ------------------- |
 | Type | <code>string</code> |
 
 Sets the template as deprecated. Must be a message explaining why the template is deprecated.
@@ -46,7 +47,7 @@ Sets the template as deprecated. Must be a message explaining why the template i
 ### --icon
 
 |      |                     |
-|------|---------------------|
+| ---- | ------------------- |
 | Type | <code>string</code> |
 
 Edit the template icon path.
@@ -54,7 +55,7 @@ Edit the template icon path.
 ### --default-ttl
 
 |      |                       |
-|------|-----------------------|
+| ---- | --------------------- |
 | Type | <code>duration</code> |
 
 Edit the template default time before shutdown - workspaces created from this template default to this value. Maps to "Default autostop" in the UI.
@@ -62,7 +63,7 @@ Edit the template default time before shutdown - workspaces created from this te
 ### --activity-bump
 
 |      |                       |
-|------|-----------------------|
+| ---- | --------------------- |
 | Type | <code>duration</code> |
 
 Edit the template activity bump - workspaces created from this template will have their shutdown time bumped by this value when activity is detected. Maps to "Activity bump" in the UI.
@@ -70,7 +71,7 @@ Edit the template activity bump - workspaces created from this template will hav
 ### --autostart-requirement-weekdays
 
 |      |                                                                                    |
-|------|------------------------------------------------------------------------------------|
+| ---- | ---------------------------------------------------------------------------------- |
 | Type | <code>[monday\|tuesday\|wednesday\|thursday\|friday\|saturday\|sunday\|all]</code> |
 
 Edit the template autostart requirement weekdays - workspaces created from this template can only autostart on the given weekdays. To unset this value for the template (and allow autostart on all days), pass 'all'.
@@ -78,7 +79,7 @@ Edit the template autostart requirement weekdays - workspaces created from this 
 ### --autostop-requirement-weekdays
 
 |      |                                                                                     |
-|------|-------------------------------------------------------------------------------------|
+| ---- | ----------------------------------------------------------------------------------- |
 | Type | <code>[monday\|tuesday\|wednesday\|thursday\|friday\|saturday\|sunday\|none]</code> |
 
 Edit the template autostop requirement weekdays - workspaces created from this template must be restarted on the given weekdays. To unset this value for the template (and disable the autostop requirement for the template), pass 'none'.
@@ -86,7 +87,7 @@ Edit the template autostop requirement weekdays - workspaces created from this t
 ### --autostop-requirement-weeks
 
 |      |                  |
-|------|------------------|
+| ---- | ---------------- |
 | Type | <code>int</code> |
 
 Edit the template autostop requirement weeks - workspaces created from this template must be restarted on an n-weekly basis.
@@ -94,7 +95,7 @@ Edit the template autostop requirement weeks - workspaces created from this temp
 ### --failure-ttl
 
 |         |                       |
-|---------|-----------------------|
+| ------- | --------------------- |
 | Type    | <code>duration</code> |
 | Default | <code>0h</code>       |
 
@@ -103,7 +104,7 @@ Specify a failure TTL for workspaces created from this template. It is the amoun
 ### --dormancy-threshold
 
 |         |                       |
-|---------|-----------------------|
+| ------- | --------------------- |
 | Type    | <code>duration</code> |
 | Default | <code>0h</code>       |
 
@@ -112,7 +113,7 @@ Specify a duration workspaces may be inactive prior to being moved to the dorman
 ### --dormancy-auto-deletion
 
 |         |                       |
-|---------|-----------------------|
+| ------- | --------------------- |
 | Type    | <code>duration</code> |
 | Default | <code>0h</code>       |
 
@@ -121,7 +122,7 @@ Specify a duration workspaces may be in the dormant state prior to being deleted
 ### --allow-user-cancel-workspace-jobs
 
 |         |                   |
-|---------|-------------------|
+| ------- | ----------------- |
 | Type    | <code>bool</code> |
 | Default | <code>true</code> |
 
@@ -130,7 +131,7 @@ Allow users to cancel in-progress workspace jobs.
 ### --allow-user-autostart
 
 |         |                   |
-|---------|-------------------|
+| ------- | ----------------- |
 | Type    | <code>bool</code> |
 | Default | <code>true</code> |
 
@@ -139,7 +140,7 @@ Allow users to configure autostart for workspaces on this template. This can onl
 ### --allow-user-autostop
 
 |         |                   |
-|---------|-------------------|
+| ------- | ----------------- |
 | Type    | <code>bool</code> |
 | Default | <code>true</code> |
 
@@ -148,7 +149,7 @@ Allow users to customize the autostop TTL for workspaces on this template. This 
 ### --require-active-version
 
 |         |                    |
-|---------|--------------------|
+| ------- | ------------------ |
 | Type    | <code>bool</code>  |
 | Default | <code>false</code> |
 
@@ -157,7 +158,7 @@ Requires workspace builds to use the active template version. This setting does 
 ### --private
 
 |         |                    |
-|---------|--------------------|
+| ------- | ------------------ |
 | Type    | <code>bool</code>  |
 | Default | <code>false</code> |
 
@@ -166,7 +167,7 @@ Disable the default behavior of granting template access to the 'everyone' group
 ### -y, --yes
 
 |      |                   |
-|------|-------------------|
+| ---- | ----------------- |
 | Type | <code>bool</code> |
 
 Bypass prompts.
@@ -174,7 +175,7 @@ Bypass prompts.
 ### -O, --org
 
 |             |                                  |
-|-------------|----------------------------------|
+| ----------- | -------------------------------- |
 | Type        | <code>string</code>              |
 | Environment | <code>$CODER_ORGANIZATION</code> |
 

@@ -1,4 +1,5 @@
 <!-- DO NOT EDIT | GENERATED CONTENT -->
+
 # organizations create
 
 Create a new organization.
@@ -14,7 +15,7 @@ coder organizations create [flags] <organization name>
 ### -y, --yes
 
 |      |                   |
-|------|-------------------|
+| ---- | ----------------- |
 | Type | <code>bool</code> |
 
 Bypass prompts.

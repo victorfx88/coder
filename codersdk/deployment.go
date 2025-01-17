@@ -793,7 +793,7 @@ func DefaultSupportLinks(docsURL string) []LinkConfig {
 		},
 		{
 			Name:   "Report a bug",
-			Target: "https://github.com/coder/coder/issues/new?labels=needs+triage&body=" + buildInfo,
+			Target: "https://github.com/coder/coder/issues/new?labels=needs+grooming&body=" + buildInfo,
 			Icon:   "bug",
 		},
 		{
@@ -904,8 +904,8 @@ func (c *DeploymentValues) Options() serpent.OptionSet {
 			Name: "Telemetry",
 			YAML: "telemetry",
 			Description: `Telemetry is critical to our ability to improve Coder. We strip all personal
- information before sending data to our servers. Please only disable telemetry
- when required by your organization's security policy.`,
+information before sending data to our servers. Please only disable telemetry
+when required by your organization's security policy.`,
 		}
 		deploymentGroupProvisioning = serpent.Group{
 			Name:        "Provisioning",
@@ -2284,7 +2284,7 @@ func (c *DeploymentValues) Options() serpent.OptionSet {
 		},
 		{
 			Name:        "Postgres Connection URL",
-			Description: "URL of a PostgreSQL database. If empty, PostgreSQL binaries will be downloaded from Maven (https://repo1.maven.org/maven2) and store all data in the config root. Access the built-in database with \"coder server postgres-builtin-url\". Note that any special characters in the URL must be URL-encoded.",
+			Description: "URL of a PostgreSQL database. If empty, PostgreSQL binaries will be downloaded from Maven (https://repo1.maven.org/maven2) and store all data in the config root. Access the built-in database with \"coder server postgres-builtin-url\".",
 			Flag:        "postgres-url",
 			Env:         "CODER_PG_CONNECTION_URL",
 			Annotations: serpent.Annotations{}.Mark(annotationSecretKey, "true"),
@@ -2292,7 +2292,7 @@ func (c *DeploymentValues) Options() serpent.OptionSet {
 		},
 		{
 			Name:        "Postgres Auth",
-			Description: "Type of auth to use when connecting to postgres. For AWS RDS, using IAM authentication (awsiamrds) is recommended.",
+			Description: "Type of auth to use when connecting to postgres.",
 			Flag:        "postgres-auth",
 			Env:         "CODER_PG_AUTH",
 			Default:     "password",
@@ -2376,7 +2376,7 @@ func (c *DeploymentValues) Options() serpent.OptionSet {
 			Flag:        "agent-fallback-troubleshooting-url",
 			Env:         "CODER_AGENT_FALLBACK_TROUBLESHOOTING_URL",
 			Hidden:      true,
-			Default:     "https://coder.com/docs/admin/templates/troubleshooting",
+			Default:     "https://coder.com/docs/templates/troubleshooting",
 			Value:       &c.AgentFallbackTroubleshootingURL,
 			YAML:        "agentFallbackTroubleshootingURL",
 		},

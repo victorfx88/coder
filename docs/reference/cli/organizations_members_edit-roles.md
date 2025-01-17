@@ -1,11 +1,12 @@
 <!-- DO NOT EDIT | GENERATED CONTENT -->
+
 # organizations members edit-roles
 
 Edit organization member's roles
 
 Aliases:
 
-* edit-role
+- edit-role
 
 ## Usage
 

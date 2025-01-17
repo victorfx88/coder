@@ -88,7 +88,6 @@ func New() database.Store {
 			customRoles:               make([]database.CustomRole, 0),
 			locks:                     map[int64]struct{}{},
 			runtimeConfig:             map[string]string{},
-			userStatusChanges:         make([]database.UserStatusChange, 0),
 		},
 	}
 	// Always start with a default org. Matching migration 198.
@@ -257,7 +256,6 @@ type data struct {
 	lastLicenseID                    int32
 	defaultProxyDisplayName          string
 	defaultProxyIconURL              string
-	userStatusChanges                []database.UserStatusChange
 }
 
 func tryPercentile(fs []float64, p float64) float64 {
@@ -477,7 +475,6 @@ func (q *FakeQuerier) convertToWorkspaceRowsNoLock(ctx context.Context, workspac
 			DeletingAt:        w.DeletingAt,
 			AutomaticUpdates:  w.AutomaticUpdates,
 			Favorite:          w.Favorite,
-			NextStartAt:       w.NextStartAt,
 
 			OwnerAvatarUrl: extended.OwnerAvatarUrl,
 			OwnerUsername:  extended.OwnerUsername,
@@ -1442,35 +1439,6 @@ func (q *FakeQuerier) BatchUpdateWorkspaceLastUsedAt(_ context.Context, arg data
 	return nil
 }
 
-func (q *FakeQuerier) BatchUpdateWorkspaceNextStartAt(_ context.Context, arg database.BatchUpdateWorkspaceNextStartAtParams) error {
-	err := validateDatabaseType(arg)
-	if err != nil {
-		return err
-	}
-
-	q.mutex.Lock()
-	defer q.mutex.Unlock()
-
-	for i, workspace := range q.workspaces {
-		for j, workspaceID := range arg.IDs {
-			if workspace.ID != workspaceID {
-				continue
-			}
-
-			nextStartAt := arg.NextStartAts[j]
-			if nextStartAt.IsZero() {
-				q.workspaces[i].NextStartAt = sql.NullTime{}
-			} else {
-				q.workspaces[i].NextStartAt = sql.NullTime{Valid: true, Time: nextStartAt}
-			}
-
-			break
-		}
-	}
-
-	return nil
-}
-
 func (*FakeQuerier) BulkMarkNotificationMessagesFailed(_ context.Context, arg database.BulkMarkNotificationMessagesFailedParams) (int64, error) {
 	err := validateDatabaseType(arg)
 	if err != nil {
@@ -2205,11 +2173,6 @@ func (q *FakeQuerier) DeleteWorkspaceAgentPortSharesByTemplate(_ context.Context
 		}
 	}
 
-	return nil
-}
-
-func (*FakeQuerier) DisableForeignKeysAndTriggers(_ context.Context) error {
-	// This is a no-op in the in-memory database.
 	return nil
 }
 
@@ -3756,100 +3719,6 @@ func (q *FakeQuerier) GetProvisionerDaemonsByOrganization(_ context.Context, arg
 	return daemons, nil
 }
 
-func (q *FakeQuerier) GetProvisionerDaemonsWithStatusByOrganization(_ context.Context, arg database.GetProvisionerDaemonsWithStatusByOrganizationParams) ([]database.GetProvisionerDaemonsWithStatusByOrganizationRow, error) {
-	err := validateDatabaseType(arg)
-	if err != nil {
-		return nil, err
-	}
-
-	q.mutex.RLock()
-	defer q.mutex.RUnlock()
-
-	var rows []database.GetProvisionerDaemonsWithStatusByOrganizationRow
-	for _, daemon := range q.provisionerDaemons {
-		if daemon.OrganizationID != arg.OrganizationID {
-			continue
-		}
-		if len(arg.IDs) > 0 && !slices.Contains(arg.IDs, daemon.ID) {
-			continue
-		}
-
-		if len(arg.Tags) > 0 {
-			// Special case for untagged provisioners: only match untagged jobs.
-			// Ref: coderd/database/queries/provisionerjobs.sql:24-30
-			// CASE WHEN nested.tags :: jsonb = '{"scope": "organization", "owner": ""}' :: jsonb
-			//      THEN nested.tags :: jsonb = @tags :: jsonb
-			if tagsEqual(arg.Tags, tagsUntagged) && !tagsEqual(arg.Tags, daemon.Tags) {
-				continue
-			}
-			// ELSE nested.tags :: jsonb <@ @tags :: jsonb
-			if !tagsSubset(arg.Tags, daemon.Tags) {
-				continue
-			}
-		}
-
-		var status database.ProvisionerDaemonStatus
-		var currentJob database.ProvisionerJob
-		if !daemon.LastSeenAt.Valid || daemon.LastSeenAt.Time.Before(time.Now().Add(-time.Duration(arg.StaleIntervalMS)*time.Millisecond)) {
-			status = database.ProvisionerDaemonStatusOffline
-		} else {
-			for _, job := range q.provisionerJobs {
-				if job.WorkerID.Valid && job.WorkerID.UUID == daemon.ID && !job.CompletedAt.Valid && !job.Error.Valid {
-					currentJob = job
-					break
-				}
-			}
-
-			if currentJob.ID != uuid.Nil {
-				status = database.ProvisionerDaemonStatusBusy
-			} else {
-				status = database.ProvisionerDaemonStatusIdle
-			}
-		}
-
-		var previousJob database.ProvisionerJob
-		for _, job := range q.provisionerJobs {
-			if !job.WorkerID.Valid || job.WorkerID.UUID != daemon.ID {
-				continue
-			}
-
-			if job.StartedAt.Valid ||
-				job.CanceledAt.Valid ||
-				job.CompletedAt.Valid ||
-				job.Error.Valid {
-				if job.CompletedAt.Time.After(previousJob.CompletedAt.Time) {
-					previousJob = job
-				}
-			}
-		}
-
-		// Get the provisioner key name
-		var keyName string
-		for _, key := range q.provisionerKeys {
-			if key.ID == daemon.KeyID {
-				keyName = key.Name
-				break
-			}
-		}
-
-		rows = append(rows, database.GetProvisionerDaemonsWithStatusByOrganizationRow{
-			ProvisionerDaemon: daemon,
-			Status:            status,
-			KeyName:           keyName,
-			CurrentJobID:      uuid.NullUUID{UUID: currentJob.ID, Valid: currentJob.ID != uuid.Nil},
-			CurrentJobStatus:  database.NullProvisionerJobStatus{ProvisionerJobStatus: currentJob.JobStatus, Valid: currentJob.ID != uuid.Nil},
-			PreviousJobID:     uuid.NullUUID{UUID: previousJob.ID, Valid: previousJob.ID != uuid.Nil},
-			PreviousJobStatus: database.NullProvisionerJobStatus{ProvisionerJobStatus: previousJob.JobStatus, Valid: previousJob.ID != uuid.Nil},
-		})
-	}
-
-	slices.SortFunc(rows, func(a, b database.GetProvisionerDaemonsWithStatusByOrganizationRow) int {
-		return a.ProvisionerDaemon.CreatedAt.Compare(b.ProvisionerDaemon.CreatedAt)
-	})
-
-	return rows, nil
-}
-
 func (q *FakeQuerier) GetProvisionerJobByID(ctx context.Context, id uuid.UUID) (database.ProvisionerJob, error) {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
@@ -3905,92 +3774,35 @@ func (q *FakeQuerier) GetProvisionerJobsByIDsWithQueuePosition(_ context.Context
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
 
-	//	WITH pending_jobs AS (
-	//		SELECT
-	//			id, created_at
-	//		FROM
-	//			provisioner_jobs
-	//		WHERE
-	//			started_at IS NULL
-	//		AND
-	//			canceled_at IS NULL
-	//		AND
-	//			completed_at IS NULL
-	//		AND
-	//			error IS NULL
-	//	),
-	type pendingJobRow struct {
-		ID        uuid.UUID
-		CreatedAt time.Time
-	}
-	pendingJobs := make([]pendingJobRow, 0)
-	for _, job := range q.provisionerJobs {
-		if job.StartedAt.Valid ||
-			job.CanceledAt.Valid ||
-			job.CompletedAt.Valid ||
-			job.Error.Valid {
-			continue
-		}
-		pendingJobs = append(pendingJobs, pendingJobRow{
-			ID:        job.ID,
-			CreatedAt: job.CreatedAt,
-		})
-	}
-
-	//	queue_position AS (
-	//		SELECT
-	//			id,
-	//				ROW_NUMBER() OVER (ORDER BY created_at ASC) AS queue_position
-	//		FROM
-	//			pending_jobs
-	// 	),
-	slices.SortFunc(pendingJobs, func(a, b pendingJobRow) int {
-		c := a.CreatedAt.Compare(b.CreatedAt)
-		return c
-	})
-
-	queuePosition := make(map[uuid.UUID]int64)
-	for idx, pj := range pendingJobs {
-		queuePosition[pj.ID] = int64(idx + 1)
-	}
-
-	//	queue_size AS (
-	//		SELECT COUNT(*) AS count FROM pending_jobs
-	//	),
-	queueSize := len(pendingJobs)
-
-	//	SELECT
-	//		sqlc.embed(pj),
-	//		COALESCE(qp.queue_position, 0) AS queue_position,
-	//		COALESCE(qs.count, 0) AS queue_size
-	// 	FROM
-	//		provisioner_jobs pj
-	//	LEFT JOIN
-	//		queue_position qp ON pj.id = qp.id
-	//	LEFT JOIN
-	//		queue_size qs ON TRUE
-	//	WHERE
-	//		pj.id IN (...)
 	jobs := make([]database.GetProvisionerJobsByIDsWithQueuePositionRow, 0)
+	queuePosition := int64(1)
 	for _, job := range q.provisionerJobs {
-		if !slices.Contains(ids, job.ID) {
-			continue
+		for _, id := range ids {
+			if id == job.ID {
+				// clone the Tags before appending, since maps are reference types and
+				// we don't want the caller to be able to mutate the map we have inside
+				// dbmem!
+				job.Tags = maps.Clone(job.Tags)
+				job := database.GetProvisionerJobsByIDsWithQueuePositionRow{
+					ProvisionerJob: job,
+				}
+				if !job.ProvisionerJob.StartedAt.Valid {
+					job.QueuePosition = queuePosition
+				}
+				jobs = append(jobs, job)
+				break
+			}
 		}
-		// clone the Tags before appending, since maps are reference types and
-		// we don't want the caller to be able to mutate the map we have inside
-		// dbmem!
-		job.Tags = maps.Clone(job.Tags)
-		job := database.GetProvisionerJobsByIDsWithQueuePositionRow{
-			//	sqlc.embed(pj),
-			ProvisionerJob: job,
-			//	COALESCE(qp.queue_position, 0) AS queue_position,
-			QueuePosition: queuePosition[job.ID],
-			//	COALESCE(qs.count, 0) AS queue_size
-			QueueSize: int64(queueSize),
+		if !job.StartedAt.Valid {
+			queuePosition++
 		}
-		jobs = append(jobs, job)
 	}
-
+	for _, job := range jobs {
+		if !job.ProvisionerJob.StartedAt.Valid {
+			// Set it to the max position!
+			job.QueueSize = queuePosition
+		}
+	}
 	return jobs, nil
 }
 
@@ -5765,42 +5577,6 @@ func (q *FakeQuerier) GetUserNotificationPreferences(_ context.Context, userID u
 	return out, nil
 }
 
-func (q *FakeQuerier) GetUserStatusCounts(_ context.Context, arg database.GetUserStatusCountsParams) ([]database.GetUserStatusCountsRow, error) {
-	q.mutex.RLock()
-	defer q.mutex.RUnlock()
-
-	err := validateDatabaseType(arg)
-	if err != nil {
-		return nil, err
-	}
-
-	result := make([]database.GetUserStatusCountsRow, 0)
-	for _, change := range q.userStatusChanges {
-		if change.ChangedAt.Before(arg.StartTime) || change.ChangedAt.After(arg.EndTime) {
-			continue
-		}
-		date := time.Date(change.ChangedAt.Year(), change.ChangedAt.Month(), change.ChangedAt.Day(), 0, 0, 0, 0, time.UTC)
-		if !slices.ContainsFunc(result, func(r database.GetUserStatusCountsRow) bool {
-			return r.Status == change.NewStatus && r.Date.Equal(date)
-		}) {
-			result = append(result, database.GetUserStatusCountsRow{
-				Status: change.NewStatus,
-				Date:   date,
-				Count:  1,
-			})
-		} else {
-			for i, r := range result {
-				if r.Status == change.NewStatus && r.Date.Equal(date) {
-					result[i].Count++
-					break
-				}
-			}
-		}
-	}
-
-	return result, nil
-}
-
 func (q *FakeQuerier) GetUserWorkspaceBuildParameters(_ context.Context, params database.GetUserWorkspaceBuildParametersParams) ([]database.GetUserWorkspaceBuildParametersRow, error) {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
@@ -5935,26 +5711,6 @@ func (q *FakeQuerier) GetUsers(_ context.Context, params database.GetUsersParams
 			}
 		}
 		users = usersFilteredByRole
-	}
-
-	if !params.CreatedBefore.IsZero() {
-		usersFilteredByCreatedAt := make([]database.User, 0, len(users))
-		for i, user := range users {
-			if user.CreatedAt.Before(params.CreatedBefore) {
-				usersFilteredByCreatedAt = append(usersFilteredByCreatedAt, users[i])
-			}
-		}
-		users = usersFilteredByCreatedAt
-	}
-
-	if !params.CreatedAfter.IsZero() {
-		usersFilteredByCreatedAt := make([]database.User, 0, len(users))
-		for i, user := range users {
-			if user.CreatedAt.After(params.CreatedAfter) {
-				usersFilteredByCreatedAt = append(usersFilteredByCreatedAt, users[i])
-			}
-		}
-		users = usersFilteredByCreatedAt
 	}
 
 	if !params.LastSeenBefore.IsZero() {
@@ -7217,20 +6973,6 @@ func (q *FakeQuerier) GetWorkspacesAndAgentsByOwnerID(ctx context.Context, owner
 	return q.GetAuthorizedWorkspacesAndAgentsByOwnerID(ctx, ownerID, nil)
 }
 
-func (q *FakeQuerier) GetWorkspacesByTemplateID(_ context.Context, templateID uuid.UUID) ([]database.WorkspaceTable, error) {
-	q.mutex.RLock()
-	defer q.mutex.RUnlock()
-
-	workspaces := []database.WorkspaceTable{}
-	for _, workspace := range q.workspaces {
-		if workspace.TemplateID == templateID {
-			workspaces = append(workspaces, workspace)
-		}
-	}
-
-	return workspaces, nil
-}
-
 func (q *FakeQuerier) GetWorkspacesEligibleForTransition(ctx context.Context, now time.Time) ([]database.GetWorkspacesEligibleForTransitionRow, error) {
 	q.mutex.RLock()
 	defer q.mutex.RUnlock()
@@ -7275,13 +7017,7 @@ func (q *FakeQuerier) GetWorkspacesEligibleForTransition(ctx context.Context, no
 		if user.Status == database.UserStatusActive &&
 			job.JobStatus != database.ProvisionerJobStatusFailed &&
 			build.Transition == database.WorkspaceTransitionStop &&
-			workspace.AutostartSchedule.Valid &&
-			// We do not know if workspace with a zero next start is eligible
-			// for autostart, so we accept this false-positive. This can occur
-			// when a coder version is upgraded and next_start_at has yet to
-			// be set.
-			(workspace.NextStartAt.Time.IsZero() ||
-				!now.Before(workspace.NextStartAt.Time)) {
+			workspace.AutostartSchedule.Valid {
 			workspaces = append(workspaces, database.GetWorkspacesEligibleForTransitionRow{
 				ID:   workspace.ID,
 				Name: workspace.Name,
@@ -7291,7 +7027,7 @@ func (q *FakeQuerier) GetWorkspacesEligibleForTransition(ctx context.Context, no
 
 		if !workspace.DormantAt.Valid &&
 			template.TimeTilDormant > 0 &&
-			now.Sub(workspace.LastUsedAt) >= time.Duration(template.TimeTilDormant) {
+			now.Sub(workspace.LastUsedAt) > time.Duration(template.TimeTilDormant) {
 			workspaces = append(workspaces, database.GetWorkspacesEligibleForTransitionRow{
 				ID:   workspace.ID,
 				Name: workspace.Name,
@@ -8153,12 +7889,6 @@ func (q *FakeQuerier) InsertUser(_ context.Context, arg database.InsertUserParam
 	sort.Slice(q.users, func(i, j int) bool {
 		return q.users[i].CreatedAt.Before(q.users[j].CreatedAt)
 	})
-
-	q.userStatusChanges = append(q.userStatusChanges, database.UserStatusChange{
-		UserID:    user.ID,
-		NewStatus: user.Status,
-		ChangedAt: user.UpdatedAt,
-	})
 	return user, nil
 }
 
@@ -8262,7 +7992,6 @@ func (q *FakeQuerier) InsertWorkspace(_ context.Context, arg database.InsertWork
 		Ttl:               arg.Ttl,
 		LastUsedAt:        arg.LastUsedAt,
 		AutomaticUpdates:  arg.AutomaticUpdates,
-		NextStartAt:       arg.NextStartAt,
 	}
 	q.workspaces = append(q.workspaces, workspace)
 	return workspace, nil
@@ -8491,10 +8220,6 @@ func (q *FakeQuerier) InsertWorkspaceApp(_ context.Context, arg database.InsertW
 		arg.SharingLevel = database.AppSharingLevelOwner
 	}
 
-	if arg.OpenIn == "" {
-		arg.OpenIn = database.WorkspaceAppOpenInSlimWindow
-	}
-
 	// nolint:gosimple
 	workspaceApp := database.WorkspaceApp{
 		ID:                   arg.ID,
@@ -8514,7 +8239,6 @@ func (q *FakeQuerier) InsertWorkspaceApp(_ context.Context, arg database.InsertW
 		Health:               arg.Health,
 		Hidden:               arg.Hidden,
 		DisplayOrder:         arg.DisplayOrder,
-		OpenIn:               arg.OpenIn,
 	}
 	q.workspaceApps = append(q.workspaceApps, workspaceApp)
 	return workspaceApp, nil
@@ -8846,10 +8570,6 @@ func (q *FakeQuerier) OrganizationMembers(_ context.Context, arg database.Organi
 		tmp = append(tmp, database.OrganizationMembersRow{
 			OrganizationMember: organizationMember,
 			Username:           user.Username,
-			AvatarURL:          user.AvatarURL,
-			Name:               user.Name,
-			Email:              user.Email,
-			GlobalRoles:        user.RBACRoles,
 		})
 	}
 	return tmp, nil
@@ -9200,18 +8920,12 @@ func (q *FakeQuerier) UpdateInactiveUsersToDormant(_ context.Context, params dat
 				Username:   user.Username,
 				LastSeenAt: user.LastSeenAt,
 			})
-			q.userStatusChanges = append(q.userStatusChanges, database.UserStatusChange{
-				UserID:    user.ID,
-				NewStatus: database.UserStatusDormant,
-				ChangedAt: params.UpdatedAt,
-			})
 		}
 	}
 
 	if len(updated) == 0 {
 		return nil, sql.ErrNoRows
 	}
-
 	return updated, nil
 }
 
@@ -10012,12 +9726,6 @@ func (q *FakeQuerier) UpdateUserStatus(_ context.Context, arg database.UpdateUse
 		user.Status = arg.Status
 		user.UpdatedAt = arg.UpdatedAt
 		q.users[index] = user
-
-		q.userStatusChanges = append(q.userStatusChanges, database.UserStatusChange{
-			UserID:    user.ID,
-			NewStatus: user.Status,
-			ChangedAt: user.UpdatedAt,
-		})
 		return user, nil
 	}
 	return database.User{}, sql.ErrNoRows
@@ -10225,7 +9933,6 @@ func (q *FakeQuerier) UpdateWorkspaceAutostart(_ context.Context, arg database.U
 			continue
 		}
 		workspace.AutostartSchedule = arg.AutostartSchedule
-		workspace.NextStartAt = arg.NextStartAt
 		q.workspaces[index] = workspace
 		return nil
 	}
@@ -10375,29 +10082,6 @@ func (q *FakeQuerier) UpdateWorkspaceLastUsedAt(_ context.Context, arg database.
 	return sql.ErrNoRows
 }
 
-func (q *FakeQuerier) UpdateWorkspaceNextStartAt(_ context.Context, arg database.UpdateWorkspaceNextStartAtParams) error {
-	err := validateDatabaseType(arg)
-	if err != nil {
-		return err
-	}
-
-	q.mutex.Lock()
-	defer q.mutex.Unlock()
-
-	for index, workspace := range q.workspaces {
-		if workspace.ID != arg.ID {
-			continue
-		}
-
-		workspace.NextStartAt = arg.NextStartAt
-		q.workspaces[index] = workspace
-
-		return nil
-	}
-
-	return sql.ErrNoRows
-}
-
 func (q *FakeQuerier) UpdateWorkspaceProxy(_ context.Context, arg database.UpdateWorkspaceProxyParams) (database.WorkspaceProxy, error) {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
@@ -10496,26 +10180,6 @@ func (q *FakeQuerier) UpdateWorkspacesDormantDeletingAtByTemplateID(_ context.Co
 	}
 
 	return affectedRows, nil
-}
-
-func (q *FakeQuerier) UpdateWorkspacesTTLByTemplateID(_ context.Context, arg database.UpdateWorkspacesTTLByTemplateIDParams) error {
-	err := validateDatabaseType(arg)
-	if err != nil {
-		return err
-	}
-
-	q.mutex.Lock()
-	defer q.mutex.Unlock()
-
-	for i, ws := range q.workspaces {
-		if ws.TemplateID != arg.TemplateID {
-			continue
-		}
-
-		q.workspaces[i].Ttl = arg.Ttl
-	}
-
-	return nil
 }
 
 func (q *FakeQuerier) UpsertAnnouncementBanners(_ context.Context, data string) error {

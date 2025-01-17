@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	ErrCannotEnqueueDisabledNotification = xerrors.New("notification is not enabled")
+	ErrCannotEnqueueDisabledNotification = xerrors.New("user has disabled this notification")
 	ErrDuplicate                         = xerrors.New("duplicate notification")
 )
 

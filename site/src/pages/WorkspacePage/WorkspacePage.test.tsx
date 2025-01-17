@@ -312,9 +312,7 @@ describe("WorkspacePage", () => {
 		);
 		await user.clear(secondParameterInput);
 		await user.type(secondParameterInput, "2");
-		await user.click(
-			within(dialog).getByRole("button", { name: /update parameters/i }),
-		);
+		await user.click(within(dialog).getByRole("button", { name: "Update" }));
 
 		// Check if the update was called using the values from the form
 		await waitFor(() => {

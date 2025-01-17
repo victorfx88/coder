@@ -137,14 +137,6 @@ CREATE TYPE port_share_protocol AS ENUM (
     'https'
 );
 
-CREATE TYPE provisioner_daemon_status AS ENUM (
-    'offline',
-    'idle',
-    'busy'
-);
-
-COMMENT ON TYPE provisioner_daemon_status IS 'The status of a provisioner daemon.';
-
 CREATE TYPE provisioner_job_status AS ENUM (
     'pending',
     'running',
@@ -198,10 +190,7 @@ CREATE TYPE resource_type AS ENUM (
     'custom_role',
     'organization_member',
     'notifications_settings',
-    'notification_template',
-    'idp_sync_settings_organization',
-    'idp_sync_settings_group',
-    'idp_sync_settings_role'
+    'notification_template'
 );
 
 CREATE TYPE startup_script_behavior AS ENUM (
@@ -267,12 +256,6 @@ CREATE TYPE workspace_app_health AS ENUM (
     'initializing',
     'healthy',
     'unhealthy'
-);
-
-CREATE TYPE workspace_app_open_in AS ENUM (
-    'tab',
-    'window',
-    'slim-window'
 );
 
 CREATE TYPE workspace_transition AS ENUM (
@@ -354,24 +337,13 @@ CREATE FUNCTION inhibit_enqueue_if_disabled() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-	-- Fail the insertion if one of the following:
-	--  * the user has disabled this notification.
-	--  * the notification template is disabled by default and hasn't
-	--    been explicitly enabled by the user.
-	IF EXISTS (
-		SELECT 1 FROM notification_templates
-		LEFT JOIN notification_preferences
-			ON  notification_preferences.notification_template_id = notification_templates.id
-			AND notification_preferences.user_id = NEW.user_id
-		WHERE notification_templates.id = NEW.notification_template_id AND (
-			-- Case 1: The user has explicitly disabled this template
-			notification_preferences.disabled = TRUE
-			OR
-			-- Case 2: The template is disabled by default AND the user hasn't enabled it
-			(notification_templates.enabled_by_default = FALSE AND notification_preferences.notification_template_id IS NULL)
-		)
-	) THEN
-		RAISE EXCEPTION 'cannot enqueue message: notification is not enabled';
+	-- Fail the insertion if the user has disabled this notification.
+	IF EXISTS (SELECT 1
+			   FROM notification_preferences
+			   WHERE disabled = TRUE
+				 AND user_id = NEW.user_id
+				 AND notification_template_id = NEW.notification_template_id) THEN
+		RAISE EXCEPTION 'cannot enqueue message: user has disabled this notification';
 	END IF;
 
 	RETURN NEW;
@@ -408,25 +380,6 @@ BEGIN
 END;
 $$;
 
-CREATE FUNCTION nullify_next_start_at_on_workspace_autostart_modification() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-BEGIN
-	-- A workspace's next_start_at might be invalidated by the following:
-	--   * The autostart schedule has changed independent to next_start_at
-	--   * The workspace has been marked as dormant
-	IF (NEW.autostart_schedule <> OLD.autostart_schedule AND NEW.next_start_at = OLD.next_start_at)
-		OR (NEW.dormant_at IS NOT NULL AND NEW.next_start_at IS NOT NULL)
-	THEN
-		UPDATE workspaces
-		SET next_start_at = NULL
-		WHERE id = NEW.id;
-	END IF;
-	RETURN NEW;
-END;
-$$;
-
 CREATE FUNCTION provisioner_tagset_contains(provisioner_tags tagset, job_tags tagset) RETURNS boolean
     LANGUAGE plpgsql
     AS $$
@@ -441,36 +394,6 @@ END;
 $$;
 
 COMMENT ON FUNCTION provisioner_tagset_contains(provisioner_tags tagset, job_tags tagset) IS 'Returns true if the provisioner_tags contains the job_tags, or if the job_tags represents an untagged provisioner and the superset is exactly equal to the subset.';
-
-CREATE FUNCTION record_user_status_change() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    IF TG_OP = 'INSERT' OR OLD.status IS DISTINCT FROM NEW.status THEN
-        INSERT INTO user_status_changes (
-            user_id,
-            new_status,
-            changed_at
-        ) VALUES (
-            NEW.id,
-            NEW.status,
-            NEW.updated_at
-        );
-    END IF;
-
-    IF OLD.deleted = FALSE AND NEW.deleted = TRUE THEN
-        INSERT INTO user_deleted (
-            user_id,
-            deleted_at
-        ) VALUES (
-            NEW.id,
-            NEW.updated_at
-        );
-    END IF;
-
-    RETURN NEW;
-END;
-$$;
 
 CREATE FUNCTION remove_organization_member_role() RETURNS trigger
     LANGUAGE plpgsql
@@ -893,8 +816,7 @@ CREATE TABLE notification_templates (
     actions jsonb,
     "group" text,
     method notification_method,
-    kind notification_template_kind DEFAULT 'system'::notification_template_kind NOT NULL,
-    enabled_by_default boolean DEFAULT true NOT NULL
+    kind notification_template_kind DEFAULT 'system'::notification_template_kind NOT NULL
 );
 
 COMMENT ON TABLE notification_templates IS 'Templates from which to create notification messages.';
@@ -1427,14 +1349,6 @@ CREATE VIEW template_with_names AS
 
 COMMENT ON VIEW template_with_names IS 'Joins in the display name information such as username, avatar, and organization name.';
 
-CREATE TABLE user_deleted (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    deleted_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
-COMMENT ON TABLE user_deleted IS 'Tracks when users were deleted';
-
 CREATE TABLE user_links (
     user_id uuid NOT NULL,
     login_type login_type NOT NULL,
@@ -1452,15 +1366,6 @@ COMMENT ON COLUMN user_links.oauth_access_token_key_id IS 'The ID of the key use
 COMMENT ON COLUMN user_links.oauth_refresh_token_key_id IS 'The ID of the key used to encrypt the OAuth refresh token. If this is NULL, the refresh token is not encrypted';
 
 COMMENT ON COLUMN user_links.claims IS 'Claims from the IDP for the linked user. Includes both id_token and userinfo claims. ';
-
-CREATE TABLE user_status_changes (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    new_status user_status NOT NULL,
-    changed_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL
-);
-
-COMMENT ON TABLE user_status_changes IS 'Tracks the history of user status changes';
 
 CREATE TABLE workspace_agent_log_sources (
     workspace_agent_id uuid NOT NULL,
@@ -1675,8 +1580,7 @@ CREATE TABLE workspace_apps (
     slug text NOT NULL,
     external boolean DEFAULT false NOT NULL,
     display_order integer DEFAULT 0 NOT NULL,
-    hidden boolean DEFAULT false NOT NULL,
-    open_in workspace_app_open_in DEFAULT 'slim-window'::workspace_app_open_in NOT NULL
+    hidden boolean DEFAULT false NOT NULL
 );
 
 COMMENT ON COLUMN workspace_apps.display_order IS 'Specifies the order in which to display agent app in user interfaces.';
@@ -1827,8 +1731,7 @@ CREATE TABLE workspaces (
     dormant_at timestamp with time zone,
     deleting_at timestamp with time zone,
     automatic_updates automatic_updates DEFAULT 'never'::automatic_updates NOT NULL,
-    favorite boolean DEFAULT false NOT NULL,
-    next_start_at timestamp with time zone
+    favorite boolean DEFAULT false NOT NULL
 );
 
 COMMENT ON COLUMN workspaces.favorite IS 'Favorite is true if the workspace owner has favorited the workspace.';
@@ -1849,7 +1752,6 @@ CREATE VIEW workspaces_expanded AS
     workspaces.deleting_at,
     workspaces.automatic_updates,
     workspaces.favorite,
-    workspaces.next_start_at,
     visible_users.avatar_url AS owner_avatar_url,
     visible_users.username AS owner_username,
     organizations.name AS organization_name,
@@ -2047,14 +1949,8 @@ ALTER TABLE ONLY template_versions
 ALTER TABLE ONLY templates
     ADD CONSTRAINT templates_pkey PRIMARY KEY (id);
 
-ALTER TABLE ONLY user_deleted
-    ADD CONSTRAINT user_deleted_pkey PRIMARY KEY (id);
-
 ALTER TABLE ONLY user_links
     ADD CONSTRAINT user_links_pkey PRIMARY KEY (user_id, login_type);
-
-ALTER TABLE ONLY user_status_changes
-    ADD CONSTRAINT user_status_changes_pkey PRIMARY KEY (id);
 
 ALTER TABLE ONLY users
     ADD CONSTRAINT users_pkey PRIMARY KEY (id);
@@ -2166,10 +2062,6 @@ CREATE INDEX idx_tailnet_tunnels_dst_id ON tailnet_tunnels USING hash (dst_id);
 
 CREATE INDEX idx_tailnet_tunnels_src_id ON tailnet_tunnels USING hash (src_id);
 
-CREATE INDEX idx_user_deleted_deleted_at ON user_deleted USING btree (deleted_at);
-
-CREATE INDEX idx_user_status_changes_changed_at ON user_status_changes USING btree (changed_at);
-
 CREATE UNIQUE INDEX idx_users_email ON users USING btree (email) WHERE (deleted = false);
 
 CREATE UNIQUE INDEX idx_users_username ON users USING btree (username) WHERE (deleted = false);
@@ -2218,13 +2110,9 @@ CREATE INDEX workspace_app_stats_workspace_id_idx ON workspace_app_stats USING b
 
 CREATE INDEX workspace_modules_created_at_idx ON workspace_modules USING btree (created_at);
 
-CREATE INDEX workspace_next_start_at_idx ON workspaces USING btree (next_start_at) WHERE (deleted = false);
-
 CREATE UNIQUE INDEX workspace_proxies_lower_name_idx ON workspace_proxies USING btree (lower(name)) WHERE (deleted = false);
 
 CREATE INDEX workspace_resources_job_id_idx ON workspace_resources USING btree (job_id);
-
-CREATE INDEX workspace_template_id_idx ON workspaces USING btree (template_id) WHERE (deleted = false);
 
 CREATE UNIQUE INDEX workspaces_owner_id_lower_idx ON workspaces USING btree (owner_id, lower((name)::text)) WHERE (deleted = false);
 
@@ -2304,15 +2192,11 @@ CREATE TRIGGER trigger_delete_oauth2_provider_app_token AFTER DELETE ON oauth2_p
 
 CREATE TRIGGER trigger_insert_apikeys BEFORE INSERT ON api_keys FOR EACH ROW EXECUTE FUNCTION insert_apikey_fail_if_user_deleted();
 
-CREATE TRIGGER trigger_nullify_next_start_at_on_workspace_autostart_modificati AFTER UPDATE ON workspaces FOR EACH ROW EXECUTE FUNCTION nullify_next_start_at_on_workspace_autostart_modification();
-
 CREATE TRIGGER trigger_update_users AFTER INSERT OR UPDATE ON users FOR EACH ROW WHEN ((new.deleted = true)) EXECUTE FUNCTION delete_deleted_user_resources();
 
 CREATE TRIGGER trigger_upsert_user_links BEFORE INSERT OR UPDATE ON user_links FOR EACH ROW EXECUTE FUNCTION insert_user_links_fail_if_user_deleted();
 
 CREATE TRIGGER update_notification_message_dedupe_hash BEFORE INSERT OR UPDATE ON notification_messages FOR EACH ROW EXECUTE FUNCTION compute_notification_message_dedupe_hash();
-
-CREATE TRIGGER user_status_change_trigger AFTER INSERT OR UPDATE ON users FOR EACH ROW EXECUTE FUNCTION record_user_status_change();
 
 ALTER TABLE ONLY api_keys
     ADD CONSTRAINT api_keys_user_id_uuid_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
@@ -2437,9 +2321,6 @@ ALTER TABLE ONLY templates
 ALTER TABLE ONLY templates
     ADD CONSTRAINT templates_organization_id_fkey FOREIGN KEY (organization_id) REFERENCES organizations(id) ON DELETE CASCADE;
 
-ALTER TABLE ONLY user_deleted
-    ADD CONSTRAINT user_deleted_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id);
-
 ALTER TABLE ONLY user_links
     ADD CONSTRAINT user_links_oauth_access_token_key_id_fkey FOREIGN KEY (oauth_access_token_key_id) REFERENCES dbcrypt_keys(active_key_digest);
 
@@ -2448,9 +2329,6 @@ ALTER TABLE ONLY user_links
 
 ALTER TABLE ONLY user_links
     ADD CONSTRAINT user_links_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE;
-
-ALTER TABLE ONLY user_status_changes
-    ADD CONSTRAINT user_status_changes_user_id_fkey FOREIGN KEY (user_id) REFERENCES users(id);
 
 ALTER TABLE ONLY workspace_agent_log_sources
     ADD CONSTRAINT workspace_agent_log_sources_workspace_agent_id_fkey FOREIGN KEY (workspace_agent_id) REFERENCES workspace_agents(id) ON DELETE CASCADE;

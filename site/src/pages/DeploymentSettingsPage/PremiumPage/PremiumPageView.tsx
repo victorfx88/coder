@@ -1,4 +1,4 @@
-import { Button } from "components/Button/Button";
+import { Button } from "components/ui/button";
 import { Activity, Coins, Expand, SquareArrowOutUpRight } from "lucide-react";
 import type { FC } from "react";
 import { docs } from "utils/docs";

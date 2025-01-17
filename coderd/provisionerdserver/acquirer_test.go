@@ -28,7 +28,7 @@ import (
 )
 
 func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m, testutil.GoleakOptions...)
+	goleak.VerifyTestMain(m)
 }
 
 // TestAcquirer_Store tests that a database.Store is accepted as a provisionerdserver.AcquirerStore

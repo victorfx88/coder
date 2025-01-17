@@ -8,9 +8,9 @@ import (
 	"strings"
 	"sync"
 
+	"nhooyr.io/websocket"
 	"tailscale.com/derp"
-
-	"github.com/coder/websocket"
+	"tailscale.com/net/wsconn"
 )
 
 // WithWebsocketSupport returns an http.Handler that upgrades
@@ -60,7 +60,7 @@ func WithWebsocketSupport(s *derp.Server, base http.Handler) (http.Handler, func
 				c.Close(websocket.StatusPolicyViolation, "client must speak the derp subprotocol")
 				return
 			}
-			wc := websocket.NetConn(ctx, c, websocket.MessageBinary)
+			wc := wsconn.NetConn(ctx, c, websocket.MessageBinary)
 			brw := bufio.NewReadWriter(bufio.NewReader(wc), bufio.NewWriter(wc))
 			s.Accept(ctx, wc, brw, r.RemoteAddr)
 		}), func() {

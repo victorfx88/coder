@@ -158,12 +158,12 @@ const styles = {
 			backgroundColor: theme.palette.divider,
 			position: "absolute",
 			top: 0,
-			left: 43,
+			left: 49,
 		},
 	}),
 
 	agentStatusWrapper: {
-		width: 24,
+		width: 36,
 		display: "flex",
 		justifyContent: "center",
 		flexShrink: 0,

@@ -35,7 +35,6 @@ declare module "@emoji-mart/react" {
 		custom: CustomCategory[];
 		emojiButtonSize?: number;
 		emojiSize?: number;
-		emojiVersion?: string;
 		onEmojiSelect: (emoji: EmojiData) => void;
 	}
 

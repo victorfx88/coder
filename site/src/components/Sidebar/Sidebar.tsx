@@ -3,15 +3,14 @@ import type { CSSObject, Interpolation, Theme } from "@emotion/react";
 import { Stack } from "components/Stack/Stack";
 import { type ClassName, useClassName } from "hooks/useClassName";
 import type { ElementType, FC, ReactNode } from "react";
-import { Link, NavLink, useMatch } from "react-router-dom";
-import { cn } from "utils/cn";
+import { Link, NavLink } from "react-router-dom";
 
 interface SidebarProps {
 	children?: ReactNode;
 }
 
 export const Sidebar: FC<SidebarProps> = ({ children }) => {
-	return <nav className="w-60 flex-shrink-0">{children}</nav>;
+	return <nav css={styles.sidebar}>{children}</nav>;
 };
 
 interface SidebarHeaderProps {
@@ -28,7 +27,7 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 	linkTo,
 }) => {
 	return (
-		<Stack direction="row" spacing={1} css={styles.info}>
+		<Stack direction="row" alignItems="center" css={styles.info}>
 			{avatar}
 			<div
 				css={{
@@ -47,38 +46,6 @@ export const SidebarHeader: FC<SidebarHeaderProps> = ({
 				<span css={styles.subtitle}>{subtitle}</span>
 			</div>
 		</Stack>
-	);
-};
-
-interface SettingsSidebarNavItemProps {
-	children?: ReactNode;
-	href: string;
-	end?: boolean;
-}
-
-export const SettingsSidebarNavItem: FC<SettingsSidebarNavItemProps> = ({
-	children,
-	href,
-	end,
-}) => {
-	// 2025-01-10: useMatch is a workaround for a bug we encountered when you
-	// pass a render function to NavLink's className prop, and try to access
-	// NavLinks's isActive state value for the conditional styling. isActive
-	// wasn't always evaluating to true when it should be, but useMatch worked
-	const matchResult = useMatch(href);
-	return (
-		<NavLink
-			end={end}
-			to={href}
-			className={cn(
-				"relative text-sm text-content-secondary no-underline font-medium py-2 px-3 hover:bg-surface-secondary rounded-md transition ease-in-out duration-150",
-				{
-					"font-semibold text-content-primary": matchResult !== null,
-				},
-			)}
-		>
-			{children}
-		</NavLink>
 	);
 };
 
@@ -111,6 +78,10 @@ export const SidebarNavItem: FC<SidebarNavItemProps> = ({
 };
 
 const styles = {
+	sidebar: {
+		width: 245,
+		flexShrink: 0,
+	},
 	info: (theme) => ({
 		...(theme.typography.body2 as CSSObject),
 		marginBottom: 16,

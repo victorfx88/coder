@@ -1,6 +1,7 @@
 import type { Interpolation, Theme } from "@emotion/react";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
+import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Table from "@mui/material/Table";
@@ -22,10 +23,8 @@ import type {
 	Role,
 } from "api/typesGenerated";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
-import { Button } from "components/Button/Button";
 import { FormFields, FormFooter, VerticalForm } from "components/Form/Form";
 import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
-import { Spinner } from "components/Spinner/Spinner";
 import { Stack } from "components/Stack/Stack";
 import { useFormik } from "formik";
 import { type ChangeEvent, type FC, useState } from "react";
@@ -85,9 +84,8 @@ export const CreateEditRolePageView: FC<CreateEditRolePageViewProps> = ({
 					description="Set a name and permissions for this role."
 				/>
 				{canAssignOrgRole && (
-					<div className="flex space-x-2 items-center">
+					<Stack direction="row" spacing={2}>
 						<Button
-							variant="outline"
 							onClick={() => {
 								navigate(`/organizations/${organizationName}/roles`);
 							}}
@@ -95,14 +93,15 @@ export const CreateEditRolePageView: FC<CreateEditRolePageViewProps> = ({
 							Cancel
 						</Button>
 						<Button
+							variant="contained"
+							color="primary"
 							onClick={() => {
 								form.handleSubmit();
 							}}
 						>
-							<Spinner loading={isLoading} />
 							{role !== undefined ? "Save" : "Create Role"}
 						</Button>
-					</div>
+					</Stack>
 				)}
 			</Stack>
 
@@ -136,16 +135,11 @@ export const CreateEditRolePageView: FC<CreateEditRolePageViewProps> = ({
 					/>
 				</FormFields>
 				{canAssignOrgRole && (
-					<FormFooter>
-						<Button onClick={onCancel} variant="outline">
-							Cancel
-						</Button>
-
-						<Button type="submit" disabled={isLoading}>
-							<Spinner loading={isLoading} />
-							{role ? "Save role" : "Create Role"}
-						</Button>
-					</FormFooter>
+					<FormFooter
+						onCancel={onCancel}
+						isLoading={isLoading}
+						submitLabel={role !== undefined ? "Save" : "Create Role"}
+					/>
 				)}
 			</VerticalForm>
 		</>

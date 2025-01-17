@@ -27,8 +27,6 @@ import (
 	"github.com/coder/coder/v2/coderd/database/dbtestutil"
 	"github.com/coder/coder/v2/coderd/database/dbtime"
 	"github.com/coder/coder/v2/coderd/externalauth"
-	"github.com/coder/coder/v2/coderd/notifications"
-	"github.com/coder/coder/v2/coderd/notifications/notificationstest"
 	"github.com/coder/coder/v2/coderd/rbac"
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/provisioner/echo"
@@ -559,130 +557,6 @@ func TestWorkspaceBuildResources(t *testing.T) {
 		assertWorkspaceResource(t, workspace.LatestBuild.Resources[2], "first_resource", "example", 1)  // resource has 1 agent with explicit order
 		assertWorkspaceResource(t, workspace.LatestBuild.Resources[3], "fourth_resource", "example", 0) // resource has no agents, sorted by name
 		assertWorkspaceResource(t, workspace.LatestBuild.Resources[4], "third_resource", "example", 0)  // resource is the last one
-	})
-}
-
-func TestWorkspaceBuildWithUpdatedTemplateVersionSendsNotification(t *testing.T) {
-	t.Parallel()
-
-	t.Run("NoRepeatedNotifications", func(t *testing.T) {
-		t.Parallel()
-
-		notify := &notificationstest.FakeEnqueuer{}
-
-		client := coderdtest.New(t, &coderdtest.Options{IncludeProvisionerDaemon: true, NotificationsEnqueuer: notify})
-		first := coderdtest.CreateFirstUser(t, client)
-		templateAdminClient, templateAdmin := coderdtest.CreateAnotherUser(t, client, first.OrganizationID, rbac.RoleTemplateAdmin())
-		userClient, user := coderdtest.CreateAnotherUser(t, client, first.OrganizationID)
-
-		// Create a template with an initial version
-		version := coderdtest.CreateTemplateVersion(t, templateAdminClient, first.OrganizationID, nil)
-		coderdtest.AwaitTemplateVersionJobCompleted(t, templateAdminClient, version.ID)
-		template := coderdtest.CreateTemplate(t, templateAdminClient, first.OrganizationID, version.ID)
-
-		// Create a workspace using this template
-		workspace := coderdtest.CreateWorkspace(t, userClient, template.ID)
-		coderdtest.AwaitWorkspaceBuildJobCompleted(t, userClient, workspace.LatestBuild.ID)
-		coderdtest.MustTransitionWorkspace(t, userClient, workspace.ID, database.WorkspaceTransitionStart, database.WorkspaceTransitionStop)
-
-		// Create a new version of the template
-		newVersion := coderdtest.CreateTemplateVersion(t, templateAdminClient, first.OrganizationID, nil, func(ctvr *codersdk.CreateTemplateVersionRequest) {
-			ctvr.TemplateID = template.ID
-		})
-		coderdtest.AwaitTemplateVersionJobCompleted(t, templateAdminClient, newVersion.ID)
-
-		// Create a workspace build using this new template version
-		build := coderdtest.CreateWorkspaceBuild(t, userClient, workspace, database.WorkspaceTransitionStart, func(cwbr *codersdk.CreateWorkspaceBuildRequest) {
-			cwbr.TemplateVersionID = newVersion.ID
-		})
-		coderdtest.AwaitWorkspaceBuildJobCompleted(t, userClient, build.ID)
-		coderdtest.MustTransitionWorkspace(t, userClient, workspace.ID, database.WorkspaceTransitionStart, database.WorkspaceTransitionStop)
-
-		// Create the workspace build _again_. We are doing this to
-		// ensure we do not create _another_ notification. This is
-		// separate to the notifications subsystem dedupe mechanism
-		// as this build shouldn't create a notification. It shouldn't
-		// create another notification as this new build isn't changing
-		// the template version.
-		build = coderdtest.CreateWorkspaceBuild(t, userClient, workspace, database.WorkspaceTransitionStart, func(cwbr *codersdk.CreateWorkspaceBuildRequest) {
-			cwbr.TemplateVersionID = newVersion.ID
-		})
-		coderdtest.AwaitWorkspaceBuildJobCompleted(t, userClient, build.ID)
-		coderdtest.MustTransitionWorkspace(t, userClient, workspace.ID, database.WorkspaceTransitionStart, database.WorkspaceTransitionStop)
-
-		// We're going to have two notifications (one for the first user and one for the template admin)
-		// By ensuring we only have these two, we are sure the second build didn't trigger more
-		// notifications.
-		sent := notify.Sent(notificationstest.WithTemplateID(notifications.TemplateWorkspaceManuallyUpdated))
-		require.Len(t, sent, 2)
-
-		receivers := make([]uuid.UUID, len(sent))
-		for idx, notif := range sent {
-			receivers[idx] = notif.UserID
-		}
-
-		// Check the notification was sent to the first user and template admin
-		// (both of whom have the "template admin" role), and explicitly not the
-		// workspace owner (since they initiated the workspace build).
-		require.Contains(t, receivers, templateAdmin.ID)
-		require.Contains(t, receivers, first.UserID)
-		require.NotContains(t, receivers, user.ID)
-
-		require.Contains(t, sent[0].Targets, template.ID)
-		require.Contains(t, sent[0].Targets, workspace.ID)
-		require.Contains(t, sent[0].Targets, workspace.OrganizationID)
-		require.Contains(t, sent[0].Targets, workspace.OwnerID)
-
-		require.Contains(t, sent[1].Targets, template.ID)
-		require.Contains(t, sent[1].Targets, workspace.ID)
-		require.Contains(t, sent[1].Targets, workspace.OrganizationID)
-		require.Contains(t, sent[1].Targets, workspace.OwnerID)
-	})
-
-	t.Run("ToCorrectUser", func(t *testing.T) {
-		t.Parallel()
-
-		notify := &notificationstest.FakeEnqueuer{}
-
-		client := coderdtest.New(t, &coderdtest.Options{IncludeProvisionerDaemon: true, NotificationsEnqueuer: notify})
-		first := coderdtest.CreateFirstUser(t, client)
-		templateAdminClient, templateAdmin := coderdtest.CreateAnotherUser(t, client, first.OrganizationID, rbac.RoleTemplateAdmin())
-		userClient, _ := coderdtest.CreateAnotherUser(t, client, first.OrganizationID)
-
-		// Create a template with an initial version
-		version := coderdtest.CreateTemplateVersion(t, templateAdminClient, first.OrganizationID, nil)
-		coderdtest.AwaitTemplateVersionJobCompleted(t, templateAdminClient, version.ID)
-		template := coderdtest.CreateTemplate(t, templateAdminClient, first.OrganizationID, version.ID)
-
-		// Create a workspace using this template
-		workspace := coderdtest.CreateWorkspace(t, userClient, template.ID)
-		coderdtest.AwaitWorkspaceBuildJobCompleted(t, userClient, workspace.LatestBuild.ID)
-		coderdtest.MustTransitionWorkspace(t, userClient, workspace.ID, database.WorkspaceTransitionStart, database.WorkspaceTransitionStop)
-
-		// Create a new version of the template
-		newVersion := coderdtest.CreateTemplateVersion(t, templateAdminClient, first.OrganizationID, nil, func(ctvr *codersdk.CreateTemplateVersionRequest) {
-			ctvr.TemplateID = template.ID
-		})
-		coderdtest.AwaitTemplateVersionJobCompleted(t, templateAdminClient, newVersion.ID)
-
-		// Create a workspace build using this new template version from a different user
-		ctx := testutil.Context(t, testutil.WaitShort)
-		build, err := client.CreateWorkspaceBuild(ctx, workspace.ID, codersdk.CreateWorkspaceBuildRequest{
-			Transition:        codersdk.WorkspaceTransitionStart,
-			TemplateVersionID: newVersion.ID,
-		})
-		require.NoError(t, err)
-		coderdtest.AwaitWorkspaceBuildJobCompleted(t, userClient, build.ID)
-		coderdtest.MustTransitionWorkspace(t, userClient, workspace.ID, database.WorkspaceTransitionStart, database.WorkspaceTransitionStop)
-
-		// Ensure we receive only 1 workspace manually updated notification and to the right user
-		sent := notify.Sent(notificationstest.WithTemplateID(notifications.TemplateWorkspaceManuallyUpdated))
-		require.Len(t, sent, 1)
-		require.Equal(t, templateAdmin.ID, sent[0].UserID)
-		require.Contains(t, sent[0].Targets, template.ID)
-		require.Contains(t, sent[0].Targets, workspace.ID)
-		require.Contains(t, sent[0].Targets, workspace.OrganizationID)
-		require.Contains(t, sent[0].Targets, workspace.OwnerID)
 	})
 }
 

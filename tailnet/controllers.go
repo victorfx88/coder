@@ -7,7 +7,6 @@ import (
 	"maps"
 	"math"
 	"net/netip"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -20,7 +19,6 @@ import (
 	"tailscale.com/util/dnsname"
 
 	"cdr.dev/slog"
-	"github.com/coder/coder/v2/coderd/util/ptr"
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/tailnet/proto"
 	"github.com/coder/quartz"
@@ -112,11 +110,6 @@ type WorkspaceUpdatesController interface {
 // of the tailnet.Conn that we use to configure DNS records.
 type DNSHostsSetter interface {
 	SetDNSHosts(hosts map[dnsname.FQDN][]netip.Addr) error
-}
-
-// UpdatesHandler is anything that expects a stream of workspace update diffs.
-type UpdatesHandler interface {
-	Update(WorkspaceUpdate) error
 }
 
 // ControlProtocolClients represents an abstract interface to the tailnet control plane via a set
@@ -862,121 +855,65 @@ func (r *basicResumeTokenRefresher) refresh() {
 	r.timer.Reset(dur, "basicResumeTokenRefresher", "refresh")
 }
 
-type TunnelAllWorkspaceUpdatesController struct {
+type tunnelAllWorkspaceUpdatesController struct {
 	coordCtrl     *TunnelSrcCoordController
 	dnsHostSetter DNSHostsSetter
-	updateHandler UpdatesHandler
 	ownerUsername string
 	logger        slog.Logger
-
-	mu      sync.Mutex
-	updater *tunnelUpdater
 }
 
-type Workspace struct {
-	ID     uuid.UUID
-	Name   string
-	Status proto.Workspace_Status
-
-	ownerUsername string
-	agents        map[uuid.UUID]*Agent
+type workspace struct {
+	id     uuid.UUID
+	name   string
+	agents map[uuid.UUID]agent
 }
 
-// updateDNSNames updates the DNS names for all agents in the workspace.
-func (w *Workspace) updateDNSNames() error {
-	for id, a := range w.agents {
-		names := make(map[dnsname.FQDN][]netip.Addr)
+// addAllDNSNames adds names for all of its agents to the given map of names
+func (w workspace) addAllDNSNames(names map[dnsname.FQDN][]netip.Addr, owner string) error {
+	for _, a := range w.agents {
 		// TODO: technically, DNS labels cannot start with numbers, but the rules are often not
 		//       strictly enforced.
-		fqdn, err := dnsname.ToFQDN(fmt.Sprintf("%s.%s.me.coder.", a.Name, w.Name))
+		fqdn, err := dnsname.ToFQDN(fmt.Sprintf("%s.%s.me.coder.", a.name, w.name))
 		if err != nil {
 			return err
 		}
-		names[fqdn] = []netip.Addr{CoderServicePrefix.AddrFromUUID(a.ID)}
-		fqdn, err = dnsname.ToFQDN(fmt.Sprintf("%s.%s.%s.coder.", a.Name, w.Name, w.ownerUsername))
+		names[fqdn] = []netip.Addr{CoderServicePrefix.AddrFromUUID(a.id)}
+		fqdn, err = dnsname.ToFQDN(fmt.Sprintf("%s.%s.%s.coder.", a.name, w.name, owner))
 		if err != nil {
 			return err
 		}
-		names[fqdn] = []netip.Addr{CoderServicePrefix.AddrFromUUID(a.ID)}
-		if len(w.agents) == 1 {
-			fqdn, err := dnsname.ToFQDN(fmt.Sprintf("%s.coder.", w.Name))
-			if err != nil {
-				return err
-			}
-			for _, a := range w.agents {
-				names[fqdn] = []netip.Addr{CoderServicePrefix.AddrFromUUID(a.ID)}
-			}
+		names[fqdn] = []netip.Addr{CoderServicePrefix.AddrFromUUID(a.id)}
+	}
+	if len(w.agents) == 1 {
+		fqdn, err := dnsname.ToFQDN(fmt.Sprintf("%s.coder.", w.name))
+		if err != nil {
+			return err
 		}
-		a.Hosts = names
-		w.agents[id] = a
+		for _, a := range w.agents {
+			names[fqdn] = []netip.Addr{CoderServicePrefix.AddrFromUUID(a.id)}
+		}
 	}
 	return nil
 }
 
-type Agent struct {
-	ID          uuid.UUID
-	Name        string
-	WorkspaceID uuid.UUID
-	Hosts       map[dnsname.FQDN][]netip.Addr
+type agent struct {
+	id   uuid.UUID
+	name string
 }
 
-func (a *Agent) Clone() Agent {
-	hosts := make(map[dnsname.FQDN][]netip.Addr, len(a.Hosts))
-	for k, v := range a.Hosts {
-		hosts[k] = slices.Clone(v)
-	}
-	return Agent{
-		ID:          a.ID,
-		Name:        a.Name,
-		WorkspaceID: a.WorkspaceID,
-		Hosts:       hosts,
-	}
-}
-
-func (t *TunnelAllWorkspaceUpdatesController) New(client WorkspaceUpdatesClient) CloserWaiter {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+func (t *tunnelAllWorkspaceUpdatesController) New(client WorkspaceUpdatesClient) CloserWaiter {
 	updater := &tunnelUpdater{
 		client:         client,
 		errChan:        make(chan error, 1),
 		logger:         t.logger,
 		coordCtrl:      t.coordCtrl,
 		dnsHostsSetter: t.dnsHostSetter,
-		updateHandler:  t.updateHandler,
 		ownerUsername:  t.ownerUsername,
 		recvLoopDone:   make(chan struct{}),
-		workspaces:     make(map[uuid.UUID]*Workspace),
+		workspaces:     make(map[uuid.UUID]*workspace),
 	}
-	t.updater = updater
-	go t.updater.recvLoop()
-	return t.updater
-}
-
-func (t *TunnelAllWorkspaceUpdatesController) CurrentState() (WorkspaceUpdate, error) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	if t.updater == nil {
-		return WorkspaceUpdate{}, xerrors.New("no updater")
-	}
-	t.updater.Lock()
-	defer t.updater.Unlock()
-	out := WorkspaceUpdate{
-		UpsertedWorkspaces: make([]*Workspace, 0, len(t.updater.workspaces)),
-		UpsertedAgents:     make([]*Agent, 0, len(t.updater.workspaces)),
-		DeletedWorkspaces:  make([]*Workspace, 0),
-		DeletedAgents:      make([]*Agent, 0),
-	}
-	for _, w := range t.updater.workspaces {
-		out.UpsertedWorkspaces = append(out.UpsertedWorkspaces, &Workspace{
-			ID:     w.ID,
-			Name:   w.Name,
-			Status: w.Status,
-		})
-		for _, a := range w.agents {
-			out.UpsertedAgents = append(out.UpsertedAgents, ptr.Ref(a.Clone()))
-		}
-	}
-	return out, nil
+	go updater.recvLoop()
+	return updater
 }
 
 type tunnelUpdater struct {
@@ -985,13 +922,14 @@ type tunnelUpdater struct {
 	client         WorkspaceUpdatesClient
 	coordCtrl      *TunnelSrcCoordController
 	dnsHostsSetter DNSHostsSetter
-	updateHandler  UpdatesHandler
 	ownerUsername  string
 	recvLoopDone   chan struct{}
 
+	// don't need the mutex since only manipulated by the recvLoop
+	workspaces map[uuid.UUID]*workspace
+
 	sync.Mutex
-	workspaces map[uuid.UUID]*Workspace
-	closed     bool
+	closed bool
 }
 
 func (t *tunnelUpdater) Close(ctx context.Context) error {
@@ -1052,68 +990,18 @@ func (t *tunnelUpdater) recvLoop() {
 	}
 }
 
-type WorkspaceUpdate struct {
-	UpsertedWorkspaces []*Workspace
-	UpsertedAgents     []*Agent
-	DeletedWorkspaces  []*Workspace
-	DeletedAgents      []*Agent
-}
-
-func (w *WorkspaceUpdate) Clone() WorkspaceUpdate {
-	clone := WorkspaceUpdate{
-		UpsertedWorkspaces: make([]*Workspace, len(w.UpsertedWorkspaces)),
-		UpsertedAgents:     make([]*Agent, len(w.UpsertedAgents)),
-		DeletedWorkspaces:  make([]*Workspace, len(w.DeletedWorkspaces)),
-		DeletedAgents:      make([]*Agent, len(w.DeletedAgents)),
-	}
-	for i, ws := range w.UpsertedWorkspaces {
-		clone.UpsertedWorkspaces[i] = &Workspace{
-			ID:     ws.ID,
-			Name:   ws.Name,
-			Status: ws.Status,
-		}
-	}
-	for i, a := range w.UpsertedAgents {
-		clone.UpsertedAgents[i] = ptr.Ref(a.Clone())
-	}
-	for i, ws := range w.DeletedWorkspaces {
-		clone.DeletedWorkspaces[i] = &Workspace{
-			ID:     ws.ID,
-			Name:   ws.Name,
-			Status: ws.Status,
-		}
-	}
-	for i, a := range w.DeletedAgents {
-		clone.DeletedAgents[i] = ptr.Ref(a.Clone())
-	}
-	return clone
-}
-
 func (t *tunnelUpdater) handleUpdate(update *proto.WorkspaceUpdate) error {
-	t.Lock()
-	defer t.Unlock()
-
-	currentUpdate := WorkspaceUpdate{
-		UpsertedWorkspaces: []*Workspace{},
-		UpsertedAgents:     []*Agent{},
-		DeletedWorkspaces:  []*Workspace{},
-		DeletedAgents:      []*Agent{},
-	}
-
 	for _, uw := range update.UpsertedWorkspaces {
 		workspaceID, err := uuid.FromBytes(uw.Id)
 		if err != nil {
 			return xerrors.Errorf("failed to parse workspace ID: %w", err)
 		}
-		w := &Workspace{
-			ID:            workspaceID,
-			Name:          uw.Name,
-			Status:        uw.Status,
-			ownerUsername: t.ownerUsername,
-			agents:        make(map[uuid.UUID]*Agent),
+		w := workspace{
+			id:     workspaceID,
+			name:   uw.Name,
+			agents: make(map[uuid.UUID]agent),
 		}
-		t.upsertWorkspaceLocked(w)
-		currentUpdate.UpsertedWorkspaces = append(currentUpdate.UpsertedWorkspaces, w)
+		t.upsertWorkspace(w)
 	}
 
 	// delete agents before deleting workspaces, since the agents have workspace ID references
@@ -1126,22 +1014,17 @@ func (t *tunnelUpdater) handleUpdate(update *proto.WorkspaceUpdate) error {
 		if err != nil {
 			return xerrors.Errorf("failed to parse workspace ID: %w", err)
 		}
-		deletedAgent, err := t.deleteAgentLocked(workspaceID, agentID)
+		err = t.deleteAgent(workspaceID, agentID)
 		if err != nil {
 			return xerrors.Errorf("failed to delete agent: %w", err)
 		}
-		currentUpdate.DeletedAgents = append(currentUpdate.DeletedAgents, deletedAgent)
 	}
 	for _, dw := range update.DeletedWorkspaces {
 		workspaceID, err := uuid.FromBytes(dw.Id)
 		if err != nil {
 			return xerrors.Errorf("failed to parse workspace ID: %w", err)
 		}
-		deletedWorkspace, err := t.deleteWorkspaceLocked(workspaceID)
-		if err != nil {
-			return xerrors.Errorf("failed to delete workspace: %w", err)
-		}
-		currentUpdate.DeletedWorkspaces = append(currentUpdate.DeletedWorkspaces, deletedWorkspace)
+		t.deleteWorkspace(workspaceID)
 	}
 
 	// upsert agents last, after all workspaces have been added and deleted, since agents reference
@@ -1155,18 +1038,17 @@ func (t *tunnelUpdater) handleUpdate(update *proto.WorkspaceUpdate) error {
 		if err != nil {
 			return xerrors.Errorf("failed to parse workspace ID: %w", err)
 		}
-		a := &Agent{Name: ua.Name, ID: agentID, WorkspaceID: workspaceID}
-		err = t.upsertAgentLocked(workspaceID, a)
+		a := agent{name: ua.Name, id: agentID}
+		err = t.upsertAgent(workspaceID, a)
 		if err != nil {
 			return xerrors.Errorf("failed to upsert agent: %w", err)
 		}
-		currentUpdate.UpsertedAgents = append(currentUpdate.UpsertedAgents, a)
 	}
-	allAgents := t.allAgentIDsLocked()
+	allAgents := t.allAgentIDs()
 	t.coordCtrl.SyncDestinations(allAgents)
-	dnsNames := t.updateDNSNamesLocked()
 	if t.dnsHostsSetter != nil {
 		t.logger.Debug(context.Background(), "updating dns hosts")
+		dnsNames := t.allDNSNames()
 		err := t.dnsHostsSetter.SetDNSHosts(dnsNames)
 		if err != nil {
 			return xerrors.Errorf("failed to set DNS hosts: %w", err)
@@ -1174,60 +1056,41 @@ func (t *tunnelUpdater) handleUpdate(update *proto.WorkspaceUpdate) error {
 	} else {
 		t.logger.Debug(context.Background(), "skipping setting DNS names because we have no setter")
 	}
-	if t.updateHandler != nil {
-		t.logger.Debug(context.Background(), "calling update handler")
-		err := t.updateHandler.Update(currentUpdate.Clone())
-		if err != nil {
-			t.logger.Error(context.Background(), "failed to call update handler", slog.Error(err))
-		}
-	}
 	return nil
 }
 
-func (t *tunnelUpdater) upsertWorkspaceLocked(w *Workspace) *Workspace {
-	old, ok := t.workspaces[w.ID]
+func (t *tunnelUpdater) upsertWorkspace(w workspace) {
+	old, ok := t.workspaces[w.id]
 	if !ok {
-		t.workspaces[w.ID] = w
-		return w
+		t.workspaces[w.id] = &w
+		return
 	}
-	old.Name = w.Name
-	old.Status = w.Status
-	old.ownerUsername = w.ownerUsername
-	return w
+	old.name = w.name
 }
 
-func (t *tunnelUpdater) deleteWorkspaceLocked(id uuid.UUID) (*Workspace, error) {
-	w, ok := t.workspaces[id]
-	if !ok {
-		return nil, xerrors.Errorf("workspace %s not found", id)
-	}
+func (t *tunnelUpdater) deleteWorkspace(id uuid.UUID) {
 	delete(t.workspaces, id)
-	return w, nil
 }
 
-func (t *tunnelUpdater) upsertAgentLocked(workspaceID uuid.UUID, a *Agent) error {
+func (t *tunnelUpdater) upsertAgent(workspaceID uuid.UUID, a agent) error {
 	w, ok := t.workspaces[workspaceID]
 	if !ok {
 		return xerrors.Errorf("workspace %s not found", workspaceID)
 	}
-	w.agents[a.ID] = a
+	w.agents[a.id] = a
 	return nil
 }
 
-func (t *tunnelUpdater) deleteAgentLocked(workspaceID, id uuid.UUID) (*Agent, error) {
+func (t *tunnelUpdater) deleteAgent(workspaceID, id uuid.UUID) error {
 	w, ok := t.workspaces[workspaceID]
 	if !ok {
-		return nil, xerrors.Errorf("workspace %s not found", workspaceID)
-	}
-	a, ok := w.agents[id]
-	if !ok {
-		return nil, xerrors.Errorf("agent %s not found in workspace %s", id, workspaceID)
+		return xerrors.Errorf("workspace %s not found", workspaceID)
 	}
 	delete(w.agents, id)
-	return a, nil
+	return nil
 }
 
-func (t *tunnelUpdater) allAgentIDsLocked() []uuid.UUID {
+func (t *tunnelUpdater) allAgentIDs() []uuid.UUID {
 	out := make([]uuid.UUID, 0, len(t.workspaces))
 	for _, w := range t.workspaces {
 		for id := range w.agents {
@@ -1237,44 +1100,31 @@ func (t *tunnelUpdater) allAgentIDsLocked() []uuid.UUID {
 	return out
 }
 
-// updateDNSNamesLocked updates the DNS names for all workspaces in the tunnelUpdater.
-// t.Mutex must be held.
-func (t *tunnelUpdater) updateDNSNamesLocked() map[dnsname.FQDN][]netip.Addr {
+func (t *tunnelUpdater) allDNSNames() map[dnsname.FQDN][]netip.Addr {
 	names := make(map[dnsname.FQDN][]netip.Addr)
 	for _, w := range t.workspaces {
-		err := w.updateDNSNames()
+		err := w.addAllDNSNames(names, t.ownerUsername)
 		if err != nil {
 			// This should never happen in production, because converting the FQDN only fails
 			// if names are too long, and we put strict length limits on agent, workspace, and user
 			// names.
 			t.logger.Critical(context.Background(),
 				"failed to include DNS name(s)",
-				slog.F("workspace_id", w.ID),
+				slog.F("workspace_id", w.id),
 				slog.Error(err))
-		}
-		for _, a := range w.agents {
-			for name, addrs := range a.Hosts {
-				names[name] = addrs
-			}
 		}
 	}
 	return names
 }
 
-type TunnelAllOption func(t *TunnelAllWorkspaceUpdatesController)
+type TunnelAllOption func(t *tunnelAllWorkspaceUpdatesController)
 
 // WithDNS configures the tunnelAllWorkspaceUpdatesController to set DNS names for all workspaces
 // and agents it learns about.
 func WithDNS(d DNSHostsSetter, ownerUsername string) TunnelAllOption {
-	return func(t *TunnelAllWorkspaceUpdatesController) {
+	return func(t *tunnelAllWorkspaceUpdatesController) {
 		t.dnsHostSetter = d
 		t.ownerUsername = ownerUsername
-	}
-}
-
-func WithHandler(h UpdatesHandler) TunnelAllOption {
-	return func(t *TunnelAllWorkspaceUpdatesController) {
-		t.updateHandler = h
 	}
 }
 
@@ -1283,8 +1133,8 @@ func WithHandler(h UpdatesHandler) TunnelAllOption {
 // DNSHostSetter is provided, it also programs DNS hosts based on the agent and workspace names.
 func NewTunnelAllWorkspaceUpdatesController(
 	logger slog.Logger, c *TunnelSrcCoordController, opts ...TunnelAllOption,
-) *TunnelAllWorkspaceUpdatesController {
-	t := &TunnelAllWorkspaceUpdatesController{logger: logger, coordCtrl: c}
+) WorkspaceUpdatesController {
+	t := &tunnelAllWorkspaceUpdatesController{logger: logger, coordCtrl: c}
 	for _, opt := range opts {
 		opt(t)
 	}

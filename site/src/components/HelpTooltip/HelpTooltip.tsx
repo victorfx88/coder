@@ -8,7 +8,6 @@ import {
 import HelpIcon from "@mui/icons-material/HelpOutline";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import Link from "@mui/material/Link";
-import { Stack } from "components/Stack/Stack";
 import {
 	Popover,
 	PopoverContent,
@@ -16,7 +15,8 @@ import {
 	type PopoverProps,
 	PopoverTrigger,
 	usePopover,
-} from "components/deprecated/Popover/Popover";
+} from "components/Popover/Popover";
+import { Stack } from "components/Stack/Stack";
 import {
 	type FC,
 	type HTMLAttributes,

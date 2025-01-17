@@ -19,19 +19,17 @@ curl -X GET http://coder-server:8080/api/v2/notifications/dispatch-methods \
 
 ```json
 [
-  {
-    "available": [
-      "string"
-    ],
-    "default": "string"
-  }
+	{
+		"available": ["string"],
+		"default": "string"
+	}
 ]
 ```
 
 ### Responses
 
 | Status | Meaning                                                 | Description | Schema                                                                                          |
-|--------|---------------------------------------------------------|-------------|-------------------------------------------------------------------------------------------------|
+| ------ | ------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------- |
 | 200    | [OK](https://tools.ietf.org/html/rfc7231#section-6.3.1) | OK          | array of [codersdk.NotificationMethodsResponse](schemas.md#codersdknotificationmethodsresponse) |
 
 <h3 id="get-notification-dispatch-methods-responseschema">Response Schema</h3>
@@ -39,7 +37,7 @@ curl -X GET http://coder-server:8080/api/v2/notifications/dispatch-methods \
 Status Code **200**
 
 | Name           | Type   | Required | Restrictions | Description |
-|----------------|--------|----------|--------------|-------------|
+| -------------- | ------ | -------- | ------------ | ----------- |
 | `[array item]` | array  | false    |              |             |
 | `» available`  | array  | false    |              |             |
 | `» default`    | string | false    |              |             |
@@ -65,14 +63,14 @@ curl -X GET http://coder-server:8080/api/v2/notifications/settings \
 
 ```json
 {
-  "notifier_paused": true
+	"notifier_paused": true
 }
 ```
 
 ### Responses
 
 | Status | Meaning                                                 | Description | Schema                                                                     |
-|--------|---------------------------------------------------------|-------------|----------------------------------------------------------------------------|
+| ------ | ------------------------------------------------------- | ----------- | -------------------------------------------------------------------------- |
 | 200    | [OK](https://tools.ietf.org/html/rfc7231#section-6.3.1) | OK          | [codersdk.NotificationsSettings](schemas.md#codersdknotificationssettings) |
 
 To perform this operation, you must be authenticated. [Learn more](authentication.md).
@@ -95,14 +93,14 @@ curl -X PUT http://coder-server:8080/api/v2/notifications/settings \
 
 ```json
 {
-  "notifier_paused": true
+	"notifier_paused": true
 }
 ```
 
 ### Parameters
 
 | Name   | In   | Type                                                                       | Required | Description                    |
-|--------|------|----------------------------------------------------------------------------|----------|--------------------------------|
+| ------ | ---- | -------------------------------------------------------------------------- | -------- | ------------------------------ |
 | `body` | body | [codersdk.NotificationsSettings](schemas.md#codersdknotificationssettings) | true     | Notifications settings request |
 
 ### Example responses
@@ -111,14 +109,14 @@ curl -X PUT http://coder-server:8080/api/v2/notifications/settings \
 
 ```json
 {
-  "notifier_paused": true
+	"notifier_paused": true
 }
 ```
 
 ### Responses
 
 | Status | Meaning                                                         | Description  | Schema                                                                     |
-|--------|-----------------------------------------------------------------|--------------|----------------------------------------------------------------------------|
+| ------ | --------------------------------------------------------------- | ------------ | -------------------------------------------------------------------------- |
 | 200    | [OK](https://tools.ietf.org/html/rfc7231#section-6.3.1)         | OK           | [codersdk.NotificationsSettings](schemas.md#codersdknotificationssettings) |
 | 304    | [Not Modified](https://tools.ietf.org/html/rfc7232#section-4.1) | Not Modified |                                                                            |
 
@@ -143,42 +141,40 @@ curl -X GET http://coder-server:8080/api/v2/notifications/templates/system \
 
 ```json
 [
-  {
-    "actions": "string",
-    "body_template": "string",
-    "enabled_by_default": true,
-    "group": "string",
-    "id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
-    "kind": "string",
-    "method": "string",
-    "name": "string",
-    "title_template": "string"
-  }
+	{
+		"actions": "string",
+		"body_template": "string",
+		"group": "string",
+		"id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
+		"kind": "string",
+		"method": "string",
+		"name": "string",
+		"title_template": "string"
+	}
 ]
 ```
 
 ### Responses
 
 | Status | Meaning                                                 | Description | Schema                                                                            |
-|--------|---------------------------------------------------------|-------------|-----------------------------------------------------------------------------------|
+| ------ | ------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------- |
 | 200    | [OK](https://tools.ietf.org/html/rfc7231#section-6.3.1) | OK          | array of [codersdk.NotificationTemplate](schemas.md#codersdknotificationtemplate) |
 
 <h3 id="get-system-notification-templates-responseschema">Response Schema</h3>
 
 Status Code **200**
 
-| Name                   | Type         | Required | Restrictions | Description |
-|------------------------|--------------|----------|--------------|-------------|
-| `[array item]`         | array        | false    |              |             |
-| `» actions`            | string       | false    |              |             |
-| `» body_template`      | string       | false    |              |             |
-| `» enabled_by_default` | boolean      | false    |              |             |
-| `» group`              | string       | false    |              |             |
-| `» id`                 | string(uuid) | false    |              |             |
-| `» kind`               | string       | false    |              |             |
-| `» method`             | string       | false    |              |             |
-| `» name`               | string       | false    |              |             |
-| `» title_template`     | string       | false    |              |             |
+| Name               | Type         | Required | Restrictions | Description |
+| ------------------ | ------------ | -------- | ------------ | ----------- |
+| `[array item]`     | array        | false    |              |             |
+| `» actions`        | string       | false    |              |             |
+| `» body_template`  | string       | false    |              |             |
+| `» group`          | string       | false    |              |             |
+| `» id`             | string(uuid) | false    |              |             |
+| `» kind`           | string       | false    |              |             |
+| `» method`         | string       | false    |              |             |
+| `» name`           | string       | false    |              |             |
+| `» title_template` | string       | false    |              |             |
 
 To perform this operation, you must be authenticated. [Learn more](authentication.md).
 
@@ -198,7 +194,7 @@ curl -X GET http://coder-server:8080/api/v2/users/{user}/notifications/preferenc
 ### Parameters
 
 | Name   | In   | Type   | Required | Description          |
-|--------|------|--------|----------|----------------------|
+| ------ | ---- | ------ | -------- | -------------------- |
 | `user` | path | string | true     | User ID, name, or me |
 
 ### Example responses
@@ -207,18 +203,18 @@ curl -X GET http://coder-server:8080/api/v2/users/{user}/notifications/preferenc
 
 ```json
 [
-  {
-    "disabled": true,
-    "id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
-    "updated_at": "2019-08-24T14:15:22Z"
-  }
+	{
+		"disabled": true,
+		"id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
+		"updated_at": "2019-08-24T14:15:22Z"
+	}
 ]
 ```
 
 ### Responses
 
 | Status | Meaning                                                 | Description | Schema                                                                                |
-|--------|---------------------------------------------------------|-------------|---------------------------------------------------------------------------------------|
+| ------ | ------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------- |
 | 200    | [OK](https://tools.ietf.org/html/rfc7231#section-6.3.1) | OK          | array of [codersdk.NotificationPreference](schemas.md#codersdknotificationpreference) |
 
 <h3 id="get-user-notification-preferences-responseschema">Response Schema</h3>
@@ -226,7 +222,7 @@ curl -X GET http://coder-server:8080/api/v2/users/{user}/notifications/preferenc
 Status Code **200**
 
 | Name           | Type              | Required | Restrictions | Description |
-|----------------|-------------------|----------|--------------|-------------|
+| -------------- | ----------------- | -------- | ------------ | ----------- |
 | `[array item]` | array             | false    |              |             |
 | `» disabled`   | boolean           | false    |              |             |
 | `» id`         | string(uuid)      | false    |              |             |
@@ -252,17 +248,17 @@ curl -X PUT http://coder-server:8080/api/v2/users/{user}/notifications/preferenc
 
 ```json
 {
-  "template_disabled_map": {
-    "property1": true,
-    "property2": true
-  }
+	"template_disabled_map": {
+		"property1": true,
+		"property2": true
+	}
 }
 ```
 
 ### Parameters
 
 | Name   | In   | Type                                                                                               | Required | Description          |
-|--------|------|----------------------------------------------------------------------------------------------------|----------|----------------------|
+| ------ | ---- | -------------------------------------------------------------------------------------------------- | -------- | -------------------- |
 | `user` | path | string                                                                                             | true     | User ID, name, or me |
 | `body` | body | [codersdk.UpdateUserNotificationPreferences](schemas.md#codersdkupdateusernotificationpreferences) | true     | Preferences          |
 
@@ -272,18 +268,18 @@ curl -X PUT http://coder-server:8080/api/v2/users/{user}/notifications/preferenc
 
 ```json
 [
-  {
-    "disabled": true,
-    "id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
-    "updated_at": "2019-08-24T14:15:22Z"
-  }
+	{
+		"disabled": true,
+		"id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
+		"updated_at": "2019-08-24T14:15:22Z"
+	}
 ]
 ```
 
 ### Responses
 
 | Status | Meaning                                                 | Description | Schema                                                                                |
-|--------|---------------------------------------------------------|-------------|---------------------------------------------------------------------------------------|
+| ------ | ------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------- |
 | 200    | [OK](https://tools.ietf.org/html/rfc7231#section-6.3.1) | OK          | array of [codersdk.NotificationPreference](schemas.md#codersdknotificationpreference) |
 
 <h3 id="update-user-notification-preferences-responseschema">Response Schema</h3>
@@ -291,7 +287,7 @@ curl -X PUT http://coder-server:8080/api/v2/users/{user}/notifications/preferenc
 Status Code **200**
 
 | Name           | Type              | Required | Restrictions | Description |
-|----------------|-------------------|----------|--------------|-------------|
+| -------------- | ----------------- | -------- | ------------ | ----------- |
 | `[array item]` | array             | false    |              |             |
 | `» disabled`   | boolean           | false    |              |             |
 | `» id`         | string(uuid)      | false    |              |             |

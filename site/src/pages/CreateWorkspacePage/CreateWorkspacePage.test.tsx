@@ -22,7 +22,7 @@ import CreateWorkspacePage from "./CreateWorkspacePage";
 import { Language } from "./CreateWorkspacePageView";
 
 const nameLabelText = "Workspace Name";
-const createWorkspaceText = "Create workspace";
+const createWorkspaceText = "Create Workspace";
 const validationNumberNotInRangeText = "Value must be between 1 and 3.";
 
 const renderCreateWorkspacePage = () => {
@@ -93,7 +93,7 @@ describe("CreateWorkspacePage", () => {
 		renderCreateWorkspacePage();
 		await waitForLoaderToBeRemoved();
 
-		const element = await screen.findByText(createWorkspaceText);
+		const element = await screen.findByText("Create Workspace");
 		expect(element).toBeDefined();
 		const secondParameter = await screen.findByText(
 			MockTemplateVersionParameter2.description,

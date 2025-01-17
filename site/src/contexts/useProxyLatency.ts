@@ -15,11 +15,6 @@ export interface ProxyLatencyReport {
 	latencyMS: number;
 	// at is when the latency was recorded.
 	at: Date;
-	/**
-	 * nextHopProtocol can determine if HTTP/2 is being used.
-	 * https://developer.mozilla.org/docs/Web/API/PerformanceResourceTiming/nextHopProtocol
-	 */
-	nextHopProtocol?: string;
 }
 
 interface ProxyLatencyAction {
@@ -156,7 +151,6 @@ export const useProxyLatency = (
 			// https://developer.mozilla.org/en-US/docs/Web/API/Performance_API/Resource_timing
 			let latencyMS = 0;
 			let accurate = false;
-			let nextHopProtocol: string | undefined = undefined;
 			if (
 				"requestStart" in entry &&
 				(entry as PerformanceResourceTiming).requestStart !== 0
@@ -165,7 +159,6 @@ export const useProxyLatency = (
 				const timingEntry = entry as PerformanceResourceTiming;
 				latencyMS = timingEntry.responseStart - timingEntry.requestStart;
 				accurate = true;
-				nextHopProtocol = timingEntry.nextHopProtocol;
 			} else {
 				// This is the total duration of the request and will be off by a good margin.
 				// This is a fallback if the better timing is not available.
@@ -182,8 +175,7 @@ export const useProxyLatency = (
 					latencyMS,
 					accurate,
 					at: new Date(),
-					nextHopProtocol: nextHopProtocol,
-				} as ProxyLatencyReport,
+				},
 			};
 			dispatchProxyLatencies(update);
 			// Also save to local storage to persist the latency across page refreshes.

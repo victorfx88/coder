@@ -317,8 +317,6 @@ func (api *API) GetUsers(rw http.ResponseWriter, r *http.Request) ([]database.Us
 		RbacRole:       params.RbacRole,
 		LastSeenBefore: params.LastSeenBefore,
 		LastSeenAfter:  params.LastSeenAfter,
-		CreatedAfter:   params.CreatedAfter,
-		CreatedBefore:  params.CreatedBefore,
 		OffsetOpt:      int32(paginationParams.Offset),
 		LimitOpt:       int32(paginationParams.Limit),
 	})

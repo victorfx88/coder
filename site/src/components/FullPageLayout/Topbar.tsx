@@ -2,7 +2,7 @@ import { css } from "@emotion/css";
 import { useTheme } from "@emotion/react";
 import Button, { type ButtonProps } from "@mui/material/Button";
 import IconButton, { type IconButtonProps } from "@mui/material/IconButton";
-import { Avatar, type AvatarProps } from "components/Avatar/Avatar";
+import { type AvatarProps, ExternalAvatar } from "components/Avatar/Avatar";
 import {
 	type FC,
 	type ForwardedRef,
@@ -94,7 +94,14 @@ export const TopbarDivider: FC<HTMLAttributes<HTMLSpanElement>> = (props) => {
 };
 
 export const TopbarAvatar: FC<AvatarProps> = (props) => {
-	return <Avatar {...props} variant="icon" size="sm" />;
+	return (
+		<ExternalAvatar
+			{...props}
+			variant="square"
+			fitImage
+			css={{ width: 16, height: 16 }}
+		/>
+	);
 };
 
 type TopbarIconProps = HTMLAttributes<HTMLOrSVGElement>;

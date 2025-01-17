@@ -206,10 +206,6 @@ export const MockProxyLatencies: Record<string, ProxyLatencyReport> = {
 						100) %
 					250,
 				at: new Date(),
-				nextHopProtocol:
-					proxy.id === "8444931c-0247-4171-842a-569d9f9cbadb"
-						? "http/1.1"
-						: "h2",
 			};
 			return acc;
 		},
@@ -580,10 +576,6 @@ export const MockProvisioner: TypesGen.ProvisionerDaemon = {
 	version: MockBuildInfo.version,
 	api_version: MockBuildInfo.provisioner_api_version,
 	last_seen_at: new Date().toISOString(),
-	key_name: "test-provisioner",
-	status: "idle",
-	current_job: null,
-	previous_job: null,
 };
 
 export const MockUserAuthProvisioner: TypesGen.ProvisionerDaemon = {
@@ -598,7 +590,6 @@ export const MockPskProvisioner: TypesGen.ProvisionerDaemon = {
 	...MockProvisioner,
 	id: "test-psk-provisioner",
 	key_id: MockProvisionerPskKey.id,
-	key_name: MockProvisionerPskKey.name,
 	name: "Test psk provisioner",
 };
 
@@ -606,7 +597,6 @@ export const MockKeyProvisioner: TypesGen.ProvisionerDaemon = {
 	...MockProvisioner,
 	id: "test-key-provisioner",
 	key_id: MockProvisionerKey.id,
-	key_name: MockProvisionerKey.name,
 	organization_id: MockProvisionerKey.organization,
 	name: "Test key provisioner",
 	tags: MockProvisionerKey.tags,
@@ -617,7 +607,6 @@ export const MockProvisioner2: TypesGen.ProvisionerDaemon = {
 	id: "test-provisioner-2",
 	name: "Test Provisioner 2",
 	key_id: MockProvisionerKey.id,
-	key_name: MockProvisionerKey.name,
 };
 
 export const MockUserProvisioner: TypesGen.ProvisionerDaemon = {
@@ -876,7 +865,6 @@ export const MockWorkspaceApp: TypesGen.WorkspaceApp = {
 		threshold: 0,
 	},
 	hidden: false,
-	open_in: "slim-window",
 };
 
 export const MockWorkspaceAgentLogSource: TypesGen.WorkspaceAgentLogSource = {
@@ -1338,9 +1326,6 @@ export const MockWorkspace: TypesGen.Workspace = {
 	automatic_updates: "never",
 	allow_renames: true,
 	favorite: false,
-	deleting_at: null,
-	dormant_at: null,
-	next_start_at: null,
 };
 
 export const MockFavoriteWorkspace: TypesGen.Workspace = {
@@ -2693,28 +2678,6 @@ export const MockRoleSyncSettings: TypesGen.RoleSyncSettings = {
 	},
 };
 
-export const MockOrganizationSyncSettings: TypesGen.OrganizationSyncSettings = {
-	field: "organization-test",
-	mapping: {
-		"idp-org-1": [
-			"fbd2116a-8961-4954-87ae-e4575bd29ce0",
-			"13de3eb4-9b4f-49e7-b0f8-0c3728a0d2e2",
-		],
-		"idp-org-2": ["fbd2116a-8961-4954-87ae-e4575bd29ce0"],
-	},
-	organization_assign_default: true,
-};
-
-export const MockOrganizationSyncSettings2: TypesGen.OrganizationSyncSettings =
-	{
-		field: "organization-test",
-		mapping: {
-			"idp-org-1": ["my-organization-id", "my-organization-2-id"],
-			"idp-org-2": ["my-organization-id"],
-		},
-		organization_assign_default: true,
-	};
-
 export const MockGroup: TypesGen.Group = {
 	id: "fbd2116a-8961-4954-87ae-e4575bd29ce0",
 	name: "Front-End",
@@ -2815,7 +2778,6 @@ export const MockPermissions: Permissions = {
 	createGroup: true,
 	viewAllLicenses: true,
 	viewNotificationTemplate: true,
-	viewOrganizationIDPSyncSettings: true,
 };
 
 export const MockNoPermissions: Permissions = {
@@ -2839,7 +2801,6 @@ export const MockNoPermissions: Permissions = {
 	createGroup: false,
 	viewAllLicenses: false,
 	viewNotificationTemplate: false,
-	viewOrganizationIDPSyncSettings: false,
 };
 
 export const MockDeploymentConfig: DeploymentConfig = {
@@ -3097,7 +3058,6 @@ export const MockHealth: TypesGen.HealthcheckReport = {
 						stun: {
 							Enabled: true,
 							CanSTUN: true,
-							Error: null,
 						},
 					},
 					{
@@ -3141,7 +3101,6 @@ export const MockHealth: TypesGen.HealthcheckReport = {
 						stun: {
 							Enabled: false,
 							CanSTUN: false,
-							Error: null,
 						},
 					},
 				],
@@ -3197,7 +3156,6 @@ export const MockHealth: TypesGen.HealthcheckReport = {
 						stun: {
 							Enabled: true,
 							CanSTUN: true,
-							Error: null,
 						},
 					},
 					{
@@ -3231,7 +3189,6 @@ export const MockHealth: TypesGen.HealthcheckReport = {
 						stun: {
 							Enabled: false,
 							CanSTUN: false,
-							Error: null,
 						},
 					},
 				],
@@ -3287,7 +3244,6 @@ export const MockHealth: TypesGen.HealthcheckReport = {
 						stun: {
 							Enabled: true,
 							CanSTUN: true,
-							Error: null,
 						},
 					},
 					{
@@ -3321,7 +3277,6 @@ export const MockHealth: TypesGen.HealthcheckReport = {
 						stun: {
 							Enabled: false,
 							CanSTUN: false,
-							Error: null,
 						},
 					},
 				],
@@ -3377,7 +3332,6 @@ export const MockHealth: TypesGen.HealthcheckReport = {
 						stun: {
 							Enabled: true,
 							CanSTUN: true,
-							Error: null,
 						},
 					},
 					{
@@ -3411,7 +3365,6 @@ export const MockHealth: TypesGen.HealthcheckReport = {
 						stun: {
 							Enabled: false,
 							CanSTUN: false,
-							Error: null,
 						},
 					},
 				],
@@ -3748,10 +3701,6 @@ export const MockHealth: TypesGen.HealthcheckReport = {
 						tag_1: "1",
 						tag_yes: "yes",
 					},
-					key_name: MockProvisionerKey.name,
-					current_job: null,
-					previous_job: null,
-					status: "idle",
 				},
 				warnings: [],
 			},
@@ -3774,10 +3723,6 @@ export const MockHealth: TypesGen.HealthcheckReport = {
 						tag_1: "1",
 						tag_YES: "YES",
 					},
-					key_name: MockProvisionerKey.name,
-					current_job: null,
-					previous_job: null,
-					status: "idle",
 				},
 				warnings: [],
 			},
@@ -3800,10 +3745,6 @@ export const MockHealth: TypesGen.HealthcheckReport = {
 						tag_0: "0",
 						tag_no: "no",
 					},
-					key_name: MockProvisionerKey.name,
-					current_job: null,
-					previous_job: null,
-					status: "idle",
 				},
 				warnings: [
 					{
@@ -3957,10 +3898,6 @@ export const DeploymentHealthUnhealthy: TypesGen.HealthcheckReport = {
 						owner: "",
 						scope: "organization",
 					},
-					key_name: MockProvisionerKey.name,
-					current_job: null,
-					previous_job: null,
-					status: "idle",
 				},
 				warnings: [
 					{
@@ -4016,7 +3953,6 @@ export const MockOAuth2ProviderAppSecrets: TypesGen.OAuth2ProviderAppSecret[] =
 		{
 			id: "1",
 			client_secret_truncated: "foo",
-			last_used_at: null,
 		},
 		{
 			id: "1",
@@ -4075,7 +4011,6 @@ export const MockNotificationTemplates: TypesGen.NotificationTemplate[] = [
 		group: "Workspace Events",
 		method: "webhook",
 		kind: "system",
-		enabled_by_default: true,
 	},
 	{
 		id: "f517da0b-cdc9-410f-ab89-a86107c420ed",
@@ -4088,7 +4023,6 @@ export const MockNotificationTemplates: TypesGen.NotificationTemplate[] = [
 		group: "Workspace Events",
 		method: "smtp",
 		kind: "system",
-		enabled_by_default: true,
 	},
 	{
 		id: "f44d9314-ad03-4bc8-95d0-5cad491da6b6",
@@ -4101,7 +4035,6 @@ export const MockNotificationTemplates: TypesGen.NotificationTemplate[] = [
 		group: "User Events",
 		method: "",
 		kind: "system",
-		enabled_by_default: true,
 	},
 	{
 		id: "4e19c0ac-94e1-4532-9515-d1801aa283b2",
@@ -4114,7 +4047,6 @@ export const MockNotificationTemplates: TypesGen.NotificationTemplate[] = [
 		group: "User Events",
 		method: "",
 		kind: "system",
-		enabled_by_default: true,
 	},
 	{
 		id: "0ea69165-ec14-4314-91f1-69566ac3c5a0",
@@ -4127,7 +4059,6 @@ export const MockNotificationTemplates: TypesGen.NotificationTemplate[] = [
 		group: "Workspace Events",
 		method: "smtp",
 		kind: "system",
-		enabled_by_default: true,
 	},
 	{
 		id: "c34a0c09-0704-4cac-bd1c-0c0146811c2b",
@@ -4140,7 +4071,6 @@ export const MockNotificationTemplates: TypesGen.NotificationTemplate[] = [
 		group: "Workspace Events",
 		method: "smtp",
 		kind: "system",
-		enabled_by_default: true,
 	},
 	{
 		id: "51ce2fdf-c9ca-4be1-8d70-628674f9bc42",
@@ -4153,7 +4083,6 @@ export const MockNotificationTemplates: TypesGen.NotificationTemplate[] = [
 		group: "Workspace Events",
 		method: "webhook",
 		kind: "system",
-		enabled_by_default: true,
 	},
 ];
 

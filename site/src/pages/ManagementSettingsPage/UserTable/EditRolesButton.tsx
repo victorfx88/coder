@@ -12,12 +12,12 @@ import {
 	HelpTooltipTrigger,
 } from "components/HelpTooltip/HelpTooltip";
 import { EditSquare } from "components/Icons/EditSquare";
-import { Stack } from "components/Stack/Stack";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
-} from "components/deprecated/Popover/Popover";
+} from "components/Popover/Popover";
+import { Stack } from "components/Stack/Stack";
 import { type ClassName, useClassName } from "hooks/useClassName";
 import type { FC } from "react";
 
@@ -128,7 +128,7 @@ export const EditRolesButton: FC<EditRolesButtonProps> = ({
 				</Tooltip>
 			</PopoverTrigger>
 
-			<PopoverContent classes={{ paper }} disablePortal={false}>
+			<PopoverContent classes={{ paper }}>
 				<fieldset
 					css={styles.fieldset}
 					disabled={isLoading}

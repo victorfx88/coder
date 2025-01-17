@@ -6,7 +6,7 @@ import { checkAuthorization } from "api/queries/authCheck";
 import { organizations } from "api/queries/organizations";
 import type { AuthorizationCheck, Organization } from "api/typesGenerated";
 import { Avatar } from "components/Avatar/Avatar";
-import { AvatarData } from "components/Avatar/AvatarData";
+import { AvatarData } from "components/AvatarData/AvatarData";
 import { useDebouncedFunction } from "hooks/debounce";
 import {
 	type ChangeEvent,
@@ -132,7 +132,9 @@ export const OrganizationAutocomplete: FC<OrganizationAutocompleteProps> = ({
 						...params.InputProps,
 						onChange: debouncedInputOnChange,
 						startAdornment: value && (
-							<Avatar size="sm" src={value.icon} fallback={value.name} />
+							<Avatar size="sm" src={value.icon}>
+								{value.name}
+							</Avatar>
 						),
 						endAdornment: (
 							<>

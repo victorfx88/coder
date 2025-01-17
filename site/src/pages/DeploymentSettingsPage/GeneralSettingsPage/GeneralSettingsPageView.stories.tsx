@@ -1,5 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { MockDeploymentDAUResponse } from "testHelpers/entities";
+import {
+	MockDeploymentDAUResponse,
+	MockEntitlementsWithUserLimit,
+	mockApiError,
+} from "testHelpers/entities";
 import { GeneralSettingsPageView } from "./GeneralSettingsPageView";
 
 const meta: Meta<typeof GeneralSettingsPageView> = {
@@ -35,9 +39,10 @@ const meta: Meta<typeof GeneralSettingsPageView> = {
 				hidden: false,
 			},
 		],
-		dailyActiveUsers: MockDeploymentDAUResponse,
+		deploymentDAUs: MockDeploymentDAUResponse,
 		invalidExperiments: [],
 		safeExperiments: [],
+		entitlements: undefined,
 	},
 };
 
@@ -45,6 +50,21 @@ export default meta;
 type Story = StoryObj<typeof GeneralSettingsPageView>;
 
 export const Page: Story = {};
+
+export const NoDAUs: Story = {
+	args: {
+		deploymentDAUs: undefined,
+	},
+};
+
+export const DAUError: Story = {
+	args: {
+		deploymentDAUs: undefined,
+		deploymentDAUsError: mockApiError({
+			message: "Error fetching DAUs.",
+		}),
+	},
+};
 
 export const allExperimentsEnabled: Story = {
 	args: {
@@ -115,5 +135,76 @@ export const invalidExperimentsEnabled: Story = {
 		],
 		safeExperiments: ["shared-ports"],
 		invalidExperiments: ["invalid"],
+	},
+};
+
+export const WithLicenseUtilization: Story = {
+	args: {
+		entitlements: {
+			...MockEntitlementsWithUserLimit,
+			features: {
+				...MockEntitlementsWithUserLimit.features,
+				user_limit: {
+					...MockEntitlementsWithUserLimit.features.user_limit,
+					enabled: true,
+					actual: 75,
+					limit: 100,
+					entitlement: "entitled",
+				},
+			},
+		},
+	},
+};
+
+export const HighLicenseUtilization: Story = {
+	args: {
+		entitlements: {
+			...MockEntitlementsWithUserLimit,
+			features: {
+				...MockEntitlementsWithUserLimit.features,
+				user_limit: {
+					...MockEntitlementsWithUserLimit.features.user_limit,
+					enabled: true,
+					actual: 95,
+					limit: 100,
+					entitlement: "entitled",
+				},
+			},
+		},
+	},
+};
+
+export const ExceedsLicenseUtilization: Story = {
+	args: {
+		entitlements: {
+			...MockEntitlementsWithUserLimit,
+			features: {
+				...MockEntitlementsWithUserLimit.features,
+				user_limit: {
+					...MockEntitlementsWithUserLimit.features.user_limit,
+					enabled: true,
+					actual: 100,
+					limit: 95,
+					entitlement: "entitled",
+				},
+			},
+		},
+	},
+};
+export const NoLicenseLimit: Story = {
+	args: {
+		entitlements: {
+			...MockEntitlementsWithUserLimit,
+			features: {
+				...MockEntitlementsWithUserLimit.features,
+				user_limit: {
+					...MockEntitlementsWithUserLimit.features.user_limit,
+					enabled: false,
+					actual: 0,
+					limit: 0,
+					entitlement: "entitled",
+				},
+			},
+		},
 	},
 };

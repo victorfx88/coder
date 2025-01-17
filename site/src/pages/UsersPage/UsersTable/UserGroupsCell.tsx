@@ -6,12 +6,12 @@ import TableCell from "@mui/material/TableCell";
 import type { Group } from "api/typesGenerated";
 import { Avatar } from "components/Avatar/Avatar";
 import { OverflowY } from "components/OverflowY/OverflowY";
-import { Stack } from "components/Stack/Stack";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
-} from "components/deprecated/Popover/Popover";
+} from "components/Popover/Popover";
+import { Stack } from "components/Stack/Stack";
 import type { FC } from "react";
 
 type GroupsCellProps = {
@@ -99,12 +99,9 @@ export const UserGroupsCell: FC<GroupsCellProps> = ({ userGroups }) => {
 												alignItems: "center",
 											}}
 										>
-											<Avatar
-												size="sm"
-												variant="icon"
-												src={group.avatar_url}
-												fallback={groupName}
-											/>
+											<Avatar size="xs" src={group.avatar_url} alt={groupName}>
+												{groupName}
+											</Avatar>
 
 											<span
 												css={{

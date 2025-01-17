@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"net/url"
 	"regexp"
 
 	"github.com/google/uuid"
@@ -13,10 +12,11 @@ import (
 )
 
 type GroupSyncSettings struct {
-	// Field is the name of the claim field that specifies what groups a user
-	// should be in. If empty, no groups will be synced.
+	// Field selects the claim field to be used as the created user's
+	// groups. If the group field is the empty string, then no group updates
+	// will ever come from the OIDC provider.
 	Field string `json:"field"`
-	// Mapping is a map from OIDC groups to Coder group IDs
+	// Mapping maps from an OIDC group --> Coder group ID
 	Mapping map[string][]uuid.UUID `json:"mapping"`
 	// RegexFilter is a regular expression that filters the groups returned by
 	// the OIDC provider. Any group not matched by this regex will be ignored.
@@ -62,10 +62,11 @@ func (c *Client) PatchGroupIDPSyncSettings(ctx context.Context, orgID string, re
 }
 
 type RoleSyncSettings struct {
-	// Field is the name of the claim field that specifies what organization roles
-	// a user should be given. If empty, no roles will be synced.
+	// Field selects the claim field to be used as the created user's
+	// groups. If the group field is the empty string, then no group updates
+	// will ever come from the OIDC provider.
 	Field string `json:"field"`
-	// Mapping is a map from OIDC groups to Coder organization roles.
+	// Mapping maps from an OIDC group --> Coder organization role
 	Mapping map[string][]string `json:"mapping"`
 }
 
@@ -153,38 +154,6 @@ func (c *Client) GetAvailableIDPSyncFields(ctx context.Context) ([]string, error
 
 func (c *Client) GetOrganizationAvailableIDPSyncFields(ctx context.Context, orgID string) ([]string, error) {
 	res, err := c.Request(ctx, http.MethodGet, fmt.Sprintf("/api/v2/organizations/%s/settings/idpsync/available-fields", orgID), nil)
-	if err != nil {
-		return nil, xerrors.Errorf("make request: %w", err)
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return nil, ReadBodyAsError(res)
-	}
-	var resp []string
-	return resp, json.NewDecoder(res.Body).Decode(&resp)
-}
-
-func (c *Client) GetIDPSyncFieldValues(ctx context.Context, claimField string) ([]string, error) {
-	qv := url.Values{}
-	qv.Add("claimField", claimField)
-	res, err := c.Request(ctx, http.MethodGet, fmt.Sprintf("/api/v2/settings/idpsync/field-values?%s", qv.Encode()), nil)
-	if err != nil {
-		return nil, xerrors.Errorf("make request: %w", err)
-	}
-	defer res.Body.Close()
-
-	if res.StatusCode != http.StatusOK {
-		return nil, ReadBodyAsError(res)
-	}
-	var resp []string
-	return resp, json.NewDecoder(res.Body).Decode(&resp)
-}
-
-func (c *Client) GetOrganizationIDPSyncFieldValues(ctx context.Context, orgID string, claimField string) ([]string, error) {
-	qv := url.Values{}
-	qv.Add("claimField", claimField)
-	res, err := c.Request(ctx, http.MethodGet, fmt.Sprintf("/api/v2/organizations/%s/settings/idpsync/field-values?%s", orgID, qv.Encode()), nil)
 	if err != nil {
 		return nil, xerrors.Errorf("make request: %w", err)
 	}

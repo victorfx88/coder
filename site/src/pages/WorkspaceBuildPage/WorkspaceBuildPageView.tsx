@@ -5,6 +5,7 @@ import type {
 	WorkspaceBuild,
 } from "api/typesGenerated";
 import { Alert } from "components/Alert/Alert";
+import { BuildAvatar } from "components/BuildAvatar/BuildAvatar";
 import { Loader } from "components/Loader/Loader";
 import {
 	FullWidthPageHeader,
@@ -15,7 +16,6 @@ import { Stack } from "components/Stack/Stack";
 import { Stats, StatsItem } from "components/Stats/Stats";
 import { TAB_PADDING_X, TabLink, Tabs, TabsList } from "components/Tabs/Tabs";
 import { useSearchParamsKey } from "hooks/useSearchParamsKey";
-import { BuildAvatar } from "modules/builds/BuildAvatar/BuildAvatar";
 import { DashboardFullPage } from "modules/dashboard/DashboardLayout";
 import { AgentLogs } from "modules/resources/AgentLogs/AgentLogs";
 import { useAgentLogs } from "modules/resources/AgentLogs/useAgentLogs";
@@ -74,8 +74,8 @@ export const WorkspaceBuildPageView: FC<WorkspaceBuildPageViewProps> = ({
 	return (
 		<DashboardFullPage>
 			<FullWidthPageHeader sticky={false}>
-				<Stack direction="row">
-					<BuildAvatar build={build} size="lg" />
+				<Stack direction="row" alignItems="center" spacing={3}>
+					<BuildAvatar build={build} />
 					<div>
 						<PageHeaderTitle>Build #{build.build_number}</PageHeaderTitle>
 						<PageHeaderSubtitle>{build.initiator_name}</PageHeaderSubtitle>

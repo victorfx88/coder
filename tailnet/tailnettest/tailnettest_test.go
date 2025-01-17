@@ -6,11 +6,10 @@ import (
 	"go.uber.org/goleak"
 
 	"github.com/coder/coder/v2/tailnet/tailnettest"
-	"github.com/coder/coder/v2/testutil"
 )
 
 func TestMain(m *testing.M) {
-	goleak.VerifyTestMain(m, testutil.GoleakOptions...)
+	goleak.VerifyTestMain(m)
 }
 
 func TestRunDERPAndSTUN(t *testing.T) {

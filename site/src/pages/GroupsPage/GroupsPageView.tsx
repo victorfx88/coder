@@ -11,16 +11,17 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import type { Group } from "api/typesGenerated";
-import { Avatar } from "components/Avatar/Avatar";
-import { AvatarData } from "components/Avatar/AvatarData";
-import { AvatarDataSkeleton } from "components/Avatar/AvatarDataSkeleton";
+import { AvatarData } from "components/AvatarData/AvatarData";
+import { AvatarDataSkeleton } from "components/AvatarData/AvatarDataSkeleton";
 import { ChooseOne, Cond } from "components/Conditionals/ChooseOne";
 import { EmptyState } from "components/EmptyState/EmptyState";
+import { GroupAvatar } from "components/GroupAvatar/GroupAvatar";
 import { Paywall } from "components/Paywall/Paywall";
 import {
 	TableLoaderSkeleton,
 	TableRowSkeleton,
 } from "components/TableLoader/TableLoader";
+import { UserAvatar } from "components/UserAvatar/UserAvatar";
 import type { FC } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { docs } from "utils/docs";
@@ -116,9 +117,9 @@ export const GroupsPageView: FC<GroupsPageViewProps> = ({
 													<TableCell>
 														<AvatarData
 															avatar={
-																<Avatar
-																	fallback={group.display_name || group.name}
-																	src={group.avatar_url}
+																<GroupAvatar
+																	name={group.display_name || group.name}
+																	avatarURL={group.avatar_url}
 																/>
 															}
 															title={group.display_name || group.name}
@@ -131,13 +132,13 @@ export const GroupsPageView: FC<GroupsPageViewProps> = ({
 														<AvatarGroup
 															max={10}
 															total={group.members.length}
-															css={{ justifyContent: "flex-end", gap: 4 }}
+															css={{ justifyContent: "flex-end" }}
 														>
 															{group.members.map((member) => (
-																<Avatar
+																<UserAvatar
 																	key={member.username}
-																	fallback={member.username}
-																	src={member.avatar_url}
+																	username={member.username}
+																	avatarURL={member.avatar_url}
 																/>
 															))}
 														</AvatarGroup>

@@ -9,7 +9,7 @@ import {
 	MockUser,
 } from "testHelpers/entities";
 import {
-	renderWithOrganizationSettingsLayout,
+	renderWithManagementSettingsLayout,
 	waitForLoaderToBeRemoved,
 } from "testHelpers/renderHelpers";
 import { server } from "testHelpers/server";
@@ -32,7 +32,7 @@ beforeEach(() => {
 });
 
 const renderPage = async () => {
-	renderWithOrganizationSettingsLayout(<OrganizationMembersPage />, {
+	renderWithManagementSettingsLayout(<OrganizationMembersPage />, {
 		route: `/organizations/${MockOrganization.name}/members`,
 		path: "/organizations/:organization/members",
 	});

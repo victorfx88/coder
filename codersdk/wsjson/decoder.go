@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"sync/atomic"
 
+	"nhooyr.io/websocket"
+
 	"cdr.dev/slog"
-	"github.com/coder/websocket"
 )
 
 type Decoder[T any] struct {

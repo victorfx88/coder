@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cespare/xxhash/v2"
+	"github.com/cespare/xxhash"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	"github.com/coder/coder/v2/coderd/database"
