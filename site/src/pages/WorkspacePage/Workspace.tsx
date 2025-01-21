@@ -201,7 +201,7 @@ export const Workspace: FC<WorkspaceProps> = ({
 				{selectedResource && (
 					<ResourceMetadata
 						resource={selectedResource}
-						css={{ margin: "-32px -32px 0 -32px", marginBottom: 24 }}
+						css={{ margin: "-32px -32px -24px" }}
 					/>
 				)}
 				<div
