@@ -305,9 +305,6 @@ func TestMeasureLatency(t *testing.T) {
 		require.NoError(t, err)
 		db, err := sql.Open("postgres", connectionURL)
 		require.NoError(t, err)
-		t.Cleanup(func() {
-			_ = db.Close()
-		})
 		ps, err := pubsub.New(ctx, logger, db, connectionURL)
 		require.NoError(t, err)
 

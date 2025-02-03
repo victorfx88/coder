@@ -108,10 +108,6 @@ var testCases = []testCase{
 		name:          "svc_loadbalancer",
 		expectedError: "",
 	},
-	{
-		name:          "securitycontext",
-		expectedError: "",
-	},
 }
 
 type testCase struct {

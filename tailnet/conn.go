@@ -116,9 +116,6 @@ type Options struct {
 	Router router.Router
 	// TUNDev is optional, and is passed to the underlying wireguard engine.
 	TUNDev tun.Device
-	// WireguardMonitor is optional, and is passed to the underlying wireguard
-	// engine.
-	WireguardMonitor *netmon.Monitor
 }
 
 // TelemetrySink allows tailnet.Conn to send network telemetry to the Coder
@@ -174,15 +171,13 @@ func NewConn(options *Options) (conn *Conn, err error) {
 		nodeID = tailcfg.NodeID(uid)
 	}
 
-	if options.WireguardMonitor == nil {
-		options.WireguardMonitor, err = netmon.New(Logger(options.Logger.Named("net.wgmonitor")))
-		if err != nil {
-			return nil, xerrors.Errorf("create wireguard link monitor: %w", err)
-		}
+	wireguardMonitor, err := netmon.New(Logger(options.Logger.Named("net.wgmonitor")))
+	if err != nil {
+		return nil, xerrors.Errorf("create wireguard link monitor: %w", err)
 	}
 	defer func() {
 		if err != nil {
-			options.WireguardMonitor.Close()
+			wireguardMonitor.Close()
 		}
 	}()
 
@@ -191,7 +186,7 @@ func NewConn(options *Options) (conn *Conn, err error) {
 	}
 	sys := new(tsd.System)
 	wireguardEngine, err := wgengine.NewUserspaceEngine(Logger(options.Logger.Named("net.wgengine")), wgengine.Config{
-		NetMon:       options.WireguardMonitor,
+		NetMon:       wireguardMonitor,
 		Dialer:       dialer,
 		ListenPort:   options.ListenPort,
 		SetSubsystem: sys.Set,
@@ -298,7 +293,7 @@ func NewConn(options *Options) (conn *Conn, err error) {
 		listeners:        map[listenKey]*listener{},
 		tunDevice:        sys.Tun.Get(),
 		netStack:         netStack,
-		wireguardMonitor: options.WireguardMonitor,
+		wireguardMonitor: wireguardMonitor,
 		wireguardRouter: &router.Config{
 			LocalAddrs: options.Addresses,
 		},

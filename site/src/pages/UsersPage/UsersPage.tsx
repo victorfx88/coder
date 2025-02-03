@@ -108,6 +108,10 @@ const UsersPage: FC<UserPageProps> = ({ defaultNewPassword }) => {
 		authMethodsQuery.isLoading ||
 		groupsByUserIdQuery.isLoading;
 
+	if (location.pathname === "/users") {
+		return <Navigate to={`/deployment/users${location.search}`} replace />;
+	}
+
 	return (
 		<>
 			<Helmet>
