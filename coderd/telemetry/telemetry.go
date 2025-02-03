@@ -15,6 +15,7 @@ import (
 	"regexp"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -42,6 +43,7 @@ const (
 )
 
 type Options struct {
+	Disabled bool
 	Database database.Store
 	Logger   slog.Logger
 	// URL is an endpoint to direct telemetry towards!
@@ -116,8 +118,8 @@ type remoteReporter struct {
 	shutdownAt *time.Time
 }
 
-func (*remoteReporter) Enabled() bool {
-	return true
+func (r *remoteReporter) Enabled() bool {
+	return !r.options.Disabled
 }
 
 func (r *remoteReporter) Report(snapshot *Snapshot) {
@@ -161,10 +163,12 @@ func (r *remoteReporter) Close() {
 	close(r.closed)
 	now := dbtime.Now()
 	r.shutdownAt = &now
-	// Report a final collection of telemetry prior to close!
-	// This could indicate final actions a user has taken, and
-	// the time the deployment was shutdown.
-	r.reportWithDeployment()
+	if r.Enabled() {
+		// Report a final collection of telemetry prior to close!
+		// This could indicate final actions a user has taken, and
+		// the time the deployment was shutdown.
+		r.reportWithDeployment()
+	}
 	r.closeFunc()
 }
 
@@ -177,7 +181,74 @@ func (r *remoteReporter) isClosed() bool {
 	}
 }
 
+// See the corresponding test in telemetry_test.go for a truth table.
+func ShouldReportTelemetryDisabled(recordedTelemetryEnabled *bool, telemetryEnabled bool) bool {
+	return recordedTelemetryEnabled != nil && *recordedTelemetryEnabled && !telemetryEnabled
+}
+
+// RecordTelemetryStatus records the telemetry status in the database.
+// If the status changed from enabled to disabled, returns a snapshot to
+// be sent to the telemetry server.
+func RecordTelemetryStatus( //nolint:revive
+	ctx context.Context,
+	logger slog.Logger,
+	db database.Store,
+	telemetryEnabled bool,
+) (*Snapshot, error) {
+	item, err := db.GetTelemetryItem(ctx, string(TelemetryItemKeyTelemetryEnabled))
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, xerrors.Errorf("get telemetry enabled: %w", err)
+	}
+	var recordedTelemetryEnabled *bool
+	if !errors.Is(err, sql.ErrNoRows) {
+		value, err := strconv.ParseBool(item.Value)
+		if err != nil {
+			logger.Debug(ctx, "parse telemetry enabled", slog.Error(err))
+		}
+		// If ParseBool fails, value will default to false.
+		// This may happen if an admin manually edits the telemetry item
+		// in the database.
+		recordedTelemetryEnabled = &value
+	}
+
+	if err := db.UpsertTelemetryItem(ctx, database.UpsertTelemetryItemParams{
+		Key:   string(TelemetryItemKeyTelemetryEnabled),
+		Value: strconv.FormatBool(telemetryEnabled),
+	}); err != nil {
+		return nil, xerrors.Errorf("upsert telemetry enabled: %w", err)
+	}
+
+	shouldReport := ShouldReportTelemetryDisabled(recordedTelemetryEnabled, telemetryEnabled)
+	if !shouldReport {
+		return nil, nil //nolint:nilnil
+	}
+	// If any of the following calls fail, we will never report that telemetry changed
+	// from enabled to disabled. This is okay. We only want to ping the telemetry server
+	// once, and never again. If that attempt fails, so be it.
+	item, err = db.GetTelemetryItem(ctx, string(TelemetryItemKeyTelemetryEnabled))
+	if err != nil {
+		return nil, xerrors.Errorf("get telemetry enabled after upsert: %w", err)
+	}
+	return &Snapshot{
+		TelemetryItems: []TelemetryItem{
+			ConvertTelemetryItem(item),
+		},
+	}, nil
+}
+
 func (r *remoteReporter) runSnapshotter() {
+	telemetryDisabledSnapshot, err := RecordTelemetryStatus(r.ctx, r.options.Logger, r.options.Database, r.Enabled())
+	if err != nil {
+		r.options.Logger.Debug(r.ctx, "record and maybe report telemetry status", slog.Error(err))
+	}
+	if telemetryDisabledSnapshot != nil {
+		r.reportSync(telemetryDisabledSnapshot)
+	}
+	r.options.Logger.Debug(r.ctx, "finished telemetry status check")
+	if !r.Enabled() {
+		return
+	}
+
 	first := true
 	ticker := time.NewTicker(r.options.SnapshotFrequency)
 	defer ticker.Stop()
@@ -576,6 +647,17 @@ func (r *remoteReporter) createSnapshot() (*Snapshot, error) {
 		snapshot.Organizations = make([]Organization, 0, len(orgs))
 		for _, org := range orgs {
 			snapshot.Organizations = append(snapshot.Organizations, ConvertOrganization(org))
+		}
+		return nil
+	})
+	eg.Go(func() error {
+		items, err := r.options.Database.GetTelemetryItems(ctx)
+		if err != nil {
+			return xerrors.Errorf("get telemetry items: %w", err)
+		}
+		snapshot.TelemetryItems = make([]TelemetryItem, 0, len(items))
+		for _, item := range items {
+			snapshot.TelemetryItems = append(snapshot.TelemetryItems, ConvertTelemetryItem(item))
 		}
 		return nil
 	})
@@ -985,6 +1067,15 @@ func ConvertOrganization(org database.Organization) Organization {
 	}
 }
 
+func ConvertTelemetryItem(item database.TelemetryItem) TelemetryItem {
+	return TelemetryItem{
+		Key:       item.Key,
+		Value:     item.Value,
+		CreatedAt: item.CreatedAt,
+		UpdatedAt: item.UpdatedAt,
+	}
+}
+
 // Snapshot represents a point-in-time anonymized database dump.
 // Data is aggregated by latest on the server-side, so partial data
 // can be sent without issue.
@@ -1012,6 +1103,7 @@ type Snapshot struct {
 	Workspaces                []Workspace                 `json:"workspaces"`
 	NetworkEvents             []NetworkEvent              `json:"network_events"`
 	Organizations             []Organization              `json:"organizations"`
+	TelemetryItems            []TelemetryItem             `json:"telemetry_items"`
 }
 
 // Deployment contains information about the host running Coder.
@@ -1536,8 +1628,30 @@ type Organization struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type telemetryItemKey string
+
+// The comment below gets rid of the warning that the name "TelemetryItemKey" has
+// the "Telemetry" prefix, and that stutters when you use it outside the package
+// (telemetry.TelemetryItemKey...). "TelemetryItem" is the name of a database table,
+// so it makes sense to use the "Telemetry" prefix.
+//
+//revive:disable:exported
+const (
+	TelemetryItemKeyHTMLFirstServedAt telemetryItemKey = "html_first_served_at"
+	TelemetryItemKeyTelemetryEnabled  telemetryItemKey = "telemetry_enabled"
+)
+
+type TelemetryItem struct {
+	Key       string    `json:"key"`
+	Value     string    `json:"value"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type noopReporter struct{}
 
-func (*noopReporter) Report(_ *Snapshot) {}
-func (*noopReporter) Enabled() bool      { return false }
-func (*noopReporter) Close()             {}
+func (*noopReporter) Report(_ *Snapshot)            {}
+func (*noopReporter) Enabled() bool                 { return false }
+func (*noopReporter) Close()                        {}
+func (*noopReporter) RunSnapshotter()               {}
+func (*noopReporter) ReportDisabledIfNeeded() error { return nil }

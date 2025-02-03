@@ -85,7 +85,7 @@
           drpc.defaultPackage.${system}
           formatter
           fzf
-          gcc13
+          gcc
           gdk
           getopt
           gh
@@ -136,8 +136,6 @@
           zstd
         ];
 
-        docker = pkgs.callPackage ./nix/docker.nix { };
-
         # buildSite packages the site directory.
         buildSite = pnpm2nix.packages.${system}.mkPnpmPackage {
           inherit nodejs pnpm;
@@ -174,7 +172,7 @@
             name = "coder-${osArch}";
             # Updated with ./scripts/update-flake.sh`.
             # This should be updated whenever go.mod changes!
-            vendorHash = "sha256-QjqF+QZ5JKMnqkpNh6ZjrJU2QcSqiT4Dip1KoicwLYc=";
+            vendorHash = "sha256-hJBNmHz9ZJLS/QTu8w8y1w/Yi45aSoaSeZ//ysllp6c=";
             proxyVendor = true;
             src = ./.;
             nativeBuildInputs = with pkgs; [
@@ -212,9 +210,10 @@
         devShells = {
           default = pkgs.mkShell {
             buildInputs = devShellPackages;
-
-            PLAYWRIGHT_BROWSERS_PATH = pkgs.playwright-driver.browsers;
-            PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS = true;
+            shellHook = ''
+              export PLAYWRIGHT_BROWSERS_PATH=${pkgs.playwright-driver.browsers}
+              export PLAYWRIGHT_SKIP_VALIDATE_HOST_REQUIREMENTS=true
+            '';
 
             LOCALE_ARCHIVE =
               with pkgs;
@@ -238,29 +237,12 @@
             aarch64-windows = buildFat "windows_arm64.exe";
           }
           // (pkgs.lib.optionalAttrs pkgs.stdenv.isLinux {
-            dev_image = docker.buildNixShellImage rec {
+            dev_image = pkgs.dockerTools.buildNixShellImage {
               name = "codercom/oss-dogfood-nix";
               tag = "latest-${system}";
 
-              # (ThomasK33): Workaround for images with too many layers (>64 layers) causing sysbox
-              # to have issues on dogfood envs.
-              maxLayers = 32;
-
-              uname = "coder";
-              homeDirectory = "/home/${uname}";
-
               drv = devShells.default.overrideAttrs (oldAttrs: {
-                buildInputs =
-                  (with pkgs; [
-                    busybox
-                    coreutils
-                    nix
-                    curl.bin # Ensure the actual curl binary is included in the PATH
-                    glibc.bin # Ensure the glibc binaries are included in the PATH
-                    binutils # ld and strings
-                    filebrowser # Ensure that we're not redownloading filebrowser on each launch
-                  ])
-                  ++ oldAttrs.buildInputs;
+                buildInputs = oldAttrs.buildInputs ++ [ pkgs.nix ];
               });
             };
           });

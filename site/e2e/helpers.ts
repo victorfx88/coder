@@ -292,22 +292,16 @@ export const createTemplate = async (
  * createGroup navigates to the /groups/create page and creates a group with a
  * random name.
  */
-export const createGroup = async (
-	page: Page,
-	organization?: string,
-): Promise<string> => {
-	const prefix = organization
-		? `/organizations/${organization}`
-		: "/deployment";
-	await page.goto(`${prefix}/groups/create`, {
+export const createGroup = async (page: Page): Promise<string> => {
+	await page.goto("/deployment/groups/create", {
 		waitUntil: "domcontentloaded",
 	});
-	await expectUrl(page).toHavePathName(`${prefix}/groups/create`);
+	await expectUrl(page).toHavePathName("/deployment/groups/create");
 
 	const name = randomName();
 	await page.getByLabel("Name", { exact: true }).fill(name);
 	await page.getByRole("button", { name: /save/i }).click();
-	await expectUrl(page).toHavePathName(`${prefix}/groups/${name}`);
+	await expectUrl(page).toHavePathName(`/deployment/groups/${name}`);
 	return name;
 };
 

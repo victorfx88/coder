@@ -60,9 +60,7 @@ export const OrganizationSidebarView: FC<SidebarProps> = ({
 };
 
 function urlForSubpage(organizationName: string, subpage = ""): string {
-	return [`/organizations/${organizationName}`, subpage]
-		.filter(Boolean)
-		.join("/");
+	return `/organizations/${organizationName}/${subpage}`;
 }
 
 interface OrganizationsSettingsNavigationProps {

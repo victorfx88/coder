@@ -10,7 +10,7 @@
           "type": "coder_agent",
           "name": "main",
           "provider_name": "registry.terraform.io/coder/coder",
-          "schema_version": 1,
+          "schema_version": 0,
           "values": {
             "arch": "amd64",
             "auth": "google-instance-identity",
@@ -26,17 +26,19 @@
               }
             ],
             "env": null,
-            "id": "e159f254-a48c-4880-9137-431f128a74f9",
+            "id": "0389c8a5-cc5c-485d-959c-8738bada65ff",
             "init_script": "",
+            "login_before_ready": true,
             "metadata": [],
             "motd_file": null,
             "order": null,
             "os": "linux",
-            "resources_monitoring": [],
             "shutdown_script": null,
+            "shutdown_script_timeout": 300,
             "startup_script": null,
-            "startup_script_behavior": "non-blocking",
-            "token": "403743af-9b14-4e59-abea-fdc83ba245ca",
+            "startup_script_behavior": null,
+            "startup_script_timeout": 300,
+            "token": "097b6128-8d60-4849-969b-03f0b463ac2c",
             "troubleshooting_url": null
           },
           "sensitive_values": {
@@ -44,7 +46,6 @@
               {}
             ],
             "metadata": [],
-            "resources_monitoring": [],
             "token": true
           }
         },
@@ -56,8 +57,8 @@
           "provider_name": "registry.terraform.io/coder/coder",
           "schema_version": 0,
           "values": {
-            "agent_id": "e159f254-a48c-4880-9137-431f128a74f9",
-            "id": "1be21476-70a7-43d7-98c4-eaa0a4a41382",
+            "agent_id": "0389c8a5-cc5c-485d-959c-8738bada65ff",
+            "id": "0ae6bb98-871c-4091-8098-d32f256d8c05",
             "instance_id": "example"
           },
           "sensitive_values": {},
@@ -73,7 +74,7 @@
           "provider_name": "registry.terraform.io/hashicorp/null",
           "schema_version": 0,
           "values": {
-            "id": "3205865520469319314",
+            "id": "5569763710827889183",
             "triggers": null
           },
           "sensitive_values": {},
