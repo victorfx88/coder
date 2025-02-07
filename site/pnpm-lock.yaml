@@ -17,7 +17,7 @@ importers:
         version: 1.2.1
       '@emoji-mart/react':
         specifier: 1.1.1
-        version: 1.1.1(emoji-mart@5.6.0)(react@18.3.1)
+        version: 1.1.1(@emoji-mart/monorepo@https://codeload.github.com/mtojek/emoji-mart/tar.gz/1a3baca5ab0b638df3bf4ec29eeb118ab61e8115)(react@18.3.1)
       '@emotion/cache':
         specifier: 11.14.0
         version: 11.14.0
@@ -166,8 +166,8 @@ importers:
         specifier: 15.1.2
         version: 15.1.2
       emoji-mart:
-        specifier: 5.6.0
-        version: 5.6.0
+        specifier: github:mtojek/emoji-mart
+        version: '@emoji-mart/monorepo@https://codeload.github.com/mtojek/emoji-mart/tar.gz/1a3baca5ab0b638df3bf4ec29eeb118ab61e8115'
       file-saver:
         specifier: 2.0.5
         version: 2.0.5
@@ -771,8 +771,14 @@ packages:
   '@emoji-mart/data@1.2.1':
     resolution: {integrity: sha512-no2pQMWiBy6gpBEiqGeU77/bFejDqUTRY7KX+0+iur13op3bqUsXdnwoZs6Xb1zbv0gAj5VvS1PWoUUckSr5Dw==, tarball: https://registry.npmjs.org/@emoji-mart/data/-/data-1.2.1.tgz}
 
+  '@emoji-mart/monorepo@https://codeload.github.com/mtojek/emoji-mart/tar.gz/1a3baca5ab0b638df3bf4ec29eeb118ab61e8115':
+    resolution: {tarball: https://codeload.github.com/mtojek/emoji-mart/tar.gz/1a3baca5ab0b638df3bf4ec29eeb118ab61e8115}
+    version: 1.0.0
+    engines: {yarn: '>=1'}
+
   '@emoji-mart/react@1.1.1':
     resolution: {integrity: sha512-NMlFNeWgv1//uPsvLxvGQoIerPuVdXwK/EUek8OOkJ6wVOWPUizRBJU0hDqWZCOROVpfBgCemaC3m6jDOXi03g==, tarball: https://registry.npmjs.org/@emoji-mart/react/-/react-1.1.1.tgz}
+    version: 1.1.1
     peerDependencies:
       emoji-mart: ^5.2
       react: ^16.8 || ^17 || ^18
@@ -3591,9 +3597,6 @@ packages:
   emoji-datasource-apple@15.1.2:
     resolution: {integrity: sha512-32UZTK36x4DlvgD1smkmBlKmmJH7qUr5Qut4U/on2uQLGqNXGbZiheq6/LEA8xRQEUrmNrGEy25wpEI6wvYmTg==, tarball: https://registry.npmjs.org/emoji-datasource-apple/-/emoji-datasource-apple-15.1.2.tgz}
 
-  emoji-mart@5.6.0:
-    resolution: {integrity: sha512-eJp3QRe79pjwa+duv+n7+5YsNhRcMl812EcFVwrnRvYKoNPoQb5qxU8DG6Bgwji0akHdp6D4Ln6tYLG58MFSow==, tarball: https://registry.npmjs.org/emoji-mart/-/emoji-mart-5.6.0.tgz}
-
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==, tarball: https://registry.npmjs.org/emoji-regex/-/emoji-regex-8.0.0.tgz}
 
@@ -3694,6 +3697,7 @@ packages:
   eslint@8.52.0:
     resolution: {integrity: sha512-zh/JHnaixqHZsolRB/w9/02akBk9EPrOs9JwcTP2ek7yL5bVvXuRariiaAjjoJ5DvuwQ1WAE/HsMz+w17YgBCg==, tarball: https://registry.npmjs.org/eslint/-/eslint-8.52.0.tgz}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    deprecated: This version is no longer supported. Please see https://eslint.org/version-support for other options.
     hasBin: true
 
   espree@9.6.1:
@@ -6803,9 +6807,11 @@ snapshots:
 
   '@emoji-mart/data@1.2.1': {}
 
-  '@emoji-mart/react@1.1.1(emoji-mart@5.6.0)(react@18.3.1)':
+  '@emoji-mart/monorepo@https://codeload.github.com/mtojek/emoji-mart/tar.gz/1a3baca5ab0b638df3bf4ec29eeb118ab61e8115': {}
+
+  '@emoji-mart/react@1.1.1(@emoji-mart/monorepo@https://codeload.github.com/mtojek/emoji-mart/tar.gz/1a3baca5ab0b638df3bf4ec29eeb118ab61e8115)(react@18.3.1)':
     dependencies:
-      emoji-mart: 5.6.0
+      emoji-mart: '@emoji-mart/monorepo@https://codeload.github.com/mtojek/emoji-mart/tar.gz/1a3baca5ab0b638df3bf4ec29eeb118ab61e8115'
       react: 18.3.1
 
   '@emotion/babel-plugin@11.13.5':
@@ -9692,8 +9698,6 @@ snapshots:
   emittery@0.13.1: {}
 
   emoji-datasource-apple@15.1.2: {}
-
-  emoji-mart@5.6.0: {}
 
   emoji-regex@8.0.0: {}
 

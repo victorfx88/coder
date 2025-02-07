@@ -85,7 +85,7 @@
 		"date-fns": "2.30.0",
 		"dayjs": "1.11.13",
 		"emoji-datasource-apple": "15.1.2",
-		"emoji-mart": "5.6.0",
+		"emoji-mart": "github:mtojek/emoji-mart",
 		"file-saver": "2.0.5",
 		"formik": "2.4.6",
 		"front-matter": "4.0.2",
