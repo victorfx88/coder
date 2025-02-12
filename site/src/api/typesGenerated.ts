@@ -452,6 +452,7 @@ export interface CreateWorkspaceRequest {
 	readonly ttl_ms?: number;
 	readonly rich_parameter_values?: readonly WorkspaceBuildParameter[];
 	readonly automatic_updates?: AutomaticUpdates;
+	readonly template_version_preset_id?: string;
 }
 
 // From codersdk/deployment.go

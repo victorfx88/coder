@@ -10969,6 +10969,10 @@ const docTemplate = `{
                     "type": "string",
                     "format": "uuid"
                 },
+                "template_version_preset_id": {
+                    "type": "string",
+                    "format": "uuid"
+                },
                 "ttl_ms": {
                     "type": "integer"
                 }

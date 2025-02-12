@@ -17,6 +17,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"cdr.dev/slog"
+
 	"github.com/coder/coder/v2/agent/proto"
 	"github.com/coder/coder/v2/coderd/audit"
 	"github.com/coder/coder/v2/coderd/database"
@@ -665,6 +666,9 @@ func createWorkspace(
 			RichParameterValues(req.RichParameterValues)
 		if req.TemplateVersionID != uuid.Nil {
 			builder = builder.VersionID(req.TemplateVersionID)
+		}
+		if req.TemplateVersionPresetID != uuid.Nil {
+			builder = builder.TemplateVersionPresetID(req.TemplateVersionPresetID)
 		}
 
 		workspaceBuild, provisionerJob, provisionerDaemons, err = builder.Build(

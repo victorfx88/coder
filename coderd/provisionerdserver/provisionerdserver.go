@@ -27,6 +27,8 @@ import (
 
 	"cdr.dev/slog"
 
+	"github.com/coder/quartz"
+
 	"github.com/coder/coder/v2/coderd/apikey"
 	"github.com/coder/coder/v2/coderd/audit"
 	"github.com/coder/coder/v2/coderd/database"
@@ -46,7 +48,6 @@ import (
 	"github.com/coder/coder/v2/provisionerd/proto"
 	"github.com/coder/coder/v2/provisionersdk"
 	sdkproto "github.com/coder/coder/v2/provisionersdk/proto"
-	"github.com/coder/quartz"
 )
 
 const (
@@ -1830,7 +1831,6 @@ func InsertWorkspacePresetsAndParameters(ctx context.Context, logger slog.Logger
 func InsertWorkspacePresetAndParameters(ctx context.Context, db database.Store, templateVersionID uuid.UUID, protoPreset *sdkproto.Preset, t time.Time) error {
 	err := db.InTx(func(tx database.Store) error {
 		dbPreset, err := tx.InsertPreset(ctx, database.InsertPresetParams{
-			ID:                uuid.New(),
 			TemplateVersionID: templateVersionID,
 			Name:              protoPreset.Name,
 			CreatedAt:         t,
@@ -1846,7 +1846,6 @@ func InsertWorkspacePresetAndParameters(ctx context.Context, db database.Store, 
 			presetParameterValues = append(presetParameterValues, parameter.Value)
 		}
 		_, err = tx.InsertPresetParameters(ctx, database.InsertPresetParametersParams{
-			ID:                      uuid.New(),
 			TemplateVersionPresetID: dbPreset.ID,
 			Names:                   presetParameterNames,
 			Values:                  presetParameterValues,
