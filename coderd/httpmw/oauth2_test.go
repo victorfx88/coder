@@ -32,6 +32,12 @@ func (*testOAuth2Provider) Exchange(_ context.Context, _ string, _ ...oauth2.Aut
 	}, nil
 }
 
+func (*testOAuth2Provider) DeviceAccessToken(_ context.Context, _ *oauth2.DeviceAuthResponse, _ ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
+	return &oauth2.Token{
+		AccessToken: "hello",
+	}, nil
+}
+
 func (*testOAuth2Provider) TokenSource(_ context.Context, _ *oauth2.Token) oauth2.TokenSource {
 	return nil
 }

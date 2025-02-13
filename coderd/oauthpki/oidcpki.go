@@ -133,6 +133,10 @@ func (ja *Config) Exchange(ctx context.Context, code string, opts ...oauth2.Auth
 	return ja.cfg.Exchange(ctx, code, opts...)
 }
 
+func (*Config) DeviceAccessToken(_ context.Context, _ *oauth2.DeviceAuthResponse, _ ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
+	panic("not implemented")
+}
+
 func (ja *Config) jwtToken() (string, error) {
 	now := time.Now()
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{

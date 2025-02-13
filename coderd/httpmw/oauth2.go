@@ -2,6 +2,8 @@ package httpmw
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -15,7 +17,6 @@ import (
 	"github.com/coder/coder/v2/coderd/httpapi"
 	"github.com/coder/coder/v2/coderd/promoauth"
 	"github.com/coder/coder/v2/codersdk"
-	"github.com/coder/coder/v2/cryptorand"
 )
 
 type oauth2StateKey struct{}
@@ -84,7 +85,8 @@ func ExtractOAuth2(config promoauth.OAuth2Config, client *http.Client, authURLOp
 				return
 			}
 
-			code := r.URL.Query().Get("code")
+			// code := r.URL.Query().Get("code")
+			deviceCode := r.URL.Query().Get("device_code")
 			state := r.URL.Query().Get("state")
 			redirect := r.URL.Query().Get("redirect")
 			if redirect != "" {
@@ -96,76 +98,105 @@ func ExtractOAuth2(config promoauth.OAuth2Config, client *http.Client, authURLOp
 				redirect = uriFromURL(redirect)
 			}
 
-			if code == "" {
-				// If the code isn't provided, we'll redirect!
-				var state string
-				// If this url param is provided, then a user is trying to merge
-				// their account with an OIDC account. Their password would have
-				// been required to get to this point, so we do not need to verify
-				// their password again.
-				oidcMergeState := r.URL.Query().Get("oidc_merge_state")
-				if oidcMergeState != "" {
-					state = oidcMergeState
-				} else {
-					var err error
-					state, err = cryptorand.String(32)
-					if err != nil {
-						httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-							Message: "Internal error generating state string.",
-							Detail:  err.Error(),
-						})
-						return
-					}
+			var da *oauth2.DeviceAuthResponse
+			if deviceCode != "" {
+				// Decode base64-encoded device code
+				decodedBytes, err := base64.StdEncoding.DecodeString(deviceCode)
+				if err != nil {
+					httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+						Message: "Invalid device code format",
+						Detail:  err.Error(),
+					})
+					return
 				}
 
-				http.SetCookie(rw, &http.Cookie{
-					Name:     codersdk.OAuth2StateCookie,
-					Value:    state,
-					Path:     "/",
-					HttpOnly: true,
-					SameSite: http.SameSiteLaxMode,
-				})
-				// Redirect must always be specified, otherwise
-				// an old redirect could apply!
-				http.SetCookie(rw, &http.Cookie{
-					Name:     codersdk.OAuth2RedirectCookie,
-					Value:    redirect,
-					Path:     "/",
-					HttpOnly: true,
-					SameSite: http.SameSiteLaxMode,
-				})
-
-				http.Redirect(rw, r, config.AuthCodeURL(state, opts...), http.StatusTemporaryRedirect)
-				return
-			}
-
-			if state == "" {
+				// Unmarshal JSON into DeviceAuthResponse
+				da = &oauth2.DeviceAuthResponse{}
+				if err := json.Unmarshal(decodedBytes, da); err != nil {
+					httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+						Message: "Invalid device code data",
+						Detail:  err.Error(),
+					})
+					return
+				}
+			} else {
 				httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
-					Message: "State must be provided.",
+					Message: "Invalid device code data",
+					Detail:  "Device code is required for device flow.",
 				})
 				return
 			}
 
-			stateCookie, err := r.Cookie(codersdk.OAuth2StateCookie)
-			if err != nil {
-				httpapi.Write(ctx, rw, http.StatusUnauthorized, codersdk.Response{
-					Message: fmt.Sprintf("Cookie %q must be provided.", codersdk.OAuth2StateCookie),
-				})
-				return
-			}
-			if stateCookie.Value != state {
-				httpapi.Write(ctx, rw, http.StatusUnauthorized, codersdk.Response{
-					Message: "State mismatched.",
-				})
-				return
-			}
+			// if code == "" {
+			// 	// If the code isn't provided, we'll redirect!
+			// 	var state string
+			// 	// If this url param is provided, then a user is trying to merge
+			// 	// their account with an OIDC account. Their password would have
+			// 	// been required to get to this point, so we do not need to verify
+			// 	// their password again.
+			// 	oidcMergeState := r.URL.Query().Get("oidc_merge_state")
+			// 	if oidcMergeState != "" {
+			// 		state = oidcMergeState
+			// 	} else {
+			// 		var err error
+			// 		state, err = cryptorand.String(32)
+			// 		if err != nil {
+			// 			httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
+			// 				Message: "Internal error generating state string.",
+			// 				Detail:  err.Error(),
+			// 			})
+			// 			return
+			// 		}
+			// 	}
+
+			http.SetCookie(rw, &http.Cookie{
+				Name:     codersdk.OAuth2StateCookie,
+				Value:    "hello",
+				Path:     "/",
+				HttpOnly: true,
+				SameSite: http.SameSiteLaxMode,
+			})
+			// 	// Redirect must always be specified, otherwise
+			// 	// an old redirect could apply!
+			// 	http.SetCookie(rw, &http.Cookie{
+			// 		Name:     codersdk.OAuth2RedirectCookie,
+			// 		Value:    redirect,
+			// 		Path:     "/",
+			// 		HttpOnly: true,
+			// 		SameSite: http.SameSiteLaxMode,
+			// 	})
+
+			// 	http.Redirect(rw, r, config.AuthCodeURL(state, opts...), http.StatusTemporaryRedirect)
+			// 	return
+			// }
+
+			// if state == "" {
+			// 	httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+			// 		Message: "State must be provided.",
+			// 	})
+			// 	return
+			// }
+
+			// stateCookie, err := r.Cookie(codersdk.OAuth2StateCookie)
+			// if err != nil {
+			// 	httpapi.Write(ctx, rw, http.StatusUnauthorized, codersdk.Response{
+			// 		Message: fmt.Sprintf("Cookie %q must be provided.", codersdk.OAuth2StateCookie),
+			// 	})
+			// 	return
+			// }
+			// if stateCookie.Value != state {
+			// 	httpapi.Write(ctx, rw, http.StatusUnauthorized, codersdk.Response{
+			// 		Message: "State mismatched.",
+			// 	})
+			// 	return
+			// }
 
 			stateRedirect, err := r.Cookie(codersdk.OAuth2RedirectCookie)
 			if err == nil {
 				redirect = stateRedirect.Value
 			}
 
-			oauthToken, err := config.Exchange(ctx, code)
+			oauthToken, err := config.DeviceAccessToken(ctx, da)
 			if err != nil {
 				httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
 					Message: "Internal error exchanging Oauth code.",
