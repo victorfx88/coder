@@ -677,7 +677,7 @@ func (r *RootCmd) Server(newAPI func(context.Context, *coderd.Options) (*coderd.
 				}
 			}
 
-			if vals.OAuth2.Github.ClientSecret != "" {
+			if vals.OAuth2.Github.ClientID != "" {
 				options.GithubOAuth2Config, err = configureGithubOAuth2(
 					oauthInstrument,
 					vals.AccessURL.Value(),
@@ -1899,7 +1899,14 @@ func configureGithubOAuth2(instrument *promoauth.Factory, accessURL *url.URL, cl
 	}
 
 	return &coderd.GithubOAuth2Config{
-		OAuth2Config:       instrumentedOauth,
+		OAuth2Config: instrumentedOauth,
+		DeviceAuth: &externalauth.DeviceAuth{
+			Config:   instrumentedOauth,
+			ClientID: clientID,
+			TokenURL: endpoint.TokenURL,
+			Scopes:   []string{"read:user", "read:org", "user:email"},
+			CodeURL:  endpoint.DeviceAuthURL,
+		},
 		AllowSignups:       allowSignups,
 		AllowEveryone:      allowEveryone,
 		AllowOrganizations: allowOrgs,

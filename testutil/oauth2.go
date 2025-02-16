@@ -35,17 +35,6 @@ func (c *OAuth2Config) Exchange(_ context.Context, _ string, _ ...oauth2.AuthCod
 	return c.Token, nil
 }
 
-func (c *OAuth2Config) DeviceAccessToken(_ context.Context, _ *oauth2.DeviceAuthResponse, _ ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
-	if c.Token == nil {
-		return &oauth2.Token{
-			AccessToken:  "access_token",
-			RefreshToken: "refresh_token",
-			Expiry:       time.Now().Add(time.Hour),
-		}, nil
-	}
-	return c.Token, nil
-}
-
 func (c *OAuth2Config) TokenSource(_ context.Context, _ *oauth2.Token) oauth2.TokenSource {
 	if c.TokenSourceFunc == nil {
 		return OAuth2TokenSource(func() (*oauth2.Token, error) {

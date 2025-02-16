@@ -32,7 +32,6 @@ const (
 type OAuth2Config interface {
 	AuthCodeURL(state string, opts ...oauth2.AuthCodeOption) string
 	Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error)
-	DeviceAccessToken(ctx context.Context, da *oauth2.DeviceAuthResponse, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error)
 	TokenSource(context.Context, *oauth2.Token) oauth2.TokenSource
 }
 
@@ -226,10 +225,6 @@ func (c *Config) AuthCodeURL(state string, opts ...oauth2.AuthCodeOption) string
 
 func (c *Config) Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
 	return c.underlying.Exchange(c.wrapClient(ctx, SourceExchange), code, opts...)
-}
-
-func (c *Config) DeviceAccessToken(ctx context.Context, da *oauth2.DeviceAuthResponse, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
-	return c.underlying.DeviceAccessToken(c.wrapClient(ctx, SourceDeviceAccessToken), da, opts...)
 }
 
 func (c *Config) TokenSource(ctx context.Context, token *oauth2.Token) oauth2.TokenSource {

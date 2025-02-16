@@ -752,6 +752,22 @@ type GithubOAuth2Config struct {
 	AllowEveryone      bool
 	AllowOrganizations []string
 	AllowTeams         []GithubOAuth2Team
+	// DeviceAuth is set if the provider uses the device flow.
+	DeviceAuth *externalauth.DeviceAuth
+}
+
+func (c *GithubOAuth2Config) Exchange(ctx context.Context, code string, opts ...oauth2.AuthCodeOption) (*oauth2.Token, error) {
+	if c.DeviceAuth == nil {
+		return c.OAuth2Config.Exchange(ctx, code, opts...)
+	}
+	return c.DeviceAuth.ExchangeDeviceCode(ctx, code)
+}
+
+func (c *GithubOAuth2Config) AuthCodeURL(state string, opts ...oauth2.AuthCodeOption) string {
+	if c.DeviceAuth == nil {
+		return c.OAuth2Config.AuthCodeURL(state, opts...)
+	}
+	return "/device-login?state=" + state
 }
 
 // @Summary Get authentication methods
@@ -784,6 +800,102 @@ func (api *API) userAuthMethods(rw http.ResponseWriter, r *http.Request) {
 			IconURL:    iconURL,
 		},
 	})
+}
+
+// @Summary Get Github device auth.
+// @ID get-github-device-auth
+// @Produce json
+// @Tags Users
+// @Success 200 {object} codersdk.ExternalAuthDevice
+// @Router /users/oauth2/github/device [get]
+func (api *API) userOAuth2GithubDevice(rw http.ResponseWriter, r *http.Request) {
+	var (
+		ctx               = r.Context()
+		auditor           = api.Auditor.Load()
+		aReq, commitAudit = audit.InitRequest[database.APIKey](rw, &audit.RequestParams{
+			Audit:   *auditor,
+			Log:     api.Logger,
+			Request: r,
+			Action:  database.AuditActionLogin,
+		})
+	)
+	aReq.Old = database.APIKey{}
+	defer commitAudit()
+
+	if api.GithubOAuth2Config == nil {
+		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+			Message: "Github OAuth2 is not enabled.",
+		})
+		return
+	}
+
+	if api.GithubOAuth2Config.DeviceAuth == nil {
+		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+			Message: "Device flow is not enabled for Github OAuth2.",
+		})
+		return
+	}
+
+	deviceAuth, err := api.GithubOAuth2Config.DeviceAuth.AuthorizeDevice(ctx)
+	if err != nil {
+		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
+			Message: "Failed to authorize device.",
+			Detail:  err.Error(),
+		})
+		return
+	}
+
+	httpapi.Write(ctx, rw, http.StatusOK, deviceAuth)
+}
+
+// @Summary Excha Github device auth.
+// @ID get-github-device-auth
+// @Produce json
+// @Tags Users
+// @Success 200 {object} codersdk.ExternalAuthDevice
+// @Router /users/oauth2/github/device [get]
+func (api *API) postGithubOAuth2Device(rw http.ResponseWriter, r *http.Request) {
+	var (
+		ctx               = r.Context()
+		auditor           = api.Auditor.Load()
+		aReq, commitAudit = audit.InitRequest[database.APIKey](rw, &audit.RequestParams{
+			Audit:   *auditor,
+			Log:     api.Logger,
+			Request: r,
+			Action:  database.AuditActionLogin,
+		})
+	)
+	aReq.Old = database.APIKey{}
+	defer commitAudit()
+
+	if api.GithubOAuth2Config == nil {
+		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+			Message: "Github OAuth2 is not enabled.",
+		})
+		return
+	}
+	if api.GithubOAuth2Config.DeviceAuth == nil {
+		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+			Message: "Device flow is not enabled for Github OAuth2.",
+		})
+		return
+	}
+
+	var req codersdk.ExternalAuthDeviceExchange
+	if !httpapi.Read(ctx, rw, r, &req) {
+		return
+	}
+
+	token, err := api.GithubOAuth2Config.DeviceAuth.ExchangeDeviceCode(ctx, req.DeviceCode)
+	if err != nil {
+		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
+			Message: "Failed to exchange device code.",
+			Detail:  err.Error(),
+		})
+		return
+	}
+
+	httpapi.Write(ctx, rw, http.StatusOK, token)
 }
 
 // @Summary OAuth 2.0 GitHub Callback

@@ -337,6 +337,38 @@ curl -X GET http://coder-server:8080/api/v2/users/oauth2/github/callback \
 
 To perform this operation, you must be authenticated. [Learn more](authentication.md).
 
+## Excha Github device auth
+
+### Code samples
+
+```shell
+# Example request using curl
+curl -X GET http://coder-server:8080/api/v2/users/oauth2/github/device \
+  -H 'Accept: application/json'
+```
+
+`GET /users/oauth2/github/device`
+
+### Example responses
+
+> 200 Response
+
+```json
+{
+  "device_code": "string",
+  "expires_in": 0,
+  "interval": 0,
+  "user_code": "string",
+  "verification_uri": "string"
+}
+```
+
+### Responses
+
+| Status | Meaning                                                 | Description | Schema                                                               |
+|--------|---------------------------------------------------------|-------------|----------------------------------------------------------------------|
+| 200    | [OK](https://tools.ietf.org/html/rfc7231#section-6.3.1) | OK          | [codersdk.ExternalAuthDevice](schemas.md#codersdkexternalauthdevice) |
+
 ## OpenID Connect Callback
 
 ### Code samples

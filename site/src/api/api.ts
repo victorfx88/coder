@@ -1585,6 +1585,21 @@ class ApiMethods {
 		return resp.data;
 	};
 
+	getOAuth2GitHubCallback = async (code: string, state: string): Promise<string> => {
+		const resp =await this.axios.get(`/api/v2/users/oauth2/github/callback?code=${code}&state=${state}`);
+		const location = resp.headers.location;
+		if (typeof location !== "string") {
+			console.warn("OAuth2 GitHub callback location is not a string", location);
+			return "/";
+		}
+		return location;
+	};
+
+	getOAuth2GitHubDevice = async (): Promise<TypesGen.ExternalAuthDevice> => {
+		const resp = await this.axios.get("/api/v2/users/oauth2/github/device");
+		return resp.data;
+	};
+
 	getOAuth2ProviderApps = async (
 		filter?: TypesGen.OAuth2ProviderAppFilter,
 	): Promise<TypesGen.OAuth2ProviderApp[]> => {
