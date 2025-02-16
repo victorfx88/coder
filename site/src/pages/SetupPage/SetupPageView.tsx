@@ -16,6 +16,8 @@ import { SignInLayout } from "components/SignInLayout/SignInLayout";
 import { Stack } from "components/Stack/Stack";
 import { type FormikContextType, useFormik } from "formik";
 import type { FC } from "react";
+import Button from "@mui/material/Button";
+import GitHubIcon from "@mui/icons-material/GitHub";
 import { useEffect } from "react";
 import { docs } from "utils/docs";
 import {
@@ -34,6 +36,7 @@ export const Language = {
 	emailRequired: "Please enter an email address.",
 	passwordRequired: "Please enter a password.",
 	create: "Create account",
+	githubCreate: "Create account with GitHub",
 	welcomeMessage: <>Welcome to Coder</>,
 	firstNameLabel: "First name",
 	lastNameLabel: "Last name",
@@ -80,6 +83,11 @@ const numberOfDevelopersOptions = [
 	"1001-2500",
 	"2500+",
 ];
+
+const iconStyles = {
+	width: 16,
+	height: 16,
+};
 
 export interface SetupPageViewProps {
 	onSubmit: (firstUser: TypesGen.CreateFirstUserRequest) => void;
@@ -140,6 +148,19 @@ export const SetupPageView: FC<SetupPageViewProps> = ({
 					Let&lsquo;s create your first admin user account
 				</div>
 			</header>
+			<div className="mb-8">
+				<Button
+					component="a"
+					href={`/api/v2/users/oauth2/github/callback`}
+					variant="contained"
+					startIcon={<GitHubIcon css={iconStyles} />}
+					fullWidth
+					type="submit"
+					size="xlarge"
+				>
+					{Language.githubCreate}
+				</Button>
+			</div>
 			<VerticalForm onSubmit={form.handleSubmit}>
 				<FormFields>
 					<TextField
