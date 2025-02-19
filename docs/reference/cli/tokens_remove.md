@@ -11,5 +11,5 @@ Aliases:
 ## Usage
 
 ```console
-coder tokens remove <name|id|token>
+coder tokens remove <name>
 ```

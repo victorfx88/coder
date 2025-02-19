@@ -338,19 +338,3 @@ export const organizationsPermissions = (
 		},
 	};
 };
-
-export const getOrganizationIdpSyncClaimFieldValuesKey = (
-	organization: string,
-	field: string,
-) => [organization, "idpSync", "fieldValues", field];
-
-export const organizationIdpSyncClaimFieldValues = (
-	organization: string,
-	field: string,
-) => {
-	return {
-		queryKey: getOrganizationIdpSyncClaimFieldValuesKey(organization, field),
-		queryFn: () =>
-			API.getOrganizationIdpSyncClaimFieldValues(organization, field),
-	};
-};

@@ -16,7 +16,7 @@ import {
 } from "components/HelpTooltip/HelpTooltip";
 import { Pill } from "components/Pill/Pill";
 import { Stack } from "components/Stack/Stack";
-import { StatusIndicatorDot } from "components/StatusIndicator/StatusIndicator";
+import { StatusIndicator } from "components/StatusIndicator/StatusIndicator";
 import {
 	Popover,
 	PopoverContent,
@@ -127,7 +127,7 @@ export const ProvisionerGroup: FC<ProvisionerGroupProps> = ({
 				}}
 			>
 				<div css={{ display: "flex", alignItems: "center", gap: 16 }}>
-					<StatusIndicatorDot variant={hasWarning ? "warning" : "success"} />
+					<StatusIndicator color={hasWarning ? "warning" : "success"} />
 					<div
 						css={{
 							display: "flex",

@@ -177,19 +177,3 @@ func DifferenceFunc[T any](a []T, b []T, equal func(a, b T) bool) []T {
 	}
 	return tmp
 }
-
-func CountConsecutive[T comparable](needle T, haystack ...T) int {
-	maxLength := 0
-	curLength := 0
-
-	for _, v := range haystack {
-		if v == needle {
-			curLength++
-		} else {
-			maxLength = max(maxLength, curLength)
-			curLength = 0
-		}
-	}
-
-	return max(maxLength, curLength)
-}

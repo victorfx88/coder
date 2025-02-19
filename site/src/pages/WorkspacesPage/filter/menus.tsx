@@ -10,11 +10,7 @@ import {
 	type UseFilterMenuOptions,
 	useFilterMenu,
 } from "components/Filter/menu";
-import {
-	StatusIndicator,
-	StatusIndicatorDot,
-	type StatusIndicatorDotProps,
-} from "components/StatusIndicator/StatusIndicator";
+import { StatusIndicator } from "components/StatusIndicator/StatusIndicator";
 import type { FC } from "react";
 import { getDisplayWorkspaceStatus } from "utils/workspace";
 
@@ -113,9 +109,7 @@ export const useStatusFilterMenu = ({
 		return {
 			label: display.text,
 			value: status,
-			startIcon: (
-				<StatusIndicatorDot variant={getStatusIndicatorVariant(status)} />
-			),
+			startIcon: <StatusIndicator color={display.type ?? "warning"} />,
 		};
 	});
 	return useFilterMenu({
@@ -146,27 +140,4 @@ export const StatusMenu: FC<StatusMenuProps> = ({ width, menu }) => {
 			onSelect={menu.selectOption}
 		/>
 	);
-};
-
-export const getStatusIndicatorVariant = (
-	status: WorkspaceStatus,
-): StatusIndicatorDotProps["variant"] => {
-	switch (status) {
-		case "running":
-			return "success";
-		case "starting":
-		case "pending":
-			return "pending";
-		case undefined:
-		case "canceling":
-		case "canceled":
-		case "stopping":
-		case "stopped":
-			return "inactive";
-		case "deleting":
-		case "deleted":
-			return "warning";
-		case "failed":
-			return "failed";
-	}
 };

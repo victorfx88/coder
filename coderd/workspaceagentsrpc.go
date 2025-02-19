@@ -143,9 +143,7 @@ func (api *API) workspaceAgentRPC(rw http.ResponseWriter, r *http.Request) {
 
 		Ctx:                               api.ctx,
 		Log:                               logger,
-		Clock:                             api.Clock,
 		Database:                          api.Database,
-		NotificationsEnqueuer:             api.NotificationsEnqueuer,
 		Pubsub:                            api.Pubsub,
 		DerpMapFn:                         api.DERPMap,
 		TailnetCoordinator:                &api.TailnetCoordinator,

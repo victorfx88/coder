@@ -467,7 +467,6 @@ func (q *sqlQuerier) GetAuthorizedAuditLogsOffset(ctx context.Context, arg GetAu
 		arg.DateFrom,
 		arg.DateTo,
 		arg.BuildReason,
-		arg.RequestID,
 		arg.OffsetOpt,
 		arg.LimitOpt,
 	)

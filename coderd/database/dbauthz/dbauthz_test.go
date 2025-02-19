@@ -859,77 +859,6 @@ func (s *MethodTestSuite) TestOrganization() {
 			rbac.ResourceAssignOrgRole.InOrg(o.ID), policy.ActionAssign,
 			rbac.ResourceOrganizationMember.InOrg(o.ID).WithID(u.ID), policy.ActionCreate)
 	}))
-	s.Run("InsertPreset", s.Subtest(func(db database.Store, check *expects) {
-		org := dbgen.Organization(s.T(), db, database.Organization{})
-		user := dbgen.User(s.T(), db, database.User{})
-		template := dbgen.Template(s.T(), db, database.Template{
-			CreatedBy:      user.ID,
-			OrganizationID: org.ID,
-		})
-		templateVersion := dbgen.TemplateVersion(s.T(), db, database.TemplateVersion{
-			TemplateID:     uuid.NullUUID{UUID: template.ID, Valid: true},
-			OrganizationID: org.ID,
-			CreatedBy:      user.ID,
-		})
-		workspace := dbgen.Workspace(s.T(), db, database.WorkspaceTable{
-			OrganizationID: org.ID,
-			OwnerID:        user.ID,
-			TemplateID:     template.ID,
-		})
-		job := dbgen.ProvisionerJob(s.T(), db, nil, database.ProvisionerJob{
-			OrganizationID: org.ID,
-		})
-		workspaceBuild := dbgen.WorkspaceBuild(s.T(), db, database.WorkspaceBuild{
-			WorkspaceID:       workspace.ID,
-			TemplateVersionID: templateVersion.ID,
-			InitiatorID:       user.ID,
-			JobID:             job.ID,
-		})
-		insertPresetParams := database.InsertPresetParams{
-			TemplateVersionID: workspaceBuild.TemplateVersionID,
-			Name:              "test",
-		}
-		check.Args(insertPresetParams).Asserts(rbac.ResourceTemplate, policy.ActionUpdate)
-	}))
-	s.Run("InsertPresetParameters", s.Subtest(func(db database.Store, check *expects) {
-		org := dbgen.Organization(s.T(), db, database.Organization{})
-		user := dbgen.User(s.T(), db, database.User{})
-		template := dbgen.Template(s.T(), db, database.Template{
-			CreatedBy:      user.ID,
-			OrganizationID: org.ID,
-		})
-		templateVersion := dbgen.TemplateVersion(s.T(), db, database.TemplateVersion{
-			TemplateID:     uuid.NullUUID{UUID: template.ID, Valid: true},
-			OrganizationID: org.ID,
-			CreatedBy:      user.ID,
-		})
-		workspace := dbgen.Workspace(s.T(), db, database.WorkspaceTable{
-			OrganizationID: org.ID,
-			OwnerID:        user.ID,
-			TemplateID:     template.ID,
-		})
-		job := dbgen.ProvisionerJob(s.T(), db, nil, database.ProvisionerJob{
-			OrganizationID: org.ID,
-		})
-		workspaceBuild := dbgen.WorkspaceBuild(s.T(), db, database.WorkspaceBuild{
-			WorkspaceID:       workspace.ID,
-			TemplateVersionID: templateVersion.ID,
-			InitiatorID:       user.ID,
-			JobID:             job.ID,
-		})
-		insertPresetParams := database.InsertPresetParams{
-			TemplateVersionID: workspaceBuild.TemplateVersionID,
-			Name:              "test",
-		}
-		preset, err := db.InsertPreset(context.Background(), insertPresetParams)
-		require.NoError(s.T(), err)
-		insertPresetParametersParams := database.InsertPresetParametersParams{
-			TemplateVersionPresetID: preset.ID,
-			Names:                   []string{"test"},
-			Values:                  []string{"test"},
-		}
-		check.Args(insertPresetParametersParams).Asserts(rbac.ResourceTemplate, policy.ActionUpdate)
-	}))
 	s.Run("DeleteOrganizationMember", s.Subtest(func(db database.Store, check *expects) {
 		o := dbgen.Organization(s.T(), db, database.Organization{})
 		u := dbgen.User(s.T(), db, database.User{})
@@ -3354,11 +3283,11 @@ func (s *MethodTestSuite) TestExtraMethods() {
 		dbgen.WorkspaceBuild(s.T(), db, database.WorkspaceBuild{ID: wbID, WorkspaceID: w.ID, TemplateVersionID: tv.ID, JobID: j2.ID})
 
 		ds, err := db.GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisioner(context.Background(), database.GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerParams{
-			OrganizationID: org.ID,
+			OrganizationID: uuid.NullUUID{Valid: true, UUID: org.ID},
 		})
 		s.NoError(err, "get provisioner jobs by org")
 		check.Args(database.GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerParams{
-			OrganizationID: org.ID,
+			OrganizationID: uuid.NullUUID{Valid: true, UUID: org.ID},
 		}).Asserts(j1, policy.ActionRead, j2, policy.ActionRead).Returns(ds)
 	}))
 }
@@ -3765,96 +3694,6 @@ func (s *MethodTestSuite) TestSystemFunctions() {
 			Asserts(tpl, policy.ActionRead).
 			ErrorsWithInMemDB(sql.ErrNoRows).
 			Returns([]database.ParameterSchema{})
-	}))
-	s.Run("GetPresetByWorkspaceBuildID", s.Subtest(func(db database.Store, check *expects) {
-		org := dbgen.Organization(s.T(), db, database.Organization{})
-		user := dbgen.User(s.T(), db, database.User{})
-		template := dbgen.Template(s.T(), db, database.Template{
-			CreatedBy:      user.ID,
-			OrganizationID: org.ID,
-		})
-		templateVersion := dbgen.TemplateVersion(s.T(), db, database.TemplateVersion{
-			TemplateID:     uuid.NullUUID{UUID: template.ID, Valid: true},
-			OrganizationID: org.ID,
-			CreatedBy:      user.ID,
-		})
-		preset, err := db.InsertPreset(context.Background(), database.InsertPresetParams{
-			TemplateVersionID: templateVersion.ID,
-			Name:              "test",
-		})
-		require.NoError(s.T(), err)
-		workspace := dbgen.Workspace(s.T(), db, database.WorkspaceTable{
-			OrganizationID: org.ID,
-			OwnerID:        user.ID,
-			TemplateID:     template.ID,
-		})
-		job := dbgen.ProvisionerJob(s.T(), db, nil, database.ProvisionerJob{
-			OrganizationID: org.ID,
-		})
-		workspaceBuild := dbgen.WorkspaceBuild(s.T(), db, database.WorkspaceBuild{
-			WorkspaceID:             workspace.ID,
-			TemplateVersionID:       templateVersion.ID,
-			TemplateVersionPresetID: uuid.NullUUID{UUID: preset.ID, Valid: true},
-			InitiatorID:             user.ID,
-			JobID:                   job.ID,
-		})
-		_, err = db.GetPresetByWorkspaceBuildID(context.Background(), workspaceBuild.ID)
-		require.NoError(s.T(), err)
-		check.Args(workspaceBuild.ID).Asserts(rbac.ResourceTemplate, policy.ActionRead)
-	}))
-	s.Run("GetPresetParametersByTemplateVersionID", s.Subtest(func(db database.Store, check *expects) {
-		ctx := context.Background()
-		org := dbgen.Organization(s.T(), db, database.Organization{})
-		user := dbgen.User(s.T(), db, database.User{})
-		template := dbgen.Template(s.T(), db, database.Template{
-			CreatedBy:      user.ID,
-			OrganizationID: org.ID,
-		})
-		templateVersion := dbgen.TemplateVersion(s.T(), db, database.TemplateVersion{
-			TemplateID:     uuid.NullUUID{UUID: template.ID, Valid: true},
-			OrganizationID: org.ID,
-			CreatedBy:      user.ID,
-		})
-		preset, err := db.InsertPreset(ctx, database.InsertPresetParams{
-			TemplateVersionID: templateVersion.ID,
-			Name:              "test",
-		})
-		require.NoError(s.T(), err)
-		_, err = db.InsertPresetParameters(ctx, database.InsertPresetParametersParams{
-			TemplateVersionPresetID: preset.ID,
-			Names:                   []string{"test"},
-			Values:                  []string{"test"},
-		})
-		require.NoError(s.T(), err)
-		presetParameters, err := db.GetPresetParametersByTemplateVersionID(ctx, templateVersion.ID)
-		require.NoError(s.T(), err)
-
-		check.Args(templateVersion.ID).Asserts(template.RBACObject(), policy.ActionRead).Returns(presetParameters)
-	}))
-	s.Run("GetPresetsByTemplateVersionID", s.Subtest(func(db database.Store, check *expects) {
-		ctx := context.Background()
-		org := dbgen.Organization(s.T(), db, database.Organization{})
-		user := dbgen.User(s.T(), db, database.User{})
-		template := dbgen.Template(s.T(), db, database.Template{
-			CreatedBy:      user.ID,
-			OrganizationID: org.ID,
-		})
-		templateVersion := dbgen.TemplateVersion(s.T(), db, database.TemplateVersion{
-			TemplateID:     uuid.NullUUID{UUID: template.ID, Valid: true},
-			OrganizationID: org.ID,
-			CreatedBy:      user.ID,
-		})
-
-		_, err := db.InsertPreset(ctx, database.InsertPresetParams{
-			TemplateVersionID: templateVersion.ID,
-			Name:              "test",
-		})
-		require.NoError(s.T(), err)
-
-		presets, err := db.GetPresetsByTemplateVersionID(ctx, templateVersion.ID)
-		require.NoError(s.T(), err)
-
-		check.Args(templateVersion.ID).Asserts(template.RBACObject(), policy.ActionRead).Returns(presets)
 	}))
 	s.Run("GetWorkspaceAppsByAgentIDs", s.Subtest(func(db database.Store, check *expects) {
 		dbtestutil.DisableForeignKeysAndTriggers(s.T(), db)
@@ -4721,109 +4560,5 @@ func (s *MethodTestSuite) TestOAuth2ProviderAppTokens() {
 			AppID:  app.ID,
 			UserID: user.ID,
 		}).Asserts(rbac.ResourceOauth2AppCodeToken.WithOwner(user.ID.String()), policy.ActionDelete)
-	}))
-}
-
-func (s *MethodTestSuite) TestResourcesMonitor() {
-	createAgent := func(t *testing.T, db database.Store) (database.WorkspaceAgent, database.WorkspaceTable) {
-		t.Helper()
-
-		u := dbgen.User(t, db, database.User{})
-		o := dbgen.Organization(t, db, database.Organization{})
-		tpl := dbgen.Template(t, db, database.Template{
-			OrganizationID: o.ID,
-			CreatedBy:      u.ID,
-		})
-		tv := dbgen.TemplateVersion(t, db, database.TemplateVersion{
-			TemplateID:     uuid.NullUUID{UUID: tpl.ID, Valid: true},
-			OrganizationID: o.ID,
-			CreatedBy:      u.ID,
-		})
-		w := dbgen.Workspace(t, db, database.WorkspaceTable{
-			TemplateID:     tpl.ID,
-			OrganizationID: o.ID,
-			OwnerID:        u.ID,
-		})
-		j := dbgen.ProvisionerJob(t, db, nil, database.ProvisionerJob{
-			Type: database.ProvisionerJobTypeWorkspaceBuild,
-		})
-		b := dbgen.WorkspaceBuild(t, db, database.WorkspaceBuild{
-			JobID:             j.ID,
-			WorkspaceID:       w.ID,
-			TemplateVersionID: tv.ID,
-		})
-		res := dbgen.WorkspaceResource(t, db, database.WorkspaceResource{JobID: b.JobID})
-		agt := dbgen.WorkspaceAgent(t, db, database.WorkspaceAgent{ResourceID: res.ID})
-
-		return agt, w
-	}
-
-	s.Run("InsertMemoryResourceMonitor", s.Subtest(func(db database.Store, check *expects) {
-		agt, _ := createAgent(s.T(), db)
-
-		check.Args(database.InsertMemoryResourceMonitorParams{
-			AgentID: agt.ID,
-			State:   database.WorkspaceAgentMonitorStateOK,
-		}).Asserts(rbac.ResourceWorkspaceAgentResourceMonitor, policy.ActionCreate)
-	}))
-
-	s.Run("InsertVolumeResourceMonitor", s.Subtest(func(db database.Store, check *expects) {
-		agt, _ := createAgent(s.T(), db)
-
-		check.Args(database.InsertVolumeResourceMonitorParams{
-			AgentID: agt.ID,
-			State:   database.WorkspaceAgentMonitorStateOK,
-		}).Asserts(rbac.ResourceWorkspaceAgentResourceMonitor, policy.ActionCreate)
-	}))
-
-	s.Run("UpdateMemoryResourceMonitor", s.Subtest(func(db database.Store, check *expects) {
-		agt, _ := createAgent(s.T(), db)
-
-		check.Args(database.UpdateMemoryResourceMonitorParams{
-			AgentID: agt.ID,
-			State:   database.WorkspaceAgentMonitorStateOK,
-		}).Asserts(rbac.ResourceWorkspaceAgentResourceMonitor, policy.ActionUpdate)
-	}))
-
-	s.Run("UpdateVolumeResourceMonitor", s.Subtest(func(db database.Store, check *expects) {
-		agt, _ := createAgent(s.T(), db)
-
-		check.Args(database.UpdateVolumeResourceMonitorParams{
-			AgentID: agt.ID,
-			State:   database.WorkspaceAgentMonitorStateOK,
-		}).Asserts(rbac.ResourceWorkspaceAgentResourceMonitor, policy.ActionUpdate)
-	}))
-
-	s.Run("FetchMemoryResourceMonitorsByAgentID", s.Subtest(func(db database.Store, check *expects) {
-		agt, w := createAgent(s.T(), db)
-
-		dbgen.WorkspaceAgentMemoryResourceMonitor(s.T(), db, database.WorkspaceAgentMemoryResourceMonitor{
-			AgentID:   agt.ID,
-			Enabled:   true,
-			Threshold: 80,
-			CreatedAt: dbtime.Now(),
-		})
-
-		monitor, err := db.FetchMemoryResourceMonitorsByAgentID(context.Background(), agt.ID)
-		require.NoError(s.T(), err)
-
-		check.Args(agt.ID).Asserts(w, policy.ActionRead).Returns(monitor)
-	}))
-
-	s.Run("FetchVolumesResourceMonitorsByAgentID", s.Subtest(func(db database.Store, check *expects) {
-		agt, w := createAgent(s.T(), db)
-
-		dbgen.WorkspaceAgentVolumeResourceMonitor(s.T(), db, database.WorkspaceAgentVolumeResourceMonitor{
-			AgentID:   agt.ID,
-			Path:      "/var/lib",
-			Enabled:   true,
-			Threshold: 80,
-			CreatedAt: dbtime.Now(),
-		})
-
-		monitors, err := db.FetchVolumesResourceMonitorsByAgentID(context.Background(), agt.ID)
-		require.NoError(s.T(), err)
-
-		check.Args(agt.ID).Asserts(w, policy.ActionRead).Returns(monitors)
 	}))
 }

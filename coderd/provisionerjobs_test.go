@@ -4,12 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"strconv"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/coder/coder/v2/coderd/coderdtest"
@@ -65,57 +63,15 @@ func TestProvisionerJobs(t *testing.T) {
 		TemplateVersionID: version.ID,
 	})
 
-	// Add more jobs than the default limit.
-	for i := range 60 {
-		dbgen.ProvisionerJob(t, db, nil, database.ProvisionerJob{
-			OrganizationID: owner.OrganizationID,
-			Tags:           database.StringMap{"count": strconv.Itoa(i)},
-		})
-	}
-
 	t.Run("Single", func(t *testing.T) {
 		t.Parallel()
-		t.Run("Workspace", func(t *testing.T) {
+		t.Run("OK", func(t *testing.T) {
 			t.Parallel()
-			t.Run("OK", func(t *testing.T) {
-				t.Parallel()
-				ctx := testutil.Context(t, testutil.WaitMedium)
-				// Note this calls the single job endpoint.
-				job2, err := templateAdminClient.OrganizationProvisionerJob(ctx, owner.OrganizationID, job.ID)
-				require.NoError(t, err)
-				require.Equal(t, job.ID, job2.ID)
-
-				// Verify that job metadata is correct.
-				assert.Equal(t, job2.Metadata, codersdk.ProvisionerJobMetadata{
-					TemplateVersionName: version.Name,
-					TemplateID:          template.ID,
-					TemplateName:        template.Name,
-					TemplateDisplayName: template.DisplayName,
-					TemplateIcon:        template.Icon,
-					WorkspaceID:         &w.ID,
-					WorkspaceName:       w.Name,
-				})
-			})
-		})
-		t.Run("Template Import", func(t *testing.T) {
-			t.Parallel()
-			t.Run("OK", func(t *testing.T) {
-				t.Parallel()
-				ctx := testutil.Context(t, testutil.WaitMedium)
-				// Note this calls the single job endpoint.
-				job2, err := templateAdminClient.OrganizationProvisionerJob(ctx, owner.OrganizationID, version.Job.ID)
-				require.NoError(t, err)
-				require.Equal(t, version.Job.ID, job2.ID)
-
-				// Verify that job metadata is correct.
-				assert.Equal(t, job2.Metadata, codersdk.ProvisionerJobMetadata{
-					TemplateVersionName: version.Name,
-					TemplateID:          template.ID,
-					TemplateName:        template.Name,
-					TemplateDisplayName: template.DisplayName,
-					TemplateIcon:        template.Icon,
-				})
-			})
+			ctx := testutil.Context(t, testutil.WaitMedium)
+			// Note this calls the single job endpoint.
+			job2, err := templateAdminClient.OrganizationProvisionerJob(ctx, owner.OrganizationID, job.ID)
+			require.NoError(t, err)
+			require.Equal(t, job.ID, job2.ID)
 		})
 		t.Run("Missing", func(t *testing.T) {
 			t.Parallel()
@@ -126,22 +82,12 @@ func TestProvisionerJobs(t *testing.T) {
 		})
 	})
 
-	t.Run("Default limit", func(t *testing.T) {
+	t.Run("All", func(t *testing.T) {
 		t.Parallel()
 		ctx := testutil.Context(t, testutil.WaitMedium)
 		jobs, err := templateAdminClient.OrganizationProvisionerJobs(ctx, owner.OrganizationID, nil)
 		require.NoError(t, err)
-		require.Len(t, jobs, 50)
-	})
-
-	t.Run("IDs", func(t *testing.T) {
-		t.Parallel()
-		ctx := testutil.Context(t, testutil.WaitMedium)
-		jobs, err := templateAdminClient.OrganizationProvisionerJobs(ctx, owner.OrganizationID, &codersdk.OrganizationProvisionerJobsOptions{
-			IDs: []uuid.UUID{workspace.LatestBuild.Job.ID, version.Job.ID},
-		})
-		require.NoError(t, err)
-		require.Len(t, jobs, 2)
+		require.Len(t, jobs, 3)
 	})
 
 	t.Run("Status", func(t *testing.T) {
@@ -149,16 +95,6 @@ func TestProvisionerJobs(t *testing.T) {
 		ctx := testutil.Context(t, testutil.WaitMedium)
 		jobs, err := templateAdminClient.OrganizationProvisionerJobs(ctx, owner.OrganizationID, &codersdk.OrganizationProvisionerJobsOptions{
 			Status: []codersdk.ProvisionerJobStatus{codersdk.ProvisionerJobRunning},
-		})
-		require.NoError(t, err)
-		require.Len(t, jobs, 1)
-	})
-
-	t.Run("Tags", func(t *testing.T) {
-		t.Parallel()
-		ctx := testutil.Context(t, testutil.WaitMedium)
-		jobs, err := templateAdminClient.OrganizationProvisionerJobs(ctx, owner.OrganizationID, &codersdk.OrganizationProvisionerJobsOptions{
-			Tags: map[string]string{"count": "1"},
 		})
 		require.NoError(t, err)
 		require.Len(t, jobs, 1)

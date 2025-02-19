@@ -18,7 +18,7 @@ import {
 	SettingsSidebarNavItem,
 } from "components/Sidebar/Sidebar";
 import type { Permissions } from "contexts/auth/permissions";
-import { Check, ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { useDashboard } from "modules/dashboard/useDashboard";
 import { type FC, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -60,9 +60,7 @@ export const OrganizationSidebarView: FC<SidebarProps> = ({
 };
 
 function urlForSubpage(organizationName: string, subpage = ""): string {
-	return [`/organizations/${organizationName}`, subpage]
-		.filter(Boolean)
-		.join("/");
+	return `/organizations/${organizationName}/${subpage}`;
 }
 
 interface OrganizationsSettingsNavigationProps {
@@ -147,13 +145,6 @@ const OrganizationsSettingsNavigation: FC<
 												<span className="truncate">
 													{organization?.display_name || organization?.name}
 												</span>
-												{activeOrganization.name === organization.name && (
-													<Check
-														size={16}
-														strokeWidth={2}
-														className="ml-auto"
-													/>
-												)}
 											</CommandItem>
 										))}
 									</div>

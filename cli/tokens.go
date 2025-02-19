@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"golang.org/x/exp/slices"
@@ -224,7 +223,7 @@ func (r *RootCmd) listTokens() *serpent.Command {
 func (r *RootCmd) removeToken() *serpent.Command {
 	client := new(codersdk.Client)
 	cmd := &serpent.Command{
-		Use:     "remove <name|id|token>",
+		Use:     "remove <name>",
 		Aliases: []string{"delete"},
 		Short:   "Delete a token",
 		Middleware: serpent.Chain(
@@ -234,12 +233,7 @@ func (r *RootCmd) removeToken() *serpent.Command {
 		Handler: func(inv *serpent.Invocation) error {
 			token, err := client.APIKeyByName(inv.Context(), codersdk.Me, inv.Args[0])
 			if err != nil {
-				// If it's a token, we need to extract the ID
-				maybeID := strings.Split(inv.Args[0], "-")[0]
-				token, err = client.APIKeyByID(inv.Context(), codersdk.Me, maybeID)
-				if err != nil {
-					return xerrors.Errorf("fetch api key by name or id: %w", err)
-				}
+				return xerrors.Errorf("fetch api key by name %s: %w", inv.Args[0], err)
 			}
 
 			err = client.DeleteAPIKey(inv.Context(), codersdk.Me, token.ID)

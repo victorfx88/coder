@@ -10,22 +10,21 @@ import (
 	"net/netip"
 	"net/url"
 	"reflect"
-	"sort"
 	"strconv"
 	"sync"
 	"time"
 	"unicode"
 
-	"github.com/google/uuid"
-	"github.com/tailscale/wireguard-go/tun"
 	"golang.org/x/xerrors"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"tailscale.com/net/dns"
-	"tailscale.com/net/netmon"
 	"tailscale.com/util/dnsname"
 	"tailscale.com/wgengine/router"
 
+	"github.com/google/uuid"
+
 	"cdr.dev/slog"
+	"github.com/coder/coder/v2/coderd/util/ptr"
 	"github.com/coder/coder/v2/tailnet"
 	"github.com/coder/quartz"
 )
@@ -52,8 +51,9 @@ type Tunnel struct {
 	// option is used, to avoid the tunnel using itself as a sink for it's own
 	// logs, which could lead to deadlocks.
 	clientLogger slog.Logger
-	// the following may be nil
-	networkingStackFn func(*Tunnel, *StartRequest, slog.Logger) (NetworkStack, error)
+	// router and dnsConfigurator may be nil
+	router          router.Router
+	dnsConfigurator dns.OSConfigurator
 }
 
 type TunnelOption func(t *Tunnel)
@@ -72,7 +72,7 @@ func NewTunnel(
 		return nil, err
 	}
 	t := &Tunnel{
-		//nolint:govet // safe to copy the locks here because we haven't started the speaker
+		// nolint: govet // safe to copy the locks here because we haven't started the speaker
 		speaker:         *(s),
 		ctx:             ctx,
 		logger:          logger,
@@ -169,28 +169,21 @@ func (t *Tunnel) handleRPC(req *request[*TunnelMessage, *ManagerMessage]) {
 	}
 }
 
-type NetworkStack struct {
-	WireguardMonitor *netmon.Monitor
-	TUNDevice        tun.Device
-	Router           router.Router
-	DNSConfigurator  dns.OSConfigurator
-}
-
-func UseOSNetworkingStack() TunnelOption {
+func UseAsRouter() TunnelOption {
 	return func(t *Tunnel) {
-		t.networkingStackFn = GetNetworkingStack
+		t.router = NewRouter(t)
 	}
 }
 
 func UseAsLogger() TunnelOption {
 	return func(t *Tunnel) {
-		t.clientLogger = t.clientLogger.AppendSinks(t)
+		t.clientLogger = slog.Make(t)
 	}
 }
 
-func UseCustomLogSinks(sinks ...slog.Sink) TunnelOption {
+func UseAsDNSConfig() TunnelOption {
 	return func(t *Tunnel) {
-		t.clientLogger = t.clientLogger.AppendSinks(sinks...)
+		t.dnsConfigurator = NewDNSConfigurator(t)
 	}
 }
 
@@ -230,18 +223,9 @@ func (t *Tunnel) start(req *StartRequest) error {
 	if apiToken == "" {
 		return xerrors.New("missing api token")
 	}
-	header := make(http.Header)
+	var header http.Header
 	for _, h := range req.GetHeaders() {
 		header.Add(h.GetName(), h.GetValue())
-	}
-	var networkingStack NetworkStack
-	if t.networkingStackFn != nil {
-		networkingStack, err = t.networkingStackFn(t, req, t.clientLogger)
-		if err != nil {
-			return xerrors.Errorf("failed to create networking stack dependencies: %w", err)
-		}
-	} else {
-		t.logger.Debug(t.ctx, "using default networking stack as no custom stack was provided")
 	}
 
 	conn, err := t.client.NewConn(
@@ -249,13 +233,12 @@ func (t *Tunnel) start(req *StartRequest) error {
 		svrURL,
 		apiToken,
 		&Options{
-			Headers:          header,
-			Logger:           t.clientLogger,
-			DNSConfigurator:  networkingStack.DNSConfigurator,
-			Router:           networkingStack.Router,
-			TUNDevice:        networkingStack.TUNDevice,
-			WireguardMonitor: networkingStack.WireguardMonitor,
-			UpdateHandler:    t,
+			Headers:           header,
+			Logger:            t.clientLogger,
+			DNSConfigurator:   t.dnsConfigurator,
+			Router:            t.router,
+			TUNFileDescriptor: ptr.Ref(int(req.GetTunnelFileDescriptor())),
+			UpdateHandler:     t,
 		},
 	)
 	if err != nil {
@@ -403,9 +386,6 @@ func (u *updater) createPeerUpdateLocked(update tailnet.WorkspaceUpdate) *PeerUp
 		for name := range agent.Hosts {
 			fqdn = append(fqdn, name.WithTrailingDot())
 		}
-		sort.Slice(fqdn, func(i, j int) bool {
-			return len(fqdn[i]) < len(fqdn[j])
-		})
 		out.DeletedAgents[i] = &Agent{
 			Id:            tailnet.UUIDToByteSlice(agent.ID),
 			Name:          agent.Name,
@@ -428,9 +408,6 @@ func (u *updater) convertAgentsLocked(agents []*tailnet.Agent) []*Agent {
 		for name := range agent.Hosts {
 			fqdn = append(fqdn, name.WithTrailingDot())
 		}
-		sort.Slice(fqdn, func(i, j int) bool {
-			return len(fqdn[i]) < len(fqdn[j])
-		})
 		protoAgent := &Agent{
 			Id:          tailnet.UUIDToByteSlice(agent.ID),
 			Name:        agent.Name,

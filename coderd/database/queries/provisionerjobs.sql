@@ -130,55 +130,21 @@ SELECT
 			AND pj.organization_id = pd.organization_id
 			AND pj.provisioner = ANY(pd.provisioners)
 			AND provisioner_tagset_contains(pd.tags, pj.tags)
-	) AS available_workers,
-	-- Include template and workspace information.
-	COALESCE(tv.name, '') AS template_version_name,
-	t.id AS template_id,
-	COALESCE(t.name, '') AS template_name,
-	COALESCE(t.display_name, '') AS template_display_name,
-	COALESCE(t.icon, '') AS template_icon,
-	w.id AS workspace_id,
-	COALESCE(w.name, '') AS workspace_name
+	) AS available_workers
 FROM
 	provisioner_jobs pj
 LEFT JOIN
 	queue_position qp ON qp.id = pj.id
 LEFT JOIN
 	queue_size qs ON TRUE
-LEFT JOIN
-	workspace_builds wb ON wb.id = CASE WHEN pj.input ? 'workspace_build_id' THEN (pj.input->>'workspace_build_id')::uuid END
-LEFT JOIN
-	workspaces w ON (
-		w.id = wb.workspace_id
-		AND w.organization_id = pj.organization_id
-	)
-LEFT JOIN
-	-- We should always have a template version, either explicitly or implicitly via workspace build.
-	template_versions tv ON (
-		tv.id = CASE WHEN pj.input ? 'template_version_id' THEN (pj.input->>'template_version_id')::uuid ELSE wb.template_version_id END
-		AND tv.organization_id = pj.organization_id
-	)
-LEFT JOIN
-	templates t ON (
-		t.id = tv.template_id
-		AND t.organization_id = pj.organization_id
-	)
 WHERE
-	pj.organization_id = @organization_id::uuid
+	(sqlc.narg('organization_id')::uuid IS NULL OR pj.organization_id = @organization_id)
 	AND (COALESCE(array_length(@ids::uuid[], 1), 0) = 0 OR pj.id = ANY(@ids::uuid[]))
 	AND (COALESCE(array_length(@status::provisioner_job_status[], 1), 0) = 0 OR pj.job_status = ANY(@status::provisioner_job_status[]))
-	AND (@tags::tagset = 'null'::tagset OR provisioner_tagset_contains(pj.tags::tagset, @tags::tagset))
 GROUP BY
 	pj.id,
 	qp.queue_position,
-	qs.count,
-	tv.name,
-	t.id,
-	t.name,
-	t.display_name,
-	t.icon,
-	w.id,
-	w.name
+	qs.count
 ORDER BY
 	pj.created_at DESC
 LIMIT

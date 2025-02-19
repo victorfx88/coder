@@ -159,7 +159,7 @@ func (api *API) generateFakeAuditLog(rw http.ResponseWriter, r *http.Request) {
 		Diff:             diff,
 		StatusCode:       http.StatusOK,
 		AdditionalFields: params.AdditionalFields,
-		RequestID:        params.RequestID,
+		RequestID:        uuid.Nil, // no request ID to attach this to
 		ResourceIcon:     "",
 		OrganizationID:   params.OrganizationID,
 	})

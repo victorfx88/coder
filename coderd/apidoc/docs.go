@@ -2977,43 +2977,6 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "integer",
-                        "description": "Page limit",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "array",
-                        "format": "uuid",
-                        "items": {
-                            "type": "string"
-                        },
-                        "description": "Filter results by job IDs",
-                        "name": "ids",
-                        "in": "query"
-                    },
-                    {
-                        "enum": [
-                            "pending",
-                            "running",
-                            "succeeded",
-                            "canceling",
-                            "canceled",
-                            "failed",
-                            "unknown",
-                            "pending",
-                            "running",
-                            "succeeded",
-                            "canceling",
-                            "canceled",
-                            "failed"
-                        ],
-                        "type": "string",
-                        "description": "Filter results by status",
-                        "name": "status",
-                        "in": "query"
-                    },
-                    {
                         "type": "object",
                         "description": "Provisioner tags to filter by (JSON of the form {'tag1':'value1','tag2':'value2'})",
                         "name": "tags",
@@ -3093,16 +3056,6 @@ const docTemplate = `{
                         "in": "query"
                     },
                     {
-                        "type": "array",
-                        "format": "uuid",
-                        "items": {
-                            "type": "string"
-                        },
-                        "description": "Filter results by job IDs",
-                        "name": "ids",
-                        "in": "query"
-                    },
-                    {
                         "enum": [
                             "pending",
                             "running",
@@ -3121,12 +3074,6 @@ const docTemplate = `{
                         "type": "string",
                         "description": "Filter results by status",
                         "name": "status",
-                        "in": "query"
-                    },
-                    {
-                        "type": "object",
-                        "description": "Provisioner tags to filter by (JSON of the form {'tag1':'value1','tag2':'value2'})",
-                        "name": "tags",
                         "in": "query"
                     }
                 ],
@@ -5658,44 +5605,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/templateversions/{templateversion}/presets": {
-            "get": {
-                "security": [
-                    {
-                        "CoderSessionToken": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Templates"
-                ],
-                "summary": "Get template version presets",
-                "operationId": "get-template-version-presets",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Template version ID",
-                        "name": "templateversion",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/codersdk.Preset"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/templateversions/{templateversion}/resources": {
             "get": {
                 "security": [
@@ -7945,49 +7854,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/workspaceagents/{workspaceagent}/containers": {
-            "get": {
-                "security": [
-                    {
-                        "CoderSessionToken": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Agents"
-                ],
-                "summary": "Get running containers for workspace agent",
-                "operationId": "get-running-containers-for-workspace-agent",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Workspace agent ID",
-                        "name": "workspaceagent",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "format": "key=value",
-                        "description": "Labels",
-                        "name": "label",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/codersdk.WorkspaceAgentListContainersResponse"
-                        }
-                    }
-                }
-            }
-        },
         "/workspaceagents/{workspaceagent}/coordinate": {
             "get": {
                 "security": [
@@ -10151,11 +10017,7 @@ const docTemplate = `{
                 "login",
                 "logout",
                 "register",
-                "request_password_reset",
-                "connect",
-                "disconnect",
-                "open",
-                "close"
+                "request_password_reset"
             ],
             "x-enum-varnames": [
                 "AuditActionCreate",
@@ -10166,11 +10028,7 @@ const docTemplate = `{
                 "AuditActionLogin",
                 "AuditActionLogout",
                 "AuditActionRegister",
-                "AuditActionRequestPasswordReset",
-                "AuditActionConnect",
-                "AuditActionDisconnect",
-                "AuditActionOpen",
-                "AuditActionClose"
+                "AuditActionRequestPasswordReset"
             ]
         },
         "codersdk.AuditDiff": {
@@ -10828,10 +10686,6 @@ const docTemplate = `{
                     ]
                 },
                 "organization_id": {
-                    "type": "string",
-                    "format": "uuid"
-                },
-                "request_id": {
                     "type": "string",
                     "format": "uuid"
                 },
@@ -13070,34 +12924,6 @@ const docTemplate = `{
                 }
             }
         },
-        "codersdk.Preset": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "parameters": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/codersdk.PresetParameter"
-                    }
-                }
-            }
-        },
-        "codersdk.PresetParameter": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string"
-                },
-                "value": {
-                    "type": "string"
-                }
-            }
-        },
         "codersdk.PrometheusConfig": {
             "type": "object",
             "properties": {
@@ -13237,15 +13063,6 @@ const docTemplate = `{
                             "$ref": "#/definitions/codersdk.ProvisionerJobStatus"
                         }
                     ]
-                },
-                "template_display_name": {
-                    "type": "string"
-                },
-                "template_icon": {
-                    "type": "string"
-                },
-                "template_name": {
-                    "type": "string"
                 }
             }
         },
@@ -13307,9 +13124,6 @@ const docTemplate = `{
                 },
                 "input": {
                     "$ref": "#/definitions/codersdk.ProvisionerJobInput"
-                },
-                "metadata": {
-                    "$ref": "#/definitions/codersdk.ProvisionerJobMetadata"
                 },
                 "organization_id": {
                     "type": "string",
@@ -13402,34 +13216,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "stage": {
-                    "type": "string"
-                }
-            }
-        },
-        "codersdk.ProvisionerJobMetadata": {
-            "type": "object",
-            "properties": {
-                "template_display_name": {
-                    "type": "string"
-                },
-                "template_icon": {
-                    "type": "string"
-                },
-                "template_id": {
-                    "type": "string",
-                    "format": "uuid"
-                },
-                "template_name": {
-                    "type": "string"
-                },
-                "template_version_name": {
-                    "type": "string"
-                },
-                "workspace_id": {
-                    "type": "string",
-                    "format": "uuid"
-                },
-                "workspace_name": {
                     "type": "string"
                 }
             }
@@ -13689,7 +13475,6 @@ const docTemplate = `{
                 "template",
                 "user",
                 "workspace",
-                "workspace_agent_resource_monitor",
                 "workspace_dormant",
                 "workspace_proxy"
             ],
@@ -13725,7 +13510,6 @@ const docTemplate = `{
                 "ResourceTemplate",
                 "ResourceUser",
                 "ResourceWorkspace",
-                "ResourceWorkspaceAgentResourceMonitor",
                 "ResourceWorkspaceDormant",
                 "ResourceWorkspaceProxy"
             ]
@@ -13929,9 +13713,7 @@ const docTemplate = `{
                 "notification_template",
                 "idp_sync_settings_organization",
                 "idp_sync_settings_group",
-                "idp_sync_settings_role",
-                "workspace_agent",
-                "workspace_app"
+                "idp_sync_settings_role"
             ],
             "x-enum-varnames": [
                 "ResourceTypeTemplate",
@@ -13955,9 +13737,7 @@ const docTemplate = `{
                 "ResourceTypeNotificationTemplate",
                 "ResourceTypeIdpSyncSettingsOrganization",
                 "ResourceTypeIdpSyncSettingsGroup",
-                "ResourceTypeIdpSyncSettingsRole",
-                "ResourceTypeWorkspaceAgent",
-                "ResourceTypeWorkspaceApp"
+                "ResourceTypeIdpSyncSettingsRole"
             ]
         },
         "codersdk.Response": {
@@ -15798,57 +15578,6 @@ const docTemplate = `{
                 }
             }
         },
-        "codersdk.WorkspaceAgentDevcontainer": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "description": "CreatedAt is the time the container was created.",
-                    "type": "string",
-                    "format": "date-time"
-                },
-                "id": {
-                    "description": "ID is the unique identifier of the container.",
-                    "type": "string"
-                },
-                "image": {
-                    "description": "Image is the name of the container image.",
-                    "type": "string"
-                },
-                "labels": {
-                    "description": "Labels is a map of key-value pairs of container labels.",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "name": {
-                    "description": "FriendlyName is the human-readable name of the container.",
-                    "type": "string"
-                },
-                "ports": {
-                    "description": "Ports includes ports exposed by the container.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/codersdk.WorkspaceAgentListeningPort"
-                    }
-                },
-                "running": {
-                    "description": "Running is true if the container is currently running.",
-                    "type": "boolean"
-                },
-                "status": {
-                    "description": "Status is the current status of the container. This is somewhat\nimplementation-dependent, but should generally be a human-readable\nstring.",
-                    "type": "string"
-                },
-                "volumes": {
-                    "description": "Volumes is a map of \"things\" mounted into the container. Again, this\nis somewhat implementation-dependent.",
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                }
-            }
-        },
         "codersdk.WorkspaceAgentHealth": {
             "type": "object",
             "properties": {
@@ -15888,25 +15617,6 @@ const docTemplate = `{
                 "WorkspaceAgentLifecycleShutdownError",
                 "WorkspaceAgentLifecycleOff"
             ]
-        },
-        "codersdk.WorkspaceAgentListContainersResponse": {
-            "type": "object",
-            "properties": {
-                "containers": {
-                    "description": "Containers is a list of containers visible to the workspace agent.",
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/codersdk.WorkspaceAgentDevcontainer"
-                    }
-                },
-                "warnings": {
-                    "description": "Warnings is a list of warnings that may have occurred during the\nprocess of listing containers. This should not include fatal errors.",
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
         },
         "codersdk.WorkspaceAgentListeningPort": {
             "type": "object",

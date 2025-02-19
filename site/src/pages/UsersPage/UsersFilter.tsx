@@ -7,10 +7,7 @@ import {
 	type UseFilterMenuOptions,
 	useFilterMenu,
 } from "components/Filter/menu";
-import {
-	StatusIndicator,
-	StatusIndicatorDot,
-} from "components/StatusIndicator/StatusIndicator";
+import { StatusIndicator } from "components/StatusIndicator/StatusIndicator";
 import type { FC } from "react";
 import { docs } from "utils/docs";
 
@@ -27,17 +24,17 @@ export const useStatusFilterMenu = ({
 		{
 			value: "active",
 			label: "Active",
-			startIcon: <StatusIndicatorDot variant="success" />,
+			startIcon: <StatusIndicator color="success" />,
 		},
 		{
 			value: "dormant",
 			label: "Dormant",
-			startIcon: <StatusIndicatorDot variant="warning" />,
+			startIcon: <StatusIndicator color="warning" />,
 		},
 		{
 			value: "suspended",
 			label: "Suspended",
-			startIcon: <StatusIndicatorDot variant="inactive" />,
+			startIcon: <StatusIndicator color="inactive" />,
 		},
 	];
 	return useFilterMenu({

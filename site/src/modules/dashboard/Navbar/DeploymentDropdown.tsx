@@ -97,6 +97,7 @@ const DeploymentDropdownContent: FC<DeploymentDropdownProps> = ({
 					onClick={onPopoverClose}
 				>
 					Organizations
+					<FeatureStageBadge contentType="beta" size="sm" showTooltip={false} />
 				</MenuItem>
 			)}
 			{canViewAuditLog && (

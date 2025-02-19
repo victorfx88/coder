@@ -1,6 +1,6 @@
 import { useTheme } from "@emotion/react";
 import { Stack } from "components/Stack/Stack";
-import { StatusIndicatorDot } from "components/StatusIndicator/StatusIndicator";
+import { StatusIndicator } from "components/StatusIndicator/StatusIndicator";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useTime } from "hooks/useTime";
@@ -18,19 +18,19 @@ export const LastUsed: FC<LastUsedProps> = ({ lastUsedAt }) => {
 		const t = dayjs(lastUsedAt);
 		const now = dayjs();
 		let message = t.fromNow();
-		let circle = <StatusIndicatorDot variant="inactive" />;
+		let circle = <StatusIndicator color="info" variant="outlined" />;
 
 		if (t.isAfter(now.subtract(1, "hour"))) {
-			circle = <StatusIndicatorDot variant="success" />;
+			circle = <StatusIndicator color="success" />;
 			// Since the agent reports on a 10m interval,
 			// the last_used_at can be inaccurate when recent.
 			message = "Now";
 		} else if (t.isAfter(now.subtract(3, "day"))) {
-			circle = <StatusIndicatorDot variant="pending" />;
+			circle = <StatusIndicator color="info" />;
 		} else if (t.isAfter(now.subtract(1, "month"))) {
-			circle = <StatusIndicatorDot variant="warning" />;
+			circle = <StatusIndicator color="warning" />;
 		} else if (t.isAfter(now.subtract(100, "year"))) {
-			circle = <StatusIndicatorDot variant="failed" />;
+			circle = <StatusIndicator color="error" />;
 		} else {
 			message = "Never";
 		}

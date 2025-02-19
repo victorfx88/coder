@@ -558,12 +558,6 @@ WHERE
             workspace_builds.reason::text = $11
         ELSE true
     END
-	-- Filter request_id
-	AND CASE
-		WHEN $12 :: uuid != '00000000-0000-0000-0000-000000000000'::uuid THEN
-			audit_logs.request_id = $12
-		ELSE true
-	END
 
 	-- Authorize Filter clause will be injected below in GetAuthorizedAuditLogsOffset
 	-- @authorize_filter
@@ -573,9 +567,9 @@ LIMIT
 	-- a limit of 0 means "no limit". The audit log table is unbounded
 	-- in size, and is expected to be quite large. Implement a default
 	-- limit of 100 to prevent accidental excessively large queries.
-	COALESCE(NULLIF($14 :: int, 0), 100)
+	COALESCE(NULLIF($13 :: int, 0), 100)
 OFFSET
-    $13
+    $12
 `
 
 type GetAuditLogsOffsetParams struct {
@@ -590,7 +584,6 @@ type GetAuditLogsOffsetParams struct {
 	DateFrom       time.Time `db:"date_from" json:"date_from"`
 	DateTo         time.Time `db:"date_to" json:"date_to"`
 	BuildReason    string    `db:"build_reason" json:"build_reason"`
-	RequestID      uuid.UUID `db:"request_id" json:"request_id"`
 	OffsetOpt      int32     `db:"offset_opt" json:"offset_opt"`
 	LimitOpt       int32     `db:"limit_opt" json:"limit_opt"`
 }
@@ -631,7 +624,6 @@ func (q *sqlQuerier) GetAuditLogsOffset(ctx context.Context, arg GetAuditLogsOff
 		arg.DateFrom,
 		arg.DateTo,
 		arg.BuildReason,
-		arg.RequestID,
 		arg.OffsetOpt,
 		arg.LimitOpt,
 	)
@@ -5403,172 +5395,6 @@ func (q *sqlQuerier) GetParameterSchemasByJobID(ctx context.Context, jobID uuid.
 	return items, nil
 }
 
-const getPresetByWorkspaceBuildID = `-- name: GetPresetByWorkspaceBuildID :one
-SELECT
-	template_version_presets.id, template_version_presets.template_version_id, template_version_presets.name, template_version_presets.created_at
-FROM
-	template_version_presets
-	INNER JOIN workspace_builds ON workspace_builds.template_version_preset_id = template_version_presets.id
-WHERE
-	workspace_builds.id = $1
-`
-
-func (q *sqlQuerier) GetPresetByWorkspaceBuildID(ctx context.Context, workspaceBuildID uuid.UUID) (TemplateVersionPreset, error) {
-	row := q.db.QueryRowContext(ctx, getPresetByWorkspaceBuildID, workspaceBuildID)
-	var i TemplateVersionPreset
-	err := row.Scan(
-		&i.ID,
-		&i.TemplateVersionID,
-		&i.Name,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getPresetParametersByTemplateVersionID = `-- name: GetPresetParametersByTemplateVersionID :many
-SELECT
-	template_version_preset_parameters.id, template_version_preset_parameters.template_version_preset_id, template_version_preset_parameters.name, template_version_preset_parameters.value
-FROM
-	template_version_preset_parameters
-	INNER JOIN template_version_presets ON template_version_preset_parameters.template_version_preset_id = template_version_presets.id
-WHERE
-	template_version_presets.template_version_id = $1
-`
-
-func (q *sqlQuerier) GetPresetParametersByTemplateVersionID(ctx context.Context, templateVersionID uuid.UUID) ([]TemplateVersionPresetParameter, error) {
-	rows, err := q.db.QueryContext(ctx, getPresetParametersByTemplateVersionID, templateVersionID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []TemplateVersionPresetParameter
-	for rows.Next() {
-		var i TemplateVersionPresetParameter
-		if err := rows.Scan(
-			&i.ID,
-			&i.TemplateVersionPresetID,
-			&i.Name,
-			&i.Value,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getPresetsByTemplateVersionID = `-- name: GetPresetsByTemplateVersionID :many
-SELECT
-	id, template_version_id, name, created_at
-FROM
-	template_version_presets
-WHERE
-	template_version_id = $1
-`
-
-func (q *sqlQuerier) GetPresetsByTemplateVersionID(ctx context.Context, templateVersionID uuid.UUID) ([]TemplateVersionPreset, error) {
-	rows, err := q.db.QueryContext(ctx, getPresetsByTemplateVersionID, templateVersionID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []TemplateVersionPreset
-	for rows.Next() {
-		var i TemplateVersionPreset
-		if err := rows.Scan(
-			&i.ID,
-			&i.TemplateVersionID,
-			&i.Name,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const insertPreset = `-- name: InsertPreset :one
-INSERT INTO
-	template_version_presets (template_version_id, name, created_at)
-VALUES
-	($1, $2, $3) RETURNING id, template_version_id, name, created_at
-`
-
-type InsertPresetParams struct {
-	TemplateVersionID uuid.UUID `db:"template_version_id" json:"template_version_id"`
-	Name              string    `db:"name" json:"name"`
-	CreatedAt         time.Time `db:"created_at" json:"created_at"`
-}
-
-func (q *sqlQuerier) InsertPreset(ctx context.Context, arg InsertPresetParams) (TemplateVersionPreset, error) {
-	row := q.db.QueryRowContext(ctx, insertPreset, arg.TemplateVersionID, arg.Name, arg.CreatedAt)
-	var i TemplateVersionPreset
-	err := row.Scan(
-		&i.ID,
-		&i.TemplateVersionID,
-		&i.Name,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const insertPresetParameters = `-- name: InsertPresetParameters :many
-INSERT INTO
-	template_version_preset_parameters (template_version_preset_id, name, value)
-SELECT
-	$1,
-	unnest($2 :: TEXT[]),
-	unnest($3 :: TEXT[])
-RETURNING id, template_version_preset_id, name, value
-`
-
-type InsertPresetParametersParams struct {
-	TemplateVersionPresetID uuid.UUID `db:"template_version_preset_id" json:"template_version_preset_id"`
-	Names                   []string  `db:"names" json:"names"`
-	Values                  []string  `db:"values" json:"values"`
-}
-
-func (q *sqlQuerier) InsertPresetParameters(ctx context.Context, arg InsertPresetParametersParams) ([]TemplateVersionPresetParameter, error) {
-	rows, err := q.db.QueryContext(ctx, insertPresetParameters, arg.TemplateVersionPresetID, pq.Array(arg.Names), pq.Array(arg.Values))
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []TemplateVersionPresetParameter
-	for rows.Next() {
-		var i TemplateVersionPresetParameter
-		if err := rows.Scan(
-			&i.ID,
-			&i.TemplateVersionPresetID,
-			&i.Name,
-			&i.Value,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const deleteOldProvisionerDaemons = `-- name: DeleteOldProvisionerDaemons :exec
 DELETE FROM provisioner_daemons WHERE (
 	(created_at < (NOW() - INTERVAL '7 days') AND last_seen_at IS NULL) OR
@@ -5750,13 +5576,7 @@ SELECT
 	current_job.id AS current_job_id,
 	current_job.job_status AS current_job_status,
 	previous_job.id AS previous_job_id,
-	previous_job.job_status AS previous_job_status,
-	COALESCE(current_template.name, ''::text) AS current_job_template_name,
-	COALESCE(current_template.display_name, ''::text) AS current_job_template_display_name,
-	COALESCE(current_template.icon, ''::text) AS current_job_template_icon,
-	COALESCE(previous_template.name, ''::text) AS previous_job_template_name,
-	COALESCE(previous_template.display_name, ''::text) AS previous_job_template_display_name,
-	COALESCE(previous_template.icon, ''::text) AS previous_job_template_icon
+	previous_job.job_status AS previous_job_status
 FROM
 	provisioner_daemons pd
 JOIN
@@ -5764,7 +5584,6 @@ JOIN
 LEFT JOIN
 	provisioner_jobs current_job ON (
 		current_job.worker_id = pd.id
-		AND current_job.organization_id = pd.organization_id
 		AND current_job.completed_at IS NULL
 	)
 LEFT JOIN
@@ -5776,39 +5595,11 @@ LEFT JOIN
 				provisioner_jobs
 			WHERE
 				worker_id = pd.id
-				AND organization_id = pd.organization_id
 				AND completed_at IS NOT NULL
 			ORDER BY
 				completed_at DESC
 			LIMIT 1
 		)
-		AND previous_job.organization_id = pd.organization_id
-	)
-LEFT JOIN
-	workspace_builds current_build ON current_build.id = CASE WHEN current_job.input ? 'workspace_build_id' THEN (current_job.input->>'workspace_build_id')::uuid END
-LEFT JOIN
-	-- We should always have a template version, either explicitly or implicitly via workspace build.
-	template_versions current_version ON (
-		current_version.id = CASE WHEN current_job.input ? 'template_version_id' THEN (current_job.input->>'template_version_id')::uuid ELSE current_build.template_version_id END
-		AND current_version.organization_id = pd.organization_id
-	)
-LEFT JOIN
-	templates current_template ON (
-		current_template.id = current_version.template_id
-		AND current_template.organization_id = pd.organization_id
-	)
-LEFT JOIN
-	workspace_builds previous_build ON previous_build.id = CASE WHEN previous_job.input ? 'workspace_build_id' THEN (previous_job.input->>'workspace_build_id')::uuid END
-LEFT JOIN
-	-- We should always have a template version, either explicitly or implicitly via workspace build.
-	template_versions previous_version ON (
-		previous_version.id = CASE WHEN previous_job.input ? 'template_version_id' THEN (previous_job.input->>'template_version_id')::uuid ELSE previous_build.template_version_id END
-		AND previous_version.organization_id = pd.organization_id
-	)
-LEFT JOIN
-	templates previous_template ON (
-		previous_template.id = previous_version.template_id
-		AND previous_template.organization_id = pd.organization_id
 	)
 WHERE
 	pd.organization_id = $2::uuid
@@ -5816,43 +5607,31 @@ WHERE
 	AND ($4::tagset = 'null'::tagset OR provisioner_tagset_contains(pd.tags::tagset, $4::tagset))
 ORDER BY
 	pd.created_at ASC
-LIMIT
-	$5::int
 `
 
 type GetProvisionerDaemonsWithStatusByOrganizationParams struct {
-	StaleIntervalMS int64         `db:"stale_interval_ms" json:"stale_interval_ms"`
-	OrganizationID  uuid.UUID     `db:"organization_id" json:"organization_id"`
-	IDs             []uuid.UUID   `db:"ids" json:"ids"`
-	Tags            StringMap     `db:"tags" json:"tags"`
-	Limit           sql.NullInt32 `db:"limit" json:"limit"`
+	StaleIntervalMS int64       `db:"stale_interval_ms" json:"stale_interval_ms"`
+	OrganizationID  uuid.UUID   `db:"organization_id" json:"organization_id"`
+	IDs             []uuid.UUID `db:"ids" json:"ids"`
+	Tags            StringMap   `db:"tags" json:"tags"`
 }
 
 type GetProvisionerDaemonsWithStatusByOrganizationRow struct {
-	ProvisionerDaemon              ProvisionerDaemon        `db:"provisioner_daemon" json:"provisioner_daemon"`
-	Status                         ProvisionerDaemonStatus  `db:"status" json:"status"`
-	KeyName                        string                   `db:"key_name" json:"key_name"`
-	CurrentJobID                   uuid.NullUUID            `db:"current_job_id" json:"current_job_id"`
-	CurrentJobStatus               NullProvisionerJobStatus `db:"current_job_status" json:"current_job_status"`
-	PreviousJobID                  uuid.NullUUID            `db:"previous_job_id" json:"previous_job_id"`
-	PreviousJobStatus              NullProvisionerJobStatus `db:"previous_job_status" json:"previous_job_status"`
-	CurrentJobTemplateName         string                   `db:"current_job_template_name" json:"current_job_template_name"`
-	CurrentJobTemplateDisplayName  string                   `db:"current_job_template_display_name" json:"current_job_template_display_name"`
-	CurrentJobTemplateIcon         string                   `db:"current_job_template_icon" json:"current_job_template_icon"`
-	PreviousJobTemplateName        string                   `db:"previous_job_template_name" json:"previous_job_template_name"`
-	PreviousJobTemplateDisplayName string                   `db:"previous_job_template_display_name" json:"previous_job_template_display_name"`
-	PreviousJobTemplateIcon        string                   `db:"previous_job_template_icon" json:"previous_job_template_icon"`
+	ProvisionerDaemon ProvisionerDaemon        `db:"provisioner_daemon" json:"provisioner_daemon"`
+	Status            ProvisionerDaemonStatus  `db:"status" json:"status"`
+	KeyName           string                   `db:"key_name" json:"key_name"`
+	CurrentJobID      uuid.NullUUID            `db:"current_job_id" json:"current_job_id"`
+	CurrentJobStatus  NullProvisionerJobStatus `db:"current_job_status" json:"current_job_status"`
+	PreviousJobID     uuid.NullUUID            `db:"previous_job_id" json:"previous_job_id"`
+	PreviousJobStatus NullProvisionerJobStatus `db:"previous_job_status" json:"previous_job_status"`
 }
 
-// Current job information.
-// Previous job information.
 func (q *sqlQuerier) GetProvisionerDaemonsWithStatusByOrganization(ctx context.Context, arg GetProvisionerDaemonsWithStatusByOrganizationParams) ([]GetProvisionerDaemonsWithStatusByOrganizationRow, error) {
 	rows, err := q.db.QueryContext(ctx, getProvisionerDaemonsWithStatusByOrganization,
 		arg.StaleIntervalMS,
 		arg.OrganizationID,
 		pq.Array(arg.IDs),
 		arg.Tags,
-		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
@@ -5879,12 +5658,6 @@ func (q *sqlQuerier) GetProvisionerDaemonsWithStatusByOrganization(ctx context.C
 			&i.CurrentJobStatus,
 			&i.PreviousJobID,
 			&i.PreviousJobStatus,
-			&i.CurrentJobTemplateName,
-			&i.CurrentJobTemplateDisplayName,
-			&i.CurrentJobTemplateIcon,
-			&i.PreviousJobTemplateName,
-			&i.PreviousJobTemplateDisplayName,
-			&i.PreviousJobTemplateIcon,
 		); err != nil {
 			return nil, err
 		}
@@ -6492,81 +6265,39 @@ SELECT
 			AND pj.organization_id = pd.organization_id
 			AND pj.provisioner = ANY(pd.provisioners)
 			AND provisioner_tagset_contains(pd.tags, pj.tags)
-	) AS available_workers,
-	-- Include template and workspace information.
-	COALESCE(tv.name, '') AS template_version_name,
-	t.id AS template_id,
-	COALESCE(t.name, '') AS template_name,
-	COALESCE(t.display_name, '') AS template_display_name,
-	COALESCE(t.icon, '') AS template_icon,
-	w.id AS workspace_id,
-	COALESCE(w.name, '') AS workspace_name
+	) AS available_workers
 FROM
 	provisioner_jobs pj
 LEFT JOIN
 	queue_position qp ON qp.id = pj.id
 LEFT JOIN
 	queue_size qs ON TRUE
-LEFT JOIN
-	workspace_builds wb ON wb.id = CASE WHEN pj.input ? 'workspace_build_id' THEN (pj.input->>'workspace_build_id')::uuid END
-LEFT JOIN
-	workspaces w ON (
-		w.id = wb.workspace_id
-		AND w.organization_id = pj.organization_id
-	)
-LEFT JOIN
-	-- We should always have a template version, either explicitly or implicitly via workspace build.
-	template_versions tv ON (
-		tv.id = CASE WHEN pj.input ? 'template_version_id' THEN (pj.input->>'template_version_id')::uuid ELSE wb.template_version_id END
-		AND tv.organization_id = pj.organization_id
-	)
-LEFT JOIN
-	templates t ON (
-		t.id = tv.template_id
-		AND t.organization_id = pj.organization_id
-	)
 WHERE
-	pj.organization_id = $1::uuid
+	($1::uuid IS NULL OR pj.organization_id = $1)
 	AND (COALESCE(array_length($2::uuid[], 1), 0) = 0 OR pj.id = ANY($2::uuid[]))
 	AND (COALESCE(array_length($3::provisioner_job_status[], 1), 0) = 0 OR pj.job_status = ANY($3::provisioner_job_status[]))
-	AND ($4::tagset = 'null'::tagset OR provisioner_tagset_contains(pj.tags::tagset, $4::tagset))
 GROUP BY
 	pj.id,
 	qp.queue_position,
-	qs.count,
-	tv.name,
-	t.id,
-	t.name,
-	t.display_name,
-	t.icon,
-	w.id,
-	w.name
+	qs.count
 ORDER BY
 	pj.created_at DESC
 LIMIT
-	$5::int
+	$4::int
 `
 
 type GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerParams struct {
-	OrganizationID uuid.UUID              `db:"organization_id" json:"organization_id"`
+	OrganizationID uuid.NullUUID          `db:"organization_id" json:"organization_id"`
 	IDs            []uuid.UUID            `db:"ids" json:"ids"`
 	Status         []ProvisionerJobStatus `db:"status" json:"status"`
-	Tags           StringMap              `db:"tags" json:"tags"`
 	Limit          sql.NullInt32          `db:"limit" json:"limit"`
 }
 
 type GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerRow struct {
-	ProvisionerJob      ProvisionerJob `db:"provisioner_job" json:"provisioner_job"`
-	QueuePosition       int64          `db:"queue_position" json:"queue_position"`
-	QueueSize           int64          `db:"queue_size" json:"queue_size"`
-	AvailableWorkers    []uuid.UUID    `db:"available_workers" json:"available_workers"`
-	TemplateVersionName string         `db:"template_version_name" json:"template_version_name"`
-	TemplateID          uuid.NullUUID  `db:"template_id" json:"template_id"`
-	TemplateName        string         `db:"template_name" json:"template_name"`
-	TemplateDisplayName string         `db:"template_display_name" json:"template_display_name"`
-	TemplateIcon        string         `db:"template_icon" json:"template_icon"`
-	WorkspaceID         uuid.NullUUID  `db:"workspace_id" json:"workspace_id"`
-	WorkspaceName       string         `db:"workspace_name" json:"workspace_name"`
+	ProvisionerJob   ProvisionerJob `db:"provisioner_job" json:"provisioner_job"`
+	QueuePosition    int64          `db:"queue_position" json:"queue_position"`
+	QueueSize        int64          `db:"queue_size" json:"queue_size"`
+	AvailableWorkers []uuid.UUID    `db:"available_workers" json:"available_workers"`
 }
 
 func (q *sqlQuerier) GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisioner(ctx context.Context, arg GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerParams) ([]GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerRow, error) {
@@ -6574,7 +6305,6 @@ func (q *sqlQuerier) GetProvisionerJobsByOrganizationAndStatusWithQueuePositionA
 		arg.OrganizationID,
 		pq.Array(arg.IDs),
 		pq.Array(arg.Status),
-		arg.Tags,
 		arg.Limit,
 	)
 	if err != nil {
@@ -6607,13 +6337,6 @@ func (q *sqlQuerier) GetProvisionerJobsByOrganizationAndStatusWithQueuePositionA
 			&i.QueuePosition,
 			&i.QueueSize,
 			pq.Array(&i.AvailableWorkers),
-			&i.TemplateVersionName,
-			&i.TemplateID,
-			&i.TemplateName,
-			&i.TemplateDisplayName,
-			&i.TemplateIcon,
-			&i.WorkspaceID,
-			&i.WorkspaceName,
 		); err != nil {
 			return nil, err
 		}
@@ -12042,227 +11765,6 @@ func (q *sqlQuerier) UpsertWorkspaceAgentPortShare(ctx context.Context, arg Upse
 	return i, err
 }
 
-const fetchMemoryResourceMonitorsByAgentID = `-- name: FetchMemoryResourceMonitorsByAgentID :one
-SELECT
-	agent_id, enabled, threshold, created_at, updated_at, state, debounced_until
-FROM
-	workspace_agent_memory_resource_monitors
-WHERE
-	agent_id = $1
-`
-
-func (q *sqlQuerier) FetchMemoryResourceMonitorsByAgentID(ctx context.Context, agentID uuid.UUID) (WorkspaceAgentMemoryResourceMonitor, error) {
-	row := q.db.QueryRowContext(ctx, fetchMemoryResourceMonitorsByAgentID, agentID)
-	var i WorkspaceAgentMemoryResourceMonitor
-	err := row.Scan(
-		&i.AgentID,
-		&i.Enabled,
-		&i.Threshold,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.State,
-		&i.DebouncedUntil,
-	)
-	return i, err
-}
-
-const fetchVolumesResourceMonitorsByAgentID = `-- name: FetchVolumesResourceMonitorsByAgentID :many
-SELECT
-	agent_id, enabled, threshold, path, created_at, updated_at, state, debounced_until
-FROM
-	workspace_agent_volume_resource_monitors
-WHERE
-	agent_id = $1
-`
-
-func (q *sqlQuerier) FetchVolumesResourceMonitorsByAgentID(ctx context.Context, agentID uuid.UUID) ([]WorkspaceAgentVolumeResourceMonitor, error) {
-	rows, err := q.db.QueryContext(ctx, fetchVolumesResourceMonitorsByAgentID, agentID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []WorkspaceAgentVolumeResourceMonitor
-	for rows.Next() {
-		var i WorkspaceAgentVolumeResourceMonitor
-		if err := rows.Scan(
-			&i.AgentID,
-			&i.Enabled,
-			&i.Threshold,
-			&i.Path,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.State,
-			&i.DebouncedUntil,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const insertMemoryResourceMonitor = `-- name: InsertMemoryResourceMonitor :one
-INSERT INTO
-	workspace_agent_memory_resource_monitors (
-		agent_id,
-		enabled,
-		state,
-		threshold,
-		created_at,
-		updated_at,
-		debounced_until
-	)
-VALUES
-	($1, $2, $3, $4, $5, $6, $7) RETURNING agent_id, enabled, threshold, created_at, updated_at, state, debounced_until
-`
-
-type InsertMemoryResourceMonitorParams struct {
-	AgentID        uuid.UUID                  `db:"agent_id" json:"agent_id"`
-	Enabled        bool                       `db:"enabled" json:"enabled"`
-	State          WorkspaceAgentMonitorState `db:"state" json:"state"`
-	Threshold      int32                      `db:"threshold" json:"threshold"`
-	CreatedAt      time.Time                  `db:"created_at" json:"created_at"`
-	UpdatedAt      time.Time                  `db:"updated_at" json:"updated_at"`
-	DebouncedUntil time.Time                  `db:"debounced_until" json:"debounced_until"`
-}
-
-func (q *sqlQuerier) InsertMemoryResourceMonitor(ctx context.Context, arg InsertMemoryResourceMonitorParams) (WorkspaceAgentMemoryResourceMonitor, error) {
-	row := q.db.QueryRowContext(ctx, insertMemoryResourceMonitor,
-		arg.AgentID,
-		arg.Enabled,
-		arg.State,
-		arg.Threshold,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-		arg.DebouncedUntil,
-	)
-	var i WorkspaceAgentMemoryResourceMonitor
-	err := row.Scan(
-		&i.AgentID,
-		&i.Enabled,
-		&i.Threshold,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.State,
-		&i.DebouncedUntil,
-	)
-	return i, err
-}
-
-const insertVolumeResourceMonitor = `-- name: InsertVolumeResourceMonitor :one
-INSERT INTO
-	workspace_agent_volume_resource_monitors (
-		agent_id,
-		path,
-		enabled,
-		state,
-		threshold,
-		created_at,
-		updated_at,
-		debounced_until
-	)
-VALUES
-	($1, $2, $3, $4, $5, $6, $7, $8) RETURNING agent_id, enabled, threshold, path, created_at, updated_at, state, debounced_until
-`
-
-type InsertVolumeResourceMonitorParams struct {
-	AgentID        uuid.UUID                  `db:"agent_id" json:"agent_id"`
-	Path           string                     `db:"path" json:"path"`
-	Enabled        bool                       `db:"enabled" json:"enabled"`
-	State          WorkspaceAgentMonitorState `db:"state" json:"state"`
-	Threshold      int32                      `db:"threshold" json:"threshold"`
-	CreatedAt      time.Time                  `db:"created_at" json:"created_at"`
-	UpdatedAt      time.Time                  `db:"updated_at" json:"updated_at"`
-	DebouncedUntil time.Time                  `db:"debounced_until" json:"debounced_until"`
-}
-
-func (q *sqlQuerier) InsertVolumeResourceMonitor(ctx context.Context, arg InsertVolumeResourceMonitorParams) (WorkspaceAgentVolumeResourceMonitor, error) {
-	row := q.db.QueryRowContext(ctx, insertVolumeResourceMonitor,
-		arg.AgentID,
-		arg.Path,
-		arg.Enabled,
-		arg.State,
-		arg.Threshold,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-		arg.DebouncedUntil,
-	)
-	var i WorkspaceAgentVolumeResourceMonitor
-	err := row.Scan(
-		&i.AgentID,
-		&i.Enabled,
-		&i.Threshold,
-		&i.Path,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.State,
-		&i.DebouncedUntil,
-	)
-	return i, err
-}
-
-const updateMemoryResourceMonitor = `-- name: UpdateMemoryResourceMonitor :exec
-UPDATE workspace_agent_memory_resource_monitors
-SET
-	updated_at = $2,
-	state = $3,
-	debounced_until = $4
-WHERE
-	agent_id = $1
-`
-
-type UpdateMemoryResourceMonitorParams struct {
-	AgentID        uuid.UUID                  `db:"agent_id" json:"agent_id"`
-	UpdatedAt      time.Time                  `db:"updated_at" json:"updated_at"`
-	State          WorkspaceAgentMonitorState `db:"state" json:"state"`
-	DebouncedUntil time.Time                  `db:"debounced_until" json:"debounced_until"`
-}
-
-func (q *sqlQuerier) UpdateMemoryResourceMonitor(ctx context.Context, arg UpdateMemoryResourceMonitorParams) error {
-	_, err := q.db.ExecContext(ctx, updateMemoryResourceMonitor,
-		arg.AgentID,
-		arg.UpdatedAt,
-		arg.State,
-		arg.DebouncedUntil,
-	)
-	return err
-}
-
-const updateVolumeResourceMonitor = `-- name: UpdateVolumeResourceMonitor :exec
-UPDATE workspace_agent_volume_resource_monitors
-SET
-		updated_at = $3,
-		state = $4,
-		debounced_until = $5
-WHERE
-		agent_id = $1 AND path = $2
-`
-
-type UpdateVolumeResourceMonitorParams struct {
-	AgentID        uuid.UUID                  `db:"agent_id" json:"agent_id"`
-	Path           string                     `db:"path" json:"path"`
-	UpdatedAt      time.Time                  `db:"updated_at" json:"updated_at"`
-	State          WorkspaceAgentMonitorState `db:"state" json:"state"`
-	DebouncedUntil time.Time                  `db:"debounced_until" json:"debounced_until"`
-}
-
-func (q *sqlQuerier) UpdateVolumeResourceMonitor(ctx context.Context, arg UpdateVolumeResourceMonitorParams) error {
-	_, err := q.db.ExecContext(ctx, updateVolumeResourceMonitor,
-		arg.AgentID,
-		arg.Path,
-		arg.UpdatedAt,
-		arg.State,
-		arg.DebouncedUntil,
-	)
-	return err
-}
-
 const deleteOldWorkspaceAgentLogs = `-- name: DeleteOldWorkspaceAgentLogs :exec
 WITH
 	latest_builds AS (
@@ -12318,7 +11820,7 @@ const getWorkspaceAgentAndLatestBuildByAuthToken = `-- name: GetWorkspaceAgentAn
 SELECT
 	workspaces.id, workspaces.created_at, workspaces.updated_at, workspaces.owner_id, workspaces.organization_id, workspaces.template_id, workspaces.deleted, workspaces.name, workspaces.autostart_schedule, workspaces.ttl, workspaces.last_used_at, workspaces.dormant_at, workspaces.deleting_at, workspaces.automatic_updates, workspaces.favorite, workspaces.next_start_at,
 	workspace_agents.id, workspace_agents.created_at, workspace_agents.updated_at, workspace_agents.name, workspace_agents.first_connected_at, workspace_agents.last_connected_at, workspace_agents.disconnected_at, workspace_agents.resource_id, workspace_agents.auth_token, workspace_agents.auth_instance_id, workspace_agents.architecture, workspace_agents.environment_variables, workspace_agents.operating_system, workspace_agents.instance_metadata, workspace_agents.resource_metadata, workspace_agents.directory, workspace_agents.version, workspace_agents.last_connected_replica_id, workspace_agents.connection_timeout_seconds, workspace_agents.troubleshooting_url, workspace_agents.motd_file, workspace_agents.lifecycle_state, workspace_agents.expanded_directory, workspace_agents.logs_length, workspace_agents.logs_overflowed, workspace_agents.started_at, workspace_agents.ready_at, workspace_agents.subsystems, workspace_agents.display_apps, workspace_agents.api_version, workspace_agents.display_order,
-	workspace_build_with_user.id, workspace_build_with_user.created_at, workspace_build_with_user.updated_at, workspace_build_with_user.workspace_id, workspace_build_with_user.template_version_id, workspace_build_with_user.build_number, workspace_build_with_user.transition, workspace_build_with_user.initiator_id, workspace_build_with_user.provisioner_state, workspace_build_with_user.job_id, workspace_build_with_user.deadline, workspace_build_with_user.reason, workspace_build_with_user.daily_cost, workspace_build_with_user.max_deadline, workspace_build_with_user.template_version_preset_id, workspace_build_with_user.initiator_by_avatar_url, workspace_build_with_user.initiator_by_username
+	workspace_build_with_user.id, workspace_build_with_user.created_at, workspace_build_with_user.updated_at, workspace_build_with_user.workspace_id, workspace_build_with_user.template_version_id, workspace_build_with_user.build_number, workspace_build_with_user.transition, workspace_build_with_user.initiator_id, workspace_build_with_user.provisioner_state, workspace_build_with_user.job_id, workspace_build_with_user.deadline, workspace_build_with_user.reason, workspace_build_with_user.daily_cost, workspace_build_with_user.max_deadline, workspace_build_with_user.initiator_by_avatar_url, workspace_build_with_user.initiator_by_username
 FROM
 	workspace_agents
 JOIN
@@ -12421,7 +11923,6 @@ func (q *sqlQuerier) GetWorkspaceAgentAndLatestBuildByAuthToken(ctx context.Cont
 		&i.WorkspaceBuild.Reason,
 		&i.WorkspaceBuild.DailyCost,
 		&i.WorkspaceBuild.MaxDeadline,
-		&i.WorkspaceBuild.TemplateVersionPresetID,
 		&i.WorkspaceBuild.InitiatorByAvatarUrl,
 		&i.WorkspaceBuild.InitiatorByUsername,
 	)
@@ -14625,7 +14126,7 @@ func (q *sqlQuerier) InsertWorkspaceBuildParameters(ctx context.Context, arg Ins
 }
 
 const getActiveWorkspaceBuildsByTemplateID = `-- name: GetActiveWorkspaceBuildsByTemplateID :many
-SELECT wb.id, wb.created_at, wb.updated_at, wb.workspace_id, wb.template_version_id, wb.build_number, wb.transition, wb.initiator_id, wb.provisioner_state, wb.job_id, wb.deadline, wb.reason, wb.daily_cost, wb.max_deadline, wb.template_version_preset_id, wb.initiator_by_avatar_url, wb.initiator_by_username
+SELECT wb.id, wb.created_at, wb.updated_at, wb.workspace_id, wb.template_version_id, wb.build_number, wb.transition, wb.initiator_id, wb.provisioner_state, wb.job_id, wb.deadline, wb.reason, wb.daily_cost, wb.max_deadline, wb.initiator_by_avatar_url, wb.initiator_by_username
 FROM (
     SELECT
         workspace_id, MAX(build_number) as max_build_number
@@ -14679,7 +14180,6 @@ func (q *sqlQuerier) GetActiveWorkspaceBuildsByTemplateID(ctx context.Context, t
 			&i.Reason,
 			&i.DailyCost,
 			&i.MaxDeadline,
-			&i.TemplateVersionPresetID,
 			&i.InitiatorByAvatarUrl,
 			&i.InitiatorByUsername,
 		); err != nil {
@@ -14775,7 +14275,7 @@ func (q *sqlQuerier) GetFailedWorkspaceBuildsByTemplateID(ctx context.Context, a
 
 const getLatestWorkspaceBuildByWorkspaceID = `-- name: GetLatestWorkspaceBuildByWorkspaceID :one
 SELECT
-	id, created_at, updated_at, workspace_id, template_version_id, build_number, transition, initiator_id, provisioner_state, job_id, deadline, reason, daily_cost, max_deadline, template_version_preset_id, initiator_by_avatar_url, initiator_by_username
+	id, created_at, updated_at, workspace_id, template_version_id, build_number, transition, initiator_id, provisioner_state, job_id, deadline, reason, daily_cost, max_deadline, initiator_by_avatar_url, initiator_by_username
 FROM
 	workspace_build_with_user AS workspace_builds
 WHERE
@@ -14804,7 +14304,6 @@ func (q *sqlQuerier) GetLatestWorkspaceBuildByWorkspaceID(ctx context.Context, w
 		&i.Reason,
 		&i.DailyCost,
 		&i.MaxDeadline,
-		&i.TemplateVersionPresetID,
 		&i.InitiatorByAvatarUrl,
 		&i.InitiatorByUsername,
 	)
@@ -14812,7 +14311,7 @@ func (q *sqlQuerier) GetLatestWorkspaceBuildByWorkspaceID(ctx context.Context, w
 }
 
 const getLatestWorkspaceBuilds = `-- name: GetLatestWorkspaceBuilds :many
-SELECT wb.id, wb.created_at, wb.updated_at, wb.workspace_id, wb.template_version_id, wb.build_number, wb.transition, wb.initiator_id, wb.provisioner_state, wb.job_id, wb.deadline, wb.reason, wb.daily_cost, wb.max_deadline, wb.template_version_preset_id, wb.initiator_by_avatar_url, wb.initiator_by_username
+SELECT wb.id, wb.created_at, wb.updated_at, wb.workspace_id, wb.template_version_id, wb.build_number, wb.transition, wb.initiator_id, wb.provisioner_state, wb.job_id, wb.deadline, wb.reason, wb.daily_cost, wb.max_deadline, wb.initiator_by_avatar_url, wb.initiator_by_username
 FROM (
     SELECT
         workspace_id, MAX(build_number) as max_build_number
@@ -14850,7 +14349,6 @@ func (q *sqlQuerier) GetLatestWorkspaceBuilds(ctx context.Context) ([]WorkspaceB
 			&i.Reason,
 			&i.DailyCost,
 			&i.MaxDeadline,
-			&i.TemplateVersionPresetID,
 			&i.InitiatorByAvatarUrl,
 			&i.InitiatorByUsername,
 		); err != nil {
@@ -14868,7 +14366,7 @@ func (q *sqlQuerier) GetLatestWorkspaceBuilds(ctx context.Context) ([]WorkspaceB
 }
 
 const getLatestWorkspaceBuildsByWorkspaceIDs = `-- name: GetLatestWorkspaceBuildsByWorkspaceIDs :many
-SELECT wb.id, wb.created_at, wb.updated_at, wb.workspace_id, wb.template_version_id, wb.build_number, wb.transition, wb.initiator_id, wb.provisioner_state, wb.job_id, wb.deadline, wb.reason, wb.daily_cost, wb.max_deadline, wb.template_version_preset_id, wb.initiator_by_avatar_url, wb.initiator_by_username
+SELECT wb.id, wb.created_at, wb.updated_at, wb.workspace_id, wb.template_version_id, wb.build_number, wb.transition, wb.initiator_id, wb.provisioner_state, wb.job_id, wb.deadline, wb.reason, wb.daily_cost, wb.max_deadline, wb.initiator_by_avatar_url, wb.initiator_by_username
 FROM (
     SELECT
         workspace_id, MAX(build_number) as max_build_number
@@ -14908,7 +14406,6 @@ func (q *sqlQuerier) GetLatestWorkspaceBuildsByWorkspaceIDs(ctx context.Context,
 			&i.Reason,
 			&i.DailyCost,
 			&i.MaxDeadline,
-			&i.TemplateVersionPresetID,
 			&i.InitiatorByAvatarUrl,
 			&i.InitiatorByUsername,
 		); err != nil {
@@ -14927,7 +14424,7 @@ func (q *sqlQuerier) GetLatestWorkspaceBuildsByWorkspaceIDs(ctx context.Context,
 
 const getWorkspaceBuildByID = `-- name: GetWorkspaceBuildByID :one
 SELECT
-	id, created_at, updated_at, workspace_id, template_version_id, build_number, transition, initiator_id, provisioner_state, job_id, deadline, reason, daily_cost, max_deadline, template_version_preset_id, initiator_by_avatar_url, initiator_by_username
+	id, created_at, updated_at, workspace_id, template_version_id, build_number, transition, initiator_id, provisioner_state, job_id, deadline, reason, daily_cost, max_deadline, initiator_by_avatar_url, initiator_by_username
 FROM
 	workspace_build_with_user AS workspace_builds
 WHERE
@@ -14954,7 +14451,6 @@ func (q *sqlQuerier) GetWorkspaceBuildByID(ctx context.Context, id uuid.UUID) (W
 		&i.Reason,
 		&i.DailyCost,
 		&i.MaxDeadline,
-		&i.TemplateVersionPresetID,
 		&i.InitiatorByAvatarUrl,
 		&i.InitiatorByUsername,
 	)
@@ -14963,7 +14459,7 @@ func (q *sqlQuerier) GetWorkspaceBuildByID(ctx context.Context, id uuid.UUID) (W
 
 const getWorkspaceBuildByJobID = `-- name: GetWorkspaceBuildByJobID :one
 SELECT
-	id, created_at, updated_at, workspace_id, template_version_id, build_number, transition, initiator_id, provisioner_state, job_id, deadline, reason, daily_cost, max_deadline, template_version_preset_id, initiator_by_avatar_url, initiator_by_username
+	id, created_at, updated_at, workspace_id, template_version_id, build_number, transition, initiator_id, provisioner_state, job_id, deadline, reason, daily_cost, max_deadline, initiator_by_avatar_url, initiator_by_username
 FROM
 	workspace_build_with_user AS workspace_builds
 WHERE
@@ -14990,7 +14486,6 @@ func (q *sqlQuerier) GetWorkspaceBuildByJobID(ctx context.Context, jobID uuid.UU
 		&i.Reason,
 		&i.DailyCost,
 		&i.MaxDeadline,
-		&i.TemplateVersionPresetID,
 		&i.InitiatorByAvatarUrl,
 		&i.InitiatorByUsername,
 	)
@@ -14999,7 +14494,7 @@ func (q *sqlQuerier) GetWorkspaceBuildByJobID(ctx context.Context, jobID uuid.UU
 
 const getWorkspaceBuildByWorkspaceIDAndBuildNumber = `-- name: GetWorkspaceBuildByWorkspaceIDAndBuildNumber :one
 SELECT
-	id, created_at, updated_at, workspace_id, template_version_id, build_number, transition, initiator_id, provisioner_state, job_id, deadline, reason, daily_cost, max_deadline, template_version_preset_id, initiator_by_avatar_url, initiator_by_username
+	id, created_at, updated_at, workspace_id, template_version_id, build_number, transition, initiator_id, provisioner_state, job_id, deadline, reason, daily_cost, max_deadline, initiator_by_avatar_url, initiator_by_username
 FROM
 	workspace_build_with_user AS workspace_builds
 WHERE
@@ -15030,7 +14525,6 @@ func (q *sqlQuerier) GetWorkspaceBuildByWorkspaceIDAndBuildNumber(ctx context.Co
 		&i.Reason,
 		&i.DailyCost,
 		&i.MaxDeadline,
-		&i.TemplateVersionPresetID,
 		&i.InitiatorByAvatarUrl,
 		&i.InitiatorByUsername,
 	)
@@ -15106,7 +14600,7 @@ func (q *sqlQuerier) GetWorkspaceBuildStatsByTemplates(ctx context.Context, sinc
 
 const getWorkspaceBuildsByWorkspaceID = `-- name: GetWorkspaceBuildsByWorkspaceID :many
 SELECT
-	id, created_at, updated_at, workspace_id, template_version_id, build_number, transition, initiator_id, provisioner_state, job_id, deadline, reason, daily_cost, max_deadline, template_version_preset_id, initiator_by_avatar_url, initiator_by_username
+	id, created_at, updated_at, workspace_id, template_version_id, build_number, transition, initiator_id, provisioner_state, job_id, deadline, reason, daily_cost, max_deadline, initiator_by_avatar_url, initiator_by_username
 FROM
 	workspace_build_with_user AS workspace_builds
 WHERE
@@ -15176,7 +14670,6 @@ func (q *sqlQuerier) GetWorkspaceBuildsByWorkspaceID(ctx context.Context, arg Ge
 			&i.Reason,
 			&i.DailyCost,
 			&i.MaxDeadline,
-			&i.TemplateVersionPresetID,
 			&i.InitiatorByAvatarUrl,
 			&i.InitiatorByUsername,
 		); err != nil {
@@ -15194,7 +14687,7 @@ func (q *sqlQuerier) GetWorkspaceBuildsByWorkspaceID(ctx context.Context, arg Ge
 }
 
 const getWorkspaceBuildsCreatedAfter = `-- name: GetWorkspaceBuildsCreatedAfter :many
-SELECT id, created_at, updated_at, workspace_id, template_version_id, build_number, transition, initiator_id, provisioner_state, job_id, deadline, reason, daily_cost, max_deadline, template_version_preset_id, initiator_by_avatar_url, initiator_by_username FROM workspace_build_with_user WHERE created_at > $1
+SELECT id, created_at, updated_at, workspace_id, template_version_id, build_number, transition, initiator_id, provisioner_state, job_id, deadline, reason, daily_cost, max_deadline, initiator_by_avatar_url, initiator_by_username FROM workspace_build_with_user WHERE created_at > $1
 `
 
 func (q *sqlQuerier) GetWorkspaceBuildsCreatedAfter(ctx context.Context, createdAt time.Time) ([]WorkspaceBuild, error) {
@@ -15221,7 +14714,6 @@ func (q *sqlQuerier) GetWorkspaceBuildsCreatedAfter(ctx context.Context, created
 			&i.Reason,
 			&i.DailyCost,
 			&i.MaxDeadline,
-			&i.TemplateVersionPresetID,
 			&i.InitiatorByAvatarUrl,
 			&i.InitiatorByUsername,
 		); err != nil {
@@ -15253,28 +14745,26 @@ INSERT INTO
 		provisioner_state,
 		deadline,
 		max_deadline,
-		reason,
-		template_version_preset_id
+		reason
 	)
 VALUES
-	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 `
 
 type InsertWorkspaceBuildParams struct {
-	ID                      uuid.UUID           `db:"id" json:"id"`
-	CreatedAt               time.Time           `db:"created_at" json:"created_at"`
-	UpdatedAt               time.Time           `db:"updated_at" json:"updated_at"`
-	WorkspaceID             uuid.UUID           `db:"workspace_id" json:"workspace_id"`
-	TemplateVersionID       uuid.UUID           `db:"template_version_id" json:"template_version_id"`
-	BuildNumber             int32               `db:"build_number" json:"build_number"`
-	Transition              WorkspaceTransition `db:"transition" json:"transition"`
-	InitiatorID             uuid.UUID           `db:"initiator_id" json:"initiator_id"`
-	JobID                   uuid.UUID           `db:"job_id" json:"job_id"`
-	ProvisionerState        []byte              `db:"provisioner_state" json:"provisioner_state"`
-	Deadline                time.Time           `db:"deadline" json:"deadline"`
-	MaxDeadline             time.Time           `db:"max_deadline" json:"max_deadline"`
-	Reason                  BuildReason         `db:"reason" json:"reason"`
-	TemplateVersionPresetID uuid.NullUUID       `db:"template_version_preset_id" json:"template_version_preset_id"`
+	ID                uuid.UUID           `db:"id" json:"id"`
+	CreatedAt         time.Time           `db:"created_at" json:"created_at"`
+	UpdatedAt         time.Time           `db:"updated_at" json:"updated_at"`
+	WorkspaceID       uuid.UUID           `db:"workspace_id" json:"workspace_id"`
+	TemplateVersionID uuid.UUID           `db:"template_version_id" json:"template_version_id"`
+	BuildNumber       int32               `db:"build_number" json:"build_number"`
+	Transition        WorkspaceTransition `db:"transition" json:"transition"`
+	InitiatorID       uuid.UUID           `db:"initiator_id" json:"initiator_id"`
+	JobID             uuid.UUID           `db:"job_id" json:"job_id"`
+	ProvisionerState  []byte              `db:"provisioner_state" json:"provisioner_state"`
+	Deadline          time.Time           `db:"deadline" json:"deadline"`
+	MaxDeadline       time.Time           `db:"max_deadline" json:"max_deadline"`
+	Reason            BuildReason         `db:"reason" json:"reason"`
 }
 
 func (q *sqlQuerier) InsertWorkspaceBuild(ctx context.Context, arg InsertWorkspaceBuildParams) error {
@@ -15292,7 +14782,6 @@ func (q *sqlQuerier) InsertWorkspaceBuild(ctx context.Context, arg InsertWorkspa
 		arg.Deadline,
 		arg.MaxDeadline,
 		arg.Reason,
-		arg.TemplateVersionPresetID,
 	)
 	return err
 }

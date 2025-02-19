@@ -89,11 +89,11 @@ To build the server to receive webhooks and interact with Slack:
                return res.status(400).send("Error: request body is missing");
            }
 
-           const { title_markdown, body_markdown } = req.body;
-              if (!title_markdown || !body_markdown) {
-                  return res
-                      .status(400)
-                      .send('Error: missing fields: "title_markdown", or "body_markdown"');
+           const { title, body } = req.body;
+           if (!title || !body) {
+               return res
+                   .status(400)
+                   .send('Error: missing fields: "title", or "body"');
            }
 
            const payload = req.body.payload;
@@ -119,11 +119,11 @@ To build the server to receive webhooks and interact with Slack:
                blocks: [
                    {
                        type: "header",
-                       text: { type: "mrkdwn", text: title_markdown },
+                       text: { type: "plain_text", text: title },
                    },
                    {
                        type: "section",
-                       text: { type: "mrkdwn", text: body_markdown },
+                       text: { type: "mrkdwn", text: body },
                    },
                ],
            };

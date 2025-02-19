@@ -5,9 +5,7 @@ import type {
 	WorkspaceBuild,
 } from "api/typesGenerated";
 import { Alert } from "components/Alert/Alert";
-import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { Loader } from "components/Loader/Loader";
-import { Margins } from "components/Margins/Margins";
 import {
 	FullWidthPageHeader,
 	PageHeaderSubtitle,
@@ -50,7 +48,6 @@ const sortLogsByCreatedAt = (logs: ProvisionerJobLog[]) => {
 export interface WorkspaceBuildPageViewProps {
 	logs: ProvisionerJobLog[] | undefined;
 	build: WorkspaceBuild | undefined;
-	buildError?: unknown;
 	builds: WorkspaceBuild[] | undefined;
 	activeBuildNumber: number;
 }
@@ -58,7 +55,6 @@ export interface WorkspaceBuildPageViewProps {
 export const WorkspaceBuildPageView: FC<WorkspaceBuildPageViewProps> = ({
 	logs,
 	build,
-	buildError,
 	builds,
 	activeBuildNumber,
 }) => {
@@ -67,17 +63,6 @@ export const WorkspaceBuildPageView: FC<WorkspaceBuildPageViewProps> = ({
 		key: LOGS_TAB_KEY,
 		defaultValue: "build",
 	});
-
-	if (buildError) {
-		return (
-			<Margins>
-				<ErrorAlert
-					error={buildError}
-					css={{ marginTop: 16, marginBottom: 16 }}
-				/>
-			</Margins>
-		);
-	}
 
 	if (!build) {
 		return <Loader />;

@@ -513,7 +513,7 @@ func (r *RootCmd) Server(newAPI func(context.Context, *coderd.Options) (*coderd.
 			}
 
 			accessURL := vals.AccessURL.String()
-			cliui.Info(inv.Stdout, lipgloss.NewStyle().
+			cliui.Infof(inv.Stdout, lipgloss.NewStyle().
 				Border(lipgloss.DoubleBorder()).
 				Align(lipgloss.Center).
 				Padding(0, 3).
@@ -694,12 +694,7 @@ func (r *RootCmd) Server(newAPI func(context.Context, *coderd.Options) (*coderd.
 				}
 			}
 
-			// As OIDC clients can be confidential or public,
-			// we should only check for a client id being set.
-			// The underlying library handles the case of no
-			// client secrets correctly. For more details on
-			// client types: https://oauth.net/2/client-types/
-			if vals.OIDC.ClientID != "" {
+			if vals.OIDC.ClientKeyFile != "" || vals.OIDC.ClientSecret != "" {
 				if vals.OIDC.IgnoreEmailVerified {
 					logger.Warn(ctx, "coder will not check email_verified for OIDC logins")
 				}
@@ -2565,8 +2560,6 @@ func parseExternalAuthProvidersFromEnv(prefix string, environ []string) ([]coder
 	return providers, nil
 }
 
-var reInvalidPortAfterHost = regexp.MustCompile(`invalid port ".+" after host`)
-
 // If the user provides a postgres URL with a password that contains special
 // characters, the URL will be invalid. We need to escape the password so that
 // the URL parse doesn't fail at the DB connector level.
@@ -2575,11 +2568,7 @@ func escapePostgresURLUserInfo(v string) (string, error) {
 	// I wish I could use errors.Is here, but this error is not declared as a
 	// variable in net/url. :(
 	if err != nil {
-		// Warning: The parser may also fail with an "invalid port" error if the password contains special
-		// characters. It does not detect invalid user information but instead incorrectly reports an invalid port.
-		//
-		// See: https://github.com/coder/coder/issues/16319
-		if strings.Contains(err.Error(), "net/url: invalid userinfo") || reInvalidPortAfterHost.MatchString(err.Error()) {
+		if strings.Contains(err.Error(), "net/url: invalid userinfo") {
 			// If the URL is invalid, we assume it is because the password contains
 			// special characters that need to be escaped.
 
