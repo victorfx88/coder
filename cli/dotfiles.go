@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -16,6 +17,25 @@ import (
 
 	"github.com/coder/coder/v2/cli/cliui"
 	"github.com/coder/serpent"
+)
+
+// Script sets for different operating systems
+var (
+	windowsScripts = []string{
+		"install.ps1",
+		"bootstrap.ps1",
+		"setup.ps1",
+	}
+	unixScripts = []string{
+		"install.sh",
+		"install",
+		"bootstrap.sh",
+		"bootstrap",
+		"script/bootstrap",
+		"setup.sh",
+		"setup",
+		"script/setup",
+	}
 )
 
 func (r *RootCmd) dotfiles() *serpent.Command {
@@ -41,17 +61,17 @@ func (r *RootCmd) dotfiles() *serpent.Command {
 				dotfilesDir = filepath.Join(cfgDir, dotfilesRepoDir)
 				// This follows the same pattern outlined by others in the market:
 				// https://github.com/coder/coder/pull/1696#issue-1245742312
-				installScriptSet = []string{
-					"install.sh",
-					"install",
-					"bootstrap.sh",
-					"bootstrap",
-					"script/bootstrap",
-					"setup.sh",
-					"setup",
-					"script/setup",
-				}
+				
+				// Choose appropriate script set based on runtime OS
+				installScriptSet []string
 			)
+			
+			// Select the appropriate script set based on the OS
+			if runtime.GOOS == "windows" {
+				installScriptSet = windowsScripts
+			} else {
+				installScriptSet = unixScripts
+			}
 
 			if cfg == "" {
 				return xerrors.Errorf("no config directory")
@@ -202,14 +222,24 @@ func (r *RootCmd) dotfiles() *serpent.Command {
 					return xerrors.Errorf("stat %s: %w", scriptPath, err)
 				}
 
-				if fi.Mode()&0o111 == 0 {
+				// On Windows, PowerShell scripts don't need the execute bit
+				isPowerShellOnWindows := runtime.GOOS == "windows" && strings.HasSuffix(script, ".ps1")
+				if !isPowerShellOnWindows && fi.Mode()&0o111 == 0 {
 					return xerrors.Errorf("script %q does not have execute permissions", script)
 				}
 
-				// it is safe to use a variable command here because it's from
-				// a filtered list of pre-approved install scripts
-				// nolint:gosec
-				scriptCmd := exec.CommandContext(inv.Context(), filepath.Join(dotfilesDir, script))
+				var scriptCmd *exec.Cmd
+
+				// For PowerShell scripts on Windows, run them with powershell.exe
+				if runtime.GOOS == "windows" && strings.HasSuffix(script, ".ps1") {
+					// nolint:gosec
+					scriptCmd = exec.CommandContext(inv.Context(), "powershell.exe", "-ExecutionPolicy", "Bypass", "-File", filepath.Join(dotfilesDir, script))
+				} else {
+					// For all other scripts (Unix or non-PS1 on Windows)
+					// nolint:gosec
+					scriptCmd = exec.CommandContext(inv.Context(), filepath.Join(dotfilesDir, script))
+				}
+				
 				scriptCmd.Dir = dotfilesDir
 				scriptCmd.Stdout = inv.Stdout
 				scriptCmd.Stderr = inv.Stderr

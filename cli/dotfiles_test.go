@@ -147,6 +147,39 @@ func TestDotfiles(t *testing.T) {
 		require.Equal(t, string(b), "wow\n")
 	})
 
+	t.Run("PowerShellInstallScript", func(t *testing.T) {
+		t.Parallel()
+		if runtime.GOOS != "windows" {
+			t.Skip("PowerShell install scripts test only runs on Windows")
+		}
+		_, root := clitest.New(t)
+		testRepo := testGitRepo(t, root)
+
+		// PowerShell script to create a file
+		// nolint:gosec
+		psScript := `Set-Content -Path "` + filepath.Join(string(root), ".ps_test_file") + `" -Value "powershell_test" -Force`
+		err := os.WriteFile(filepath.Join(testRepo, "install.ps1"), []byte(psScript), 0o644) // No execute bit required for PS1
+		require.NoError(t, err)
+
+		c := exec.Command("git", "add", "install.ps1")
+		c.Dir = testRepo
+		err = c.Run()
+		require.NoError(t, err)
+
+		c = exec.Command("git", "commit", "-m", `"add install.ps1"`)
+		c.Dir = testRepo
+		err = c.Run()
+		require.NoError(t, err)
+
+		inv, _ := clitest.New(t, "dotfiles", "--global-config", string(root), "--symlink-dir", string(root), "-y", testRepo)
+		err = inv.Run()
+		require.NoError(t, err)
+
+		b, err := os.ReadFile(filepath.Join(string(root), ".ps_test_file"))
+		require.NoError(t, err)
+		require.Equal(t, string(b), "powershell_test")
+	})
+
 	t.Run("NestedInstallScript", func(t *testing.T) {
 		t.Parallel()
 		if runtime.GOOS == "windows" {
