@@ -275,6 +275,77 @@ func TestDotfiles(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, string(b), "backup")
 	})
+
+	t.Run("PowerShellScript", func(t *testing.T) {
+		t.Parallel()
+		if runtime.GOOS != "windows" {
+			t.Skip("PowerShell scripts are only tested on Windows")
+		}
+		_, root := clitest.New(t)
+		testRepo := testGitRepo(t, root)
+
+		// Create a PowerShell script that writes to a file
+		script := fmt.Sprintf("Set-Content -Path '%s' -Value 'wow'", filepath.Join(string(root), ".bashrc"))
+		err := os.WriteFile(filepath.Join(testRepo, "install.ps1"), []byte(script), 0o644)
+		require.NoError(t, err)
+
+		c := exec.Command("git", "add", "install.ps1")
+		c.Dir = testRepo
+		err = c.Run()
+		require.NoError(t, err)
+
+		c = exec.Command("git", "commit", "-m", `"add install.ps1"`)
+		c.Dir = testRepo
+		err = c.Run()
+		require.NoError(t, err)
+
+		inv, _ := clitest.New(t, "dotfiles", "--global-config", string(root), "--symlink-dir", string(root), "-y", testRepo)
+		err = inv.Run()
+		require.NoError(t, err)
+
+		// Check if the file was created with the expected content
+		b, err := os.ReadFile(filepath.Join(string(root), ".bashrc"))
+		require.NoError(t, err)
+		require.Equal(t, string(b), "wow")
+	})
+
+	t.Run("OSSpecificScriptSelection", func(t *testing.T) {
+		t.Parallel()
+		_, root := clitest.New(t)
+		testRepo := testGitRepo(t, root)
+
+		// Create both PowerShell and Shell scripts
+		psScript := fmt.Sprintf("Set-Content -Path '%s' -Value 'from-ps1'", filepath.Join(string(root), ".bashrc"))
+		err := os.WriteFile(filepath.Join(testRepo, "install.ps1"), []byte(psScript), 0o644)
+		require.NoError(t, err)
+
+		shScript := fmt.Sprintf("#!/bin/bash\necho from-sh > %s", filepath.Join(string(root), ".bashrc"))
+		err = os.WriteFile(filepath.Join(testRepo, "install.sh"), []byte(shScript), 0o750)
+		require.NoError(t, err)
+
+		c := exec.Command("git", "add", "install.ps1", "install.sh")
+		c.Dir = testRepo
+		err = c.Run()
+		require.NoError(t, err)
+
+		c = exec.Command("git", "commit", "-m", `"add install scripts"`)
+		c.Dir = testRepo
+		err = c.Run()
+		require.NoError(t, err)
+
+		inv, _ := clitest.New(t, "dotfiles", "--global-config", string(root), "--symlink-dir", string(root), "-y", testRepo)
+		err = inv.Run()
+		require.NoError(t, err)
+
+		// Check which script was executed based on OS
+		b, err := os.ReadFile(filepath.Join(string(root), ".bashrc"))
+		require.NoError(t, err)
+		if runtime.GOOS == "windows" {
+			require.Equal(t, string(b), "from-ps1")
+		} else {
+			require.Equal(t, string(b), "from-sh\n")
+		}
+	})
 }
 
 func testGitRepo(t *testing.T, root config.Root) string {

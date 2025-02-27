@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -34,24 +35,32 @@ func (r *RootCmd) dotfiles() *serpent.Command {
 			},
 		),
 		Handler: func(inv *serpent.Invocation) error {
-			var (
-				gitRepo     = inv.Args[0]
-				cfg         = r.createConfig()
-				cfgDir      = string(cfg)
-				dotfilesDir = filepath.Join(cfgDir, dotfilesRepoDir)
-				// This follows the same pattern outlined by others in the market:
-				// https://github.com/coder/coder/pull/1696#issue-1245742312
-				installScriptSet = []string{
-					"install.sh",
-					"install",
-					"bootstrap.sh",
-					"bootstrap",
-					"script/bootstrap",
-					"setup.sh",
-					"setup",
-					"script/setup",
-				}
-			)
+			gitRepo := inv.Args[0]
+			cfg := r.createConfig()
+			cfgDir := string(cfg)
+			dotfilesDir := filepath.Join(cfgDir, dotfilesRepoDir)
+
+			// This follows the same pattern outlined by others in the market:
+			// https://github.com/coder/coder/pull/1696#issue-1245742312
+			// Windows-specific install scripts
+			windowsScripts := []string{
+				"install.ps1",
+				"bootstrap.ps1",
+				"setup.ps1",
+			}
+			// Unix-like OS install scripts
+			unixScripts := []string{
+				"install.sh",
+				"install",
+				"bootstrap.sh",
+				"bootstrap",
+				"script/bootstrap",
+				"setup.sh",
+				"setup",
+				"script/setup",
+			}
+			// Get the appropriate script set based on OS
+			installScriptSet := getOSSpecificScripts(windowsScripts, unixScripts)
 
 			if cfg == "" {
 				return xerrors.Errorf("no config directory")
@@ -202,14 +211,22 @@ func (r *RootCmd) dotfiles() *serpent.Command {
 					return xerrors.Errorf("stat %s: %w", scriptPath, err)
 				}
 
-				if fi.Mode()&0o111 == 0 {
+				// Only check execute permissions for non-PowerShell scripts
+				if !strings.HasSuffix(script, ".ps1") && fi.Mode()&0o111 == 0 {
 					return xerrors.Errorf("script %q does not have execute permissions", script)
 				}
 
 				// it is safe to use a variable command here because it's from
 				// a filtered list of pre-approved install scripts
 				// nolint:gosec
-				scriptCmd := exec.CommandContext(inv.Context(), filepath.Join(dotfilesDir, script))
+				var scriptCmd *exec.Cmd
+				if strings.HasSuffix(script, ".ps1") {
+					// For Windows PowerShell scripts
+					scriptCmd = exec.CommandContext(inv.Context(), "powershell.exe", "-ExecutionPolicy", "Bypass", "-File", filepath.Join(dotfilesDir, script))
+				} else {
+					// For Unix shell scripts
+					scriptCmd = exec.CommandContext(inv.Context(), filepath.Join(dotfilesDir, script))
+				}
 				scriptCmd.Dir = dotfilesDir
 				scriptCmd.Stdout = inv.Stdout
 				scriptCmd.Stderr = inv.Stderr
@@ -380,4 +397,14 @@ func isRegular(to string) (bool, error) {
 	}
 
 	return fi.Mode().IsRegular(), nil
+}
+
+// getOSSpecificScripts returns the appropriate script set based on the operating system
+func getOSSpecificScripts(windowsScripts, unixScripts []string) []string {
+	if runtime.GOOS == "windows" {
+		// On Windows, try Windows scripts first, then fall back to Unix scripts
+		return append(windowsScripts, unixScripts...)
+	}
+	// On Unix-like systems, only try Unix scripts
+	return unixScripts
 }
