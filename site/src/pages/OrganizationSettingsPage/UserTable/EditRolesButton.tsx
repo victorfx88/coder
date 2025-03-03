@@ -3,7 +3,6 @@ import Checkbox from "@mui/material/Checkbox";
 import Tooltip from "@mui/material/Tooltip";
 import type { SlimRole } from "api/typesGenerated";
 import { Button } from "components/Button/Button";
-import { CollapsibleSummary } from "components/CollapsibleSummary/CollapsibleSummary";
 import {
 	HelpTooltip,
 	HelpTooltipContent,
@@ -17,9 +16,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "components/deprecated/Popover/Popover";
-import { ChevronDownIcon, ChevronRightIcon } from "lucide-react";
-import { type FC, useEffect, useState } from "react";
-import { cn } from "utils/cn";
+import type { FC } from "react";
 
 const roleDescriptions: Record<string, string> = {
 	owner:
@@ -60,7 +57,7 @@ const Option: FC<OptionProps> = ({
 					}}
 				/>
 				<div className="flex flex-col">
-					<strong className="text-sm">{name}</strong>
+					<strong>{name}</strong>
 					<span className="text-xs text-content-secondary">{description}</span>
 				</div>
 			</div>
@@ -94,7 +91,6 @@ export const EditRolesButton: FC<EditRolesButtonProps> = ({
 
 		onChange([...selectedRoleNames, roleName]);
 	};
-	const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
 
 	const canSetRoles =
 		userLoginType !== "oidc" || (userLoginType === "oidc" && !oidcRoleSync);
@@ -113,20 +109,6 @@ export const EditRolesButton: FC<EditRolesButtonProps> = ({
 		);
 	}
 
-	const filteredRoles = roles.filter(
-		(role) => role.name !== "organization-workspace-creation-ban",
-	);
-	const advancedRoles = roles.filter(
-		(role) => role.name === "organization-workspace-creation-ban",
-	);
-
-	// make sure the advanced roles are always visible if the user has one of these roles
-	useEffect(() => {
-		if (selectedRoleNames.has("organization-workspace-creation-ban")) {
-			setIsAdvancedOpen(true);
-		}
-	}, [selectedRoleNames]);
-
 	return (
 		<Popover>
 			<PopoverTrigger>
@@ -142,14 +124,14 @@ export const EditRolesButton: FC<EditRolesButtonProps> = ({
 				</Tooltip>
 			</PopoverTrigger>
 
-			<PopoverContent className="w-96" disablePortal={false}>
+			<PopoverContent className="w-80" disablePortal={false}>
 				<fieldset
 					className="border-0 m-0 p-0 disabled:opacity-50"
 					disabled={isLoading}
 					title="Available roles"
 				>
-					<div className="flex flex-col gap-4 p-6 w-96">
-						{filteredRoles.map((role) => (
+					<div className="flex flex-col gap-4 p-6">
+						{roles.map((role) => (
 							<Option
 								key={role.name}
 								onChange={handleChange}
@@ -159,20 +141,6 @@ export const EditRolesButton: FC<EditRolesButtonProps> = ({
 								description={roleDescriptions[role.name] ?? ""}
 							/>
 						))}
-						{advancedRoles.length > 0 && (
-							<CollapsibleSummary label="advanced" defaultOpen={isAdvancedOpen}>
-								{advancedRoles.map((role) => (
-									<Option
-										key={role.name}
-										onChange={handleChange}
-										isChecked={selectedRoleNames.has(role.name)}
-										value={role.name}
-										name={role.display_name || role.name}
-										description={roleDescriptions[role.name] ?? ""}
-									/>
-								))}
-							</CollapsibleSummary>
-						)}
 					</div>
 				</fieldset>
 				<div className="p-6 border-t-1 border-solid border-border text-sm">

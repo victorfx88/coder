@@ -4,7 +4,6 @@ import {
 	MockOwnerRole,
 	MockSiteRoles,
 	MockUserAdminRole,
-	MockWorkspaceCreationBanRole,
 } from "testHelpers/entities";
 import { withDesktopViewport } from "testHelpers/storybook";
 import { EditRolesButton } from "./EditRolesButton";
@@ -36,17 +35,6 @@ export const Loading: Story = {
 		isLoading: true,
 		userLoginType: "password",
 		oidcRoleSync: false,
-	},
-	play: async ({ canvasElement }) => {
-		const canvas = within(canvasElement);
-		await userEvent.click(canvas.getByRole("button"));
-	},
-};
-
-export const AdvancedOpen: Story = {
-	args: {
-		selectedRoleNames: new Set([MockWorkspaceCreationBanRole.name]),
-		roles: MockSiteRoles,
 	},
 	play: async ({ canvasElement }) => {
 		const canvas = within(canvasElement);

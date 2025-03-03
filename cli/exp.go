@@ -14,7 +14,6 @@ func (r *RootCmd) expCmd() *serpent.Command {
 			r.scaletestCmd(),
 			r.errorExample(),
 			r.promptExample(),
-			r.rptyCommand(),
 		},
 	}
 	return cmd

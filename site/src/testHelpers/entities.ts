@@ -296,15 +296,6 @@ export const MockAuditorRole: TypesGen.Role = {
 	organization_id: "",
 };
 
-export const MockWorkspaceCreationBanRole: TypesGen.Role = {
-	name: "organization-workspace-creation-ban",
-	display_name: "Organization Workspace Creation Ban",
-	site_permissions: [],
-	organization_permissions: [],
-	user_permissions: [],
-	organization_id: "",
-};
-
 export const MockMemberRole: TypesGen.SlimRole = {
 	name: "member",
 	display_name: "Member",
@@ -468,15 +459,10 @@ export function assignableRole(
 	};
 }
 
-export const MockSiteRoles = [
-	MockUserAdminRole,
-	MockAuditorRole,
-	MockWorkspaceCreationBanRole,
-];
+export const MockSiteRoles = [MockUserAdminRole, MockAuditorRole];
 export const MockAssignableSiteRoles = [
 	assignableRole(MockUserAdminRole, true),
 	assignableRole(MockAuditorRole, true),
-	assignableRole(MockWorkspaceCreationBanRole, true),
 ];
 
 export const MockMemberPermissions = {

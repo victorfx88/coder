@@ -15,17 +15,18 @@ export const RBACResourceActions: Partial<
 		update: "update an api key, eg expires",
 	},
 	assign_org_role: {
-		assign: "assign org scoped roles",
-		create: "create/delete custom roles within an organization",
-		delete: "delete roles within an organization",
-		read: "view what roles are assignable within an organization",
-		unassign: "unassign org scoped roles",
-		update: "edit custom roles within an organization",
+		assign: "ability to assign org scoped roles",
+		create: "ability to create/delete custom roles within an organization",
+		delete: "ability to delete org scoped roles",
+		read: "view what roles are assignable",
+		update: "ability to edit custom roles within an organization",
 	},
 	assign_role: {
-		assign: "assign user roles",
+		assign: "ability to assign roles",
+		create: "ability to create/delete/edit custom roles",
+		delete: "ability to unassign roles",
 		read: "view what roles are assignable",
-		unassign: "unassign user roles",
+		update: "ability to edit custom roles",
 	},
 	audit_log: {
 		create: "create new audit log entries",
@@ -63,11 +64,6 @@ export const RBACResourceActions: Partial<
 	idpsync_settings: {
 		read: "read IdP sync settings",
 		update: "update IdP sync settings",
-	},
-	inbox_notification: {
-		create: "create inbox notifications",
-		read: "read inbox notifications",
-		update: "update inbox notifications",
 	},
 	license: {
 		create: "create a license",

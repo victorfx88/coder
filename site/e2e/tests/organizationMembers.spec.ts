@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { setupApiCalls } from "../api";
 import {
-	addUserToOrganization,
 	createOrganization,
 	createUser,
 	login,
@@ -19,7 +18,7 @@ test("add and remove organization member", async ({ page }) => {
 	requiresLicense();
 
 	// Create a new organization
-	const { name: orgName, displayName } = await createOrganization(page);
+	const { displayName } = await createOrganization(page);
 
 	// Navigate to members page
 	await page.getByRole("link", { name: "Members" }).click();
@@ -27,14 +26,17 @@ test("add and remove organization member", async ({ page }) => {
 
 	// Add a user to the org
 	const personToAdd = await createUser(page);
-	// This must be done as an admin, because you can't assign a role that has more
-	// permissions than you, even if you have the ability to assign roles.
-	await addUserToOrganization(page, orgName, personToAdd.email, [
-		"Organization User Admin",
-		"Organization Template Admin",
-	]);
-
+	await page.getByPlaceholder("User email or username").fill(personToAdd.email);
+	await page.getByRole("option", { name: personToAdd.email }).click();
+	await page.getByRole("button", { name: "Add user" }).click();
 	const addedRow = page.locator("tr", { hasText: personToAdd.email });
+	await expect(addedRow).toBeVisible();
+
+	// Give them a role
+	await addedRow.getByLabel("Edit user roles").click();
+	await page.getByText("Organization User Admin").click();
+	await page.getByText("Organization Template Admin").click();
+	await page.mouse.click(10, 10); // close the popover by clicking outside of it
 	await expect(addedRow.getByText("Organization User Admin")).toBeVisible();
 	await expect(addedRow.getByText("+1 more")).toBeVisible();
 

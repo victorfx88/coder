@@ -101,10 +101,6 @@ coder:
           # postgres://coder:password@postgres:5432/coder?sslmode=disable
           name: coder-db-url
           key: url
-    # For production deployments, we recommend configuring your own GitHub
-    # OAuth2 provider and disabling the default one.
-    - name: CODER_OAUTH2_GITHUB_DEFAULT_PROVIDER_ENABLE
-      value: "false"
 
     # (Optional) For production deployments the access URL should be set.
     # If you're just trying Coder, access the dashboard via the service IP.

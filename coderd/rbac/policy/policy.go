@@ -19,8 +19,7 @@ const (
 	ActionWorkspaceStart Action = "start"
 	ActionWorkspaceStop  Action = "stop"
 
-	ActionAssign   Action = "assign"
-	ActionUnassign Action = "unassign"
+	ActionAssign Action = "assign"
 
 	ActionReadPersonal   Action = "read_personal"
 	ActionUpdatePersonal Action = "update_personal"
@@ -222,19 +221,20 @@ var RBACPermissions = map[string]PermissionDefinition{
 	},
 	"assign_role": {
 		Actions: map[Action]ActionDefinition{
-			ActionAssign:   actDef("assign user roles"),
-			ActionUnassign: actDef("unassign user roles"),
-			ActionRead:     actDef("view what roles are assignable"),
+			ActionAssign: actDef("ability to assign roles"),
+			ActionRead:   actDef("view what roles are assignable"),
+			ActionDelete: actDef("ability to unassign roles"),
+			ActionCreate: actDef("ability to create/delete/edit custom roles"),
+			ActionUpdate: actDef("ability to edit custom roles"),
 		},
 	},
 	"assign_org_role": {
 		Actions: map[Action]ActionDefinition{
-			ActionAssign:   actDef("assign org scoped roles"),
-			ActionUnassign: actDef("unassign org scoped roles"),
-			ActionCreate:   actDef("create/delete custom roles within an organization"),
-			ActionRead:     actDef("view what roles are assignable within an organization"),
-			ActionUpdate:   actDef("edit custom roles within an organization"),
-			ActionDelete:   actDef("delete roles within an organization"),
+			ActionAssign: actDef("ability to assign org scoped roles"),
+			ActionRead:   actDef("view what roles are assignable"),
+			ActionDelete: actDef("ability to delete org scoped roles"),
+			ActionCreate: actDef("ability to create/delete custom roles within an organization"),
+			ActionUpdate: actDef("ability to edit custom roles within an organization"),
 		},
 	},
 	"oauth2_app": {
@@ -278,13 +278,6 @@ var RBACPermissions = map[string]PermissionDefinition{
 		Actions: map[Action]ActionDefinition{
 			ActionRead:   actDef("read notification preferences"),
 			ActionUpdate: actDef("update notification preferences"),
-		},
-	},
-	"inbox_notification": {
-		Actions: map[Action]ActionDefinition{
-			ActionCreate: actDef("create inbox notifications"),
-			ActionRead:   actDef("read inbox notifications"),
-			ActionUpdate: actDef("update inbox notifications"),
 		},
 	},
 	"crypto_key": {

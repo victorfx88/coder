@@ -112,7 +112,6 @@ func TestRolePermissions(t *testing.T) {
 	// Subjects to user
 	memberMe := authSubject{Name: "member_me", Actor: rbac.Subject{ID: currentUser.String(), Roles: rbac.RoleIdentifiers{rbac.RoleMember()}}}
 	orgMemberMe := authSubject{Name: "org_member_me", Actor: rbac.Subject{ID: currentUser.String(), Roles: rbac.RoleIdentifiers{rbac.RoleMember(), rbac.ScopedRoleOrgMember(orgID)}}}
-	orgMemberMeBanWorkspace := authSubject{Name: "org_member_me_workspace_ban", Actor: rbac.Subject{ID: currentUser.String(), Roles: rbac.RoleIdentifiers{rbac.RoleMember(), rbac.ScopedRoleOrgMember(orgID), rbac.ScopedRoleOrgWorkspaceCreationBan(orgID)}}}
 	groupMemberMe := authSubject{Name: "group_member_me", Actor: rbac.Subject{ID: currentUser.String(), Roles: rbac.RoleIdentifiers{rbac.RoleMember(), rbac.ScopedRoleOrgMember(orgID)}, Groups: []string{groupID.String()}}}
 
 	owner := authSubject{Name: "owner", Actor: rbac.Subject{ID: adminID.String(), Roles: rbac.RoleIdentifiers{rbac.RoleMember(), rbac.RoleOwner()}}}
@@ -182,28 +181,18 @@ func TestRolePermissions(t *testing.T) {
 			Actions:  []policy.Action{policy.ActionRead},
 			Resource: rbac.ResourceWorkspace.WithID(workspaceID).InOrg(orgID).WithOwner(currentUser.String()),
 			AuthorizeMap: map[bool][]hasAuthSubjects{
-				true:  {owner, orgMemberMe, orgAdmin, templateAdmin, orgTemplateAdmin, orgMemberMeBanWorkspace},
+				true:  {owner, orgMemberMe, orgAdmin, templateAdmin, orgTemplateAdmin},
 				false: {setOtherOrg, memberMe, userAdmin, orgAuditor, orgUserAdmin},
 			},
 		},
 		{
-			Name: "UpdateMyWorkspaceInOrg",
+			Name: "C_RDMyWorkspaceInOrg",
 			// When creating the WithID won't be set, but it does not change the result.
-			Actions:  []policy.Action{policy.ActionUpdate},
+			Actions:  []policy.Action{policy.ActionCreate, policy.ActionUpdate, policy.ActionDelete},
 			Resource: rbac.ResourceWorkspace.WithID(workspaceID).InOrg(orgID).WithOwner(currentUser.String()),
 			AuthorizeMap: map[bool][]hasAuthSubjects{
 				true:  {owner, orgMemberMe, orgAdmin},
 				false: {setOtherOrg, memberMe, userAdmin, templateAdmin, orgTemplateAdmin, orgUserAdmin, orgAuditor},
-			},
-		},
-		{
-			Name: "CreateDeleteMyWorkspaceInOrg",
-			// When creating the WithID won't be set, but it does not change the result.
-			Actions:  []policy.Action{policy.ActionCreate, policy.ActionDelete},
-			Resource: rbac.ResourceWorkspace.WithID(workspaceID).InOrg(orgID).WithOwner(currentUser.String()),
-			AuthorizeMap: map[bool][]hasAuthSubjects{
-				true:  {owner, orgMemberMe, orgAdmin},
-				false: {setOtherOrg, memberMe, userAdmin, templateAdmin, orgTemplateAdmin, orgUserAdmin, orgAuditor, orgMemberMeBanWorkspace},
 			},
 		},
 		{
@@ -303,9 +292,9 @@ func TestRolePermissions(t *testing.T) {
 			},
 		},
 		{
-			Name:     "CreateUpdateDeleteCustomRole",
-			Actions:  []policy.Action{policy.ActionCreate, policy.ActionUpdate, policy.ActionDelete},
-			Resource: rbac.ResourceAssignOrgRole,
+			Name:     "CreateCustomRole",
+			Actions:  []policy.Action{policy.ActionCreate, policy.ActionUpdate},
+			Resource: rbac.ResourceAssignRole,
 			AuthorizeMap: map[bool][]hasAuthSubjects{
 				true:  {owner},
 				false: {setOtherOrg, setOrgNotMe, userAdmin, orgMemberMe, memberMe, templateAdmin},
@@ -313,7 +302,7 @@ func TestRolePermissions(t *testing.T) {
 		},
 		{
 			Name:     "RoleAssignment",
-			Actions:  []policy.Action{policy.ActionAssign, policy.ActionUnassign},
+			Actions:  []policy.Action{policy.ActionAssign, policy.ActionDelete},
 			Resource: rbac.ResourceAssignRole,
 			AuthorizeMap: map[bool][]hasAuthSubjects{
 				true:  {owner, userAdmin},
@@ -331,7 +320,7 @@ func TestRolePermissions(t *testing.T) {
 		},
 		{
 			Name:     "OrgRoleAssignment",
-			Actions:  []policy.Action{policy.ActionAssign, policy.ActionUnassign},
+			Actions:  []policy.Action{policy.ActionAssign, policy.ActionDelete},
 			Resource: rbac.ResourceAssignOrgRole.InOrg(orgID),
 			AuthorizeMap: map[bool][]hasAuthSubjects{
 				true:  {owner, orgAdmin, userAdmin, orgUserAdmin},
@@ -352,8 +341,8 @@ func TestRolePermissions(t *testing.T) {
 			Actions:  []policy.Action{policy.ActionRead},
 			Resource: rbac.ResourceAssignOrgRole.InOrg(orgID),
 			AuthorizeMap: map[bool][]hasAuthSubjects{
-				true:  {owner, setOrgNotMe, orgMemberMe, userAdmin, templateAdmin},
-				false: {setOtherOrg, memberMe},
+				true:  {owner, setOrgNotMe, orgMemberMe, userAdmin},
+				false: {setOtherOrg, memberMe, templateAdmin},
 			},
 		},
 		{
@@ -363,17 +352,6 @@ func TestRolePermissions(t *testing.T) {
 			AuthorizeMap: map[bool][]hasAuthSubjects{
 				true:  {owner, orgMemberMe, memberMe},
 				false: {setOtherOrg, setOrgNotMe, templateAdmin, userAdmin},
-			},
-		},
-		{
-			Name: "InboxNotification",
-			Actions: []policy.Action{
-				policy.ActionCreate, policy.ActionRead, policy.ActionUpdate,
-			},
-			Resource: rbac.ResourceInboxNotification.WithID(uuid.New()).InOrg(orgID).WithOwner(currentUser.String()),
-			AuthorizeMap: map[bool][]hasAuthSubjects{
-				true:  {owner, orgMemberMe, orgAdmin},
-				false: {setOtherOrg, orgUserAdmin, orgTemplateAdmin, orgAuditor, templateAdmin, userAdmin, memberMe},
 			},
 		},
 		{
@@ -964,7 +942,6 @@ func TestListRoles(t *testing.T) {
 		fmt.Sprintf("organization-auditor:%s", orgID.String()),
 		fmt.Sprintf("organization-user-admin:%s", orgID.String()),
 		fmt.Sprintf("organization-template-admin:%s", orgID.String()),
-		fmt.Sprintf("organization-workspace-creation-ban:%s", orgID.String()),
 	},
 		orgRoleNames)
 }

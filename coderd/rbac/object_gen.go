@@ -27,21 +27,22 @@ var (
 
 	// ResourceAssignOrgRole
 	// Valid Actions
-	//  - "ActionAssign" :: assign org scoped roles
-	//  - "ActionCreate" :: create/delete custom roles within an organization
-	//  - "ActionDelete" :: delete roles within an organization
-	//  - "ActionRead" :: view what roles are assignable within an organization
-	//  - "ActionUnassign" :: unassign org scoped roles
-	//  - "ActionUpdate" :: edit custom roles within an organization
+	//  - "ActionAssign" :: ability to assign org scoped roles
+	//  - "ActionCreate" :: ability to create/delete custom roles within an organization
+	//  - "ActionDelete" :: ability to delete org scoped roles
+	//  - "ActionRead" :: view what roles are assignable
+	//  - "ActionUpdate" :: ability to edit custom roles within an organization
 	ResourceAssignOrgRole = Object{
 		Type: "assign_org_role",
 	}
 
 	// ResourceAssignRole
 	// Valid Actions
-	//  - "ActionAssign" :: assign user roles
+	//  - "ActionAssign" :: ability to assign roles
+	//  - "ActionCreate" :: ability to create/delete/edit custom roles
+	//  - "ActionDelete" :: ability to unassign roles
 	//  - "ActionRead" :: view what roles are assignable
-	//  - "ActionUnassign" :: unassign user roles
+	//  - "ActionUpdate" :: ability to edit custom roles
 	ResourceAssignRole = Object{
 		Type: "assign_role",
 	}
@@ -117,15 +118,6 @@ var (
 	//  - "ActionUpdate" :: update IdP sync settings
 	ResourceIdpsyncSettings = Object{
 		Type: "idpsync_settings",
-	}
-
-	// ResourceInboxNotification
-	// Valid Actions
-	//  - "ActionCreate" :: create inbox notifications
-	//  - "ActionRead" :: read inbox notifications
-	//  - "ActionUpdate" :: update inbox notifications
-	ResourceInboxNotification = Object{
-		Type: "inbox_notification",
 	}
 
 	// ResourceLicense
@@ -343,7 +335,6 @@ func AllResources() []Objecter {
 		ResourceGroup,
 		ResourceGroupMember,
 		ResourceIdpsyncSettings,
-		ResourceInboxNotification,
 		ResourceLicense,
 		ResourceNotificationMessage,
 		ResourceNotificationPreference,
@@ -376,7 +367,6 @@ func AllActions() []policy.Action {
 		policy.ActionRead,
 		policy.ActionReadPersonal,
 		policy.ActionSSH,
-		policy.ActionUnassign,
 		policy.ActionUpdate,
 		policy.ActionUpdatePersonal,
 		policy.ActionUse,

@@ -17,7 +17,6 @@ const (
 	ResourceGroup                         RBACResource = "group"
 	ResourceGroupMember                   RBACResource = "group_member"
 	ResourceIdpsyncSettings               RBACResource = "idpsync_settings"
-	ResourceInboxNotification             RBACResource = "inbox_notification"
 	ResourceLicense                       RBACResource = "license"
 	ResourceNotificationMessage           RBACResource = "notification_message"
 	ResourceNotificationPreference        RBACResource = "notification_preference"
@@ -50,7 +49,6 @@ const (
 	ActionRead               RBACAction = "read"
 	ActionReadPersonal       RBACAction = "read_personal"
 	ActionSSH                RBACAction = "ssh"
-	ActionUnassign           RBACAction = "unassign"
 	ActionUpdate             RBACAction = "update"
 	ActionUpdatePersonal     RBACAction = "update_personal"
 	ActionUse                RBACAction = "use"
@@ -64,8 +62,8 @@ const (
 var RBACResourceActions = map[RBACResource][]RBACAction{
 	ResourceWildcard:                      {},
 	ResourceApiKey:                        {ActionCreate, ActionDelete, ActionRead, ActionUpdate},
-	ResourceAssignOrgRole:                 {ActionAssign, ActionCreate, ActionDelete, ActionRead, ActionUnassign, ActionUpdate},
-	ResourceAssignRole:                    {ActionAssign, ActionRead, ActionUnassign},
+	ResourceAssignOrgRole:                 {ActionAssign, ActionCreate, ActionDelete, ActionRead, ActionUpdate},
+	ResourceAssignRole:                    {ActionAssign, ActionCreate, ActionDelete, ActionRead, ActionUpdate},
 	ResourceAuditLog:                      {ActionCreate, ActionRead},
 	ResourceCryptoKey:                     {ActionCreate, ActionDelete, ActionRead, ActionUpdate},
 	ResourceDebugInfo:                     {ActionRead},
@@ -75,7 +73,6 @@ var RBACResourceActions = map[RBACResource][]RBACAction{
 	ResourceGroup:                         {ActionCreate, ActionDelete, ActionRead, ActionUpdate},
 	ResourceGroupMember:                   {ActionRead},
 	ResourceIdpsyncSettings:               {ActionRead, ActionUpdate},
-	ResourceInboxNotification:             {ActionCreate, ActionRead, ActionUpdate},
 	ResourceLicense:                       {ActionCreate, ActionDelete, ActionRead},
 	ResourceNotificationMessage:           {ActionCreate, ActionDelete, ActionRead, ActionUpdate},
 	ResourceNotificationPreference:        {ActionRead, ActionUpdate},

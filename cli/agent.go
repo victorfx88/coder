@@ -38,24 +38,22 @@ import (
 
 func (r *RootCmd) workspaceAgent() *serpent.Command {
 	var (
-		auth                string
-		logDir              string
-		scriptDataDir       string
-		pprofAddress        string
-		noReap              bool
-		sshMaxTimeout       time.Duration
-		tailnetListenPort   int64
-		prometheusAddress   string
-		debugAddress        string
-		slogHumanPath       string
-		slogJSONPath        string
-		slogStackdriverPath string
-		blockFileTransfer   bool
-		agentHeaderCommand  string
-		agentHeader         []string
-
-		experimentalConnectionReports    bool
-		experimentalDevcontainersEnabled bool
+		auth                 string
+		logDir               string
+		scriptDataDir        string
+		pprofAddress         string
+		noReap               bool
+		sshMaxTimeout        time.Duration
+		tailnetListenPort    int64
+		prometheusAddress    string
+		debugAddress         string
+		slogHumanPath        string
+		slogJSONPath         string
+		slogStackdriverPath  string
+		blockFileTransfer    bool
+		agentHeaderCommand   string
+		agentHeader          []string
+		devcontainersEnabled bool
 	)
 	cmd := &serpent.Command{
 		Use:   "agent",
@@ -319,16 +317,12 @@ func (r *RootCmd) workspaceAgent() *serpent.Command {
 			}
 
 			var containerLister agentcontainers.Lister
-			if !experimentalDevcontainersEnabled {
+			if !devcontainersEnabled {
 				logger.Info(ctx, "agent devcontainer detection not enabled")
 				containerLister = &agentcontainers.NoopLister{}
 			} else {
 				logger.Info(ctx, "agent devcontainer detection enabled")
 				containerLister = agentcontainers.NewDocker(execer)
-			}
-
-			if experimentalConnectionReports {
-				logger.Info(ctx, "experimental connection reports enabled")
 			}
 
 			agnt := agent.New(agent.Options{
@@ -357,9 +351,6 @@ func (r *RootCmd) workspaceAgent() *serpent.Command {
 				BlockFileTransfer:  blockFileTransfer,
 				Execer:             execer,
 				ContainerLister:    containerLister,
-
-				ExperimentalDevcontainersEnabled: experimentalDevcontainersEnabled,
-				ExperimentalConnectionReports:    experimentalConnectionReports,
 			})
 
 			promHandler := agent.PrometheusMetricsHandler(prometheusRegistry, logger)
@@ -487,15 +478,7 @@ func (r *RootCmd) workspaceAgent() *serpent.Command {
 			Default:     "false",
 			Env:         "CODER_AGENT_DEVCONTAINERS_ENABLE",
 			Description: "Allow the agent to automatically detect running devcontainers.",
-			Value:       serpent.BoolOf(&experimentalDevcontainersEnabled),
-		},
-		{
-			Flag:        "experimental-connection-reports-enable",
-			Hidden:      true,
-			Default:     "false",
-			Env:         "CODER_AGENT_EXPERIMENTAL_CONNECTION_REPORTS_ENABLE",
-			Description: "Enable experimental connection reports.",
-			Value:       serpent.BoolOf(&experimentalConnectionReports),
+			Value:       serpent.BoolOf(&devcontainersEnabled),
 		},
 	}
 

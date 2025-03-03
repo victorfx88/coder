@@ -57,8 +57,7 @@ export const CustomRolesPage: FC = () => {
 		<RequirePermission
 			isFeatureVisible={
 				organizationPermissions.assignOrgRoles ||
-				organizationPermissions.createOrgRoles ||
-				organizationPermissions.viewOrgRoles
+				organizationPermissions.createOrgRoles
 			}
 		>
 			<Helmet>
