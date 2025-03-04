@@ -124,7 +124,7 @@ const JobRow: FC<JobRowProps> = ({ job }) => {
 							<ChevronRightIcon className="size-icon-sm p-0.5" />
 						)}
 						<span className="sr-only">({isOpen ? "Hide" : "Show more"})</span>
-						<span className="[&:first-letter]:uppercase">
+						<span className="first-letter:uppercase">
 							{relativeTime(new Date(job.created_at))}
 						</span>
 					</button>
@@ -170,7 +170,7 @@ const JobRow: FC<JobRowProps> = ({ job }) => {
 								])}
 							>
 								<TriangleAlertIcon className="text-content-destructive size-icon-sm p-0.5" />
-								<span className="[&:first-letter]:uppercase">{job.error}</span>
+								<span className="first-letter:uppercase">{job.error}</span>
 							</div>
 						)}
 						<DataGrid>

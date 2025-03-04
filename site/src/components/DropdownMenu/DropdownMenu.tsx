@@ -40,7 +40,7 @@ export const DropdownMenuSubTrigger = forwardRef<
 		ref={ref}
 		className={cn(
 			[
-				"flex cursor-default gap-2 select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none focus:bg-surface-secondary",
+				"flex cursor-default gap-2 select-none items-center rounded-sm px-2 py-1.5 text-sm outline-hidden focus:bg-surface-secondary",
 				"data-[state=open]:bg-surface-secondary [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
 				inset && "pl-8",
 			],
@@ -111,8 +111,8 @@ export const DropdownMenuItem = forwardRef<
 		ref={ref}
 		className={cn(
 			[
-				"relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-2 text-sm text-content-secondary font-medium outline-none transition-colors",
-				"focus:bg-surface-secondary focus:text-content-primary data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+				"relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-2 text-sm text-content-secondary font-medium outline-hidden transition-colors",
+				"focus:bg-surface-secondary focus:text-content-primary data-disabled:pointer-events-none data-disabled:opacity-50",
 				"[&>svg]:size-4 [&>svg]:shrink-0",
 				inset && "pl-8",
 			],
@@ -131,8 +131,8 @@ export const DropdownMenuCheckboxItem = forwardRef<
 		ref={ref}
 		className={cn(
 			[
-				"relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors",
-				"focus:bg-surface-secondary focus:text-content-primary data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+				"relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden transition-colors",
+				"focus:bg-surface-secondary focus:text-content-primary data-disabled:pointer-events-none data-disabled:opacity-50",
 			],
 			className,
 		)}
@@ -158,8 +158,8 @@ export const DropdownMenuRadioItem = forwardRef<
 		ref={ref}
 		className={cn(
 			[
-				"relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none transition-colors",
-				"focus:bg-surface-secondary focus:text-content-primary data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+				"relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-hidden transition-colors",
+				"focus:bg-surface-secondary focus:text-content-primary data-disabled:pointer-events-none data-disabled:opacity-50",
 			],
 			className,
 		)}

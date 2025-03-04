@@ -14,7 +14,7 @@ export const Switch = forwardRef<
 		className={cn(
 			`peer inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full shadow-sm transition-colors
 			border-2 border-transparent
-			focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-content-link
+			focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-content-link
 			focus-visible:ring-offset-2 focus-visible:ring-offset-surface-primary
 			disabled:cursor-not-allowed
 			data-[state=checked]:disabled:bg-surface-tertiary data-[state=unchecked]:disabled:bg-surface-tertiary

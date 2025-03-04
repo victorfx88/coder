@@ -32,7 +32,7 @@ export const JobStatusIndicator: FC<JobStatusIndicatorProps> = ({ job }) => {
 	return (
 		<StatusIndicator size="sm" variant={variantByStatus[job.status]}>
 			<StatusIndicatorDot />
-			<span className="[&:first-letter]:uppercase">{job.status}</span>
+			<span className="first-letter:uppercase">{job.status}</span>
 			{job.status === "failed" && (
 				<TriangleAlertIcon className="size-icon-xs p-[1px]" />
 			)}
@@ -51,7 +51,7 @@ export const DaemonJobStatusIndicator: FC<DaemonJobStatusIndicatorProps> = ({
 	return (
 		<StatusIndicator size="sm" variant={variantByStatus[job.status]}>
 			<StatusIndicatorDot />
-			<span className="[&:first-letter]:uppercase">{job.status}</span>
+			<span className="first-letter:uppercase">{job.status}</span>
 			{job.status === "failed" && (
 				<TriangleAlertIcon className="size-icon-xs p-[1px]" />
 			)}

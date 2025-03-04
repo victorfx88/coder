@@ -139,7 +139,7 @@ const DaemonRow: FC<DaemonRowProps> = ({ daemon }) => {
 							<ChevronRightIcon className="size-icon-sm p-0.5" />
 						)}
 						<span className="sr-only">({isOpen ? "Hide" : "Show more"})</span>
-						<span className="[&:first-letter]:uppercase">
+						<span className="first-letter:uppercase">
 							{relativeTime(
 								new Date(daemon.last_seen_at ?? new Date().toISOString()),
 							)}
@@ -175,7 +175,7 @@ const DaemonRow: FC<DaemonRowProps> = ({ daemon }) => {
 				<TableCell>
 					<StatusIndicator size="sm" variant={statusIndicatorVariant(daemon)}>
 						<StatusIndicatorDot />
-						<span className="[&:first-letter]:uppercase">
+						<span className="first-letter:uppercase">
 							{statusLabel(daemon)}
 						</span>
 					</StatusIndicator>

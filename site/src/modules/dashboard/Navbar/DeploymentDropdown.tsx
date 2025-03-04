@@ -42,7 +42,7 @@ export const DeploymentDropdown: FC<DeploymentDropdownProps> = ({
 			<PopoverTrigger>
 				<Button variant="outline" size="lg">
 					Admin settings
-					<ChevronDownIcon className="text-content-primary !size-icon-xs" />
+					<ChevronDownIcon className="text-content-primary size-icon-xs!" />
 				</Button>
 			</PopoverTrigger>
 

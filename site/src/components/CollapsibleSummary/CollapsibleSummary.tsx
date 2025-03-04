@@ -82,7 +82,7 @@ export const CollapsibleSummary: FC<CollapsibleSummaryProps> = ({
 				<span className="sr-only">
 					({isOpen ? "Hide" : "Show"}) {label}
 				</span>
-				<span className="[&:first-letter]:uppercase">{label}</span>
+				<span className="first-letter:uppercase">{label}</span>
 			</button>
 
 			{isOpen && <div className="flex flex-col gap-4">{children}</div>}

@@ -7,12 +7,12 @@ import type { FC } from "react";
 import { cn } from "utils/cn";
 
 export const badgeVariants = cva(
-	"inline-flex items-center rounded-md border px-2 py-1 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+	"inline-flex items-center rounded-md border px-2 py-1 transition-colors focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2",
 	{
 		variants: {
 			variant: {
 				default:
-					"border-transparent bg-surface-secondary text-content-secondary shadow hover:bg-surface-tertiary",
+					"border-transparent bg-surface-secondary text-content-secondary shadow-sm hover:bg-surface-tertiary",
 			},
 			size: {
 				sm: "text-2xs font-regular",
