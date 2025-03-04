@@ -420,6 +420,14 @@ type WorkspaceAgentDevcontainer struct {
 	Volumes map[string]string `json:"volumes"`
 }
 
+type WorkspaceAgentDevcontainerPort struct {
+	WorkspaceAgentListeningPort
+
+	// Label is a display name for the port.
+	// Ref: https://containers.dev/implementors/json_reference/#port-attributes
+	Label string `json:"label,omitempty"`
+}
+
 // WorkspaceAgentListContainersResponse is the response to the list containers
 // request.
 type WorkspaceAgentListContainersResponse struct {
