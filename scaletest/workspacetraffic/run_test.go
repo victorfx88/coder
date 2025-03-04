@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"runtime"
-	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -16,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 
 	"github.com/coder/coder/v2/agent/agenttest"
 	"github.com/coder/coder/v2/coderd/coderdtest"

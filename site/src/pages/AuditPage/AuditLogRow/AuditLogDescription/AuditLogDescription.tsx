@@ -11,15 +11,12 @@ interface AuditLogDescriptionProps {
 export const AuditLogDescription: FC<AuditLogDescriptionProps> = ({
 	auditLog,
 }) => {
+	let target = auditLog.resource_target.trim();
+	let user = auditLog.user?.username.trim();
+
 	if (auditLog.resource_type === "workspace_build") {
 		return <BuildAuditDescription auditLog={auditLog} />;
 	}
-	if (auditLog.additional_fields?.connection_type) {
-		return <AppSessionAuditLogDescription auditLog={auditLog} />;
-	}
-
-	let target = auditLog.resource_target.trim();
-	let user = auditLog.user?.username.trim();
 
 	// SSH key entries have no links
 	if (auditLog.resource_type === "git_ssh_key") {
@@ -60,19 +57,3 @@ export const AuditLogDescription: FC<AuditLogDescriptionProps> = ({
 		</span>
 	);
 };
-
-function AppSessionAuditLogDescription({ auditLog }: AuditLogDescriptionProps) {
-	const { connection_type, workspace_owner, workspace_name } =
-		auditLog.additional_fields;
-
-	return (
-		<>
-			{connection_type} session to {workspace_owner}'s{" "}
-			<Link component={RouterLink} to={`${auditLog.resource_link}`}>
-				<strong>{workspace_name}</strong>
-			</Link>{" "}
-			workspace{" "}
-			<strong>{auditLog.action === "disconnect" ? "closed" : "opened"}</strong>
-		</>
-	);
-}

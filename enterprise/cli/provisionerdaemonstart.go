@@ -225,6 +225,7 @@ func (r *RootCmd) provisionerDaemonStart() *serpent.Command {
 			}
 			srv := provisionerd.New(func(ctx context.Context) (provisionerdproto.DRPCProvisionerDaemonClient, error) {
 				return client.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+					ID:   uuid.New(),
 					Name: name,
 					Provisioners: []codersdk.ProvisionerType{
 						codersdk.ProvisionerTypeTerraform,
