@@ -282,13 +282,20 @@ func WebsocketCloseSprintf(format string, vars ...any) string {
 	return msg
 }
 
+type SendEventCallback func(ctx context.Context, sse codersdk.ServerSentEvent) error
+type InitConnCallback func(rw http.ResponseWriter, r *http.Request) (
+	SendEventCallback,
+	chan struct{},
+	error,
+)
+
 // ServerSentEventSender establishes a Server-Sent Event connection and allows
 // the consumer to send messages to the client.
 //
 // As much as possible, this function should be avoided in favor of using the
 // OneWayWebSocket function. See OneWayWebSocket for more context.
 func ServerSentEventSender(rw http.ResponseWriter, r *http.Request) (
-	sendEvent func(ctx context.Context, sse codersdk.ServerSentEvent) error,
+	sendEvent SendEventCallback,
 	closed chan struct{},
 	err error,
 ) {
@@ -406,8 +413,8 @@ func ServerSentEventSender(rw http.ResponseWriter, r *http.Request) (
 // open a workspace in multiple tabs, the entire UI can start to lock up.
 // WebSockets have no such limitation, no matter what HTTP protocol was used to
 // establish the connection.
-func OneWayWebSocket[JsonSerializable any](rw http.ResponseWriter, r *http.Request) (
-	sendEvent func(event JsonSerializable) error,
+func OneWayWebSocket(rw http.ResponseWriter, r *http.Request) (
+	sendEvent SendEventCallback,
 	closed chan struct{},
 	err error,
 ) {
@@ -424,7 +431,7 @@ func OneWayWebSocket[JsonSerializable any](rw http.ResponseWriter, r *http.Reque
 		Code   websocket.StatusCode
 		Reason string
 	}
-	eventC := make(chan JsonSerializable)
+	eventC := make(chan codersdk.ServerSentEvent)
 	socketErrC := make(chan SocketError, 1)
 	closed = make(chan struct{})
 	go func() {
@@ -471,7 +478,7 @@ func OneWayWebSocket[JsonSerializable any](rw http.ResponseWriter, r *http.Reque
 		}
 	}()
 
-	sendEvent = func(event JsonSerializable) error {
+	sendEvent = func(_ context.Context, event codersdk.ServerSentEvent) error {
 		select {
 		case eventC <- event:
 		case <-ctx.Done():

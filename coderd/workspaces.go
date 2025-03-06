@@ -1719,12 +1719,20 @@ func (api *API) resolveAutostart(rw http.ResponseWriter, r *http.Request) {
 // @Success 200 {object} codersdk.Response
 // @Router /workspaces/{workspace}/watch [get]
 // @Deprecated Use /workspaces/{workspace}/watch-ws instead
-func (api *API) watchWorkspace(rw http.ResponseWriter, r *http.Request) {
+func (api *API) watchWorkspaceSSE(rw http.ResponseWriter, r *http.Request) {
+	api.watchWorkspace(rw, r, httpapi.ServerSentEventSender)
+}
+
+func (api *API) watchWorkspaceWs(rw http.ResponseWriter, r *http.Request) {
+	api.watchWorkspace(rw, r, httpapi.OneWayWebSocket)
+}
+
+func (api *API) watchWorkspace(rw http.ResponseWriter, r *http.Request, initConn httpapi.InitConnCallback) {
 	ctx := r.Context()
 	workspace := httpmw.WorkspaceParam(r)
 	apiKey := httpmw.APIKey(r)
 
-	sendEvent, senderClosed, err := httpapi.ServerSentEventSender(rw, r)
+	sendEvent, senderClosed, err := initConn(rw, r)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
 			Message: "Internal error setting up server-sent events.",
@@ -1857,135 +1865,135 @@ func (api *API) watchWorkspace(rw http.ResponseWriter, r *http.Request) {
 // @Param workspace path string true "Workspace ID" format(uuid)
 // @Success 200 {object} codersdk.Response
 // @Router /workspaces/{workspace}/watch [get]
-func (api *API) watchWorkspaceWs(rw http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	workspace := httpmw.WorkspaceParam(r)
-	apiKey := httpmw.APIKey(r)
-
-	send, closed, err := httpapi.OneWayWebSocket[codersdk.ServerSentEvent](rw, r)
-	if err != nil {
-		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-			Message: "Internal error setting up server-sent events.",
-			Detail:  err.Error(),
-		})
-		return
-	}
-	// Prevent handler from returning until the sender is closed.
-	defer func() {
-		<-closed
-	}()
-
-	sendUpdate := func(_ context.Context, _ []byte) {
-		workspace, err := api.Database.GetWorkspaceByID(ctx, workspace.ID)
-		if err != nil {
-			_ = send(codersdk.ServerSentEvent{
-				Type: codersdk.ServerSentEventTypeError,
-				Data: codersdk.Response{
-					Message: "Internal error fetching workspace.",
-					Detail:  err.Error(),
-				},
-			})
-			return
-		}
-
-		data, err := api.workspaceData(ctx, []database.Workspace{workspace})
-		if err != nil {
-			_ = send(codersdk.ServerSentEvent{
-				Type: codersdk.ServerSentEventTypeError,
-				Data: codersdk.Response{
-					Message: "Internal error fetching workspace data.",
-					Detail:  err.Error(),
-				},
-			})
-			return
-		}
-		if len(data.templates) == 0 {
-			_ = send(codersdk.ServerSentEvent{
-				Type: codersdk.ServerSentEventTypeError,
-				Data: codersdk.Response{
-					Message: "Forbidden reading template of selected workspace.",
-				},
-			})
-			return
-		}
-
-		w, err := convertWorkspace(
-			apiKey.UserID,
-			workspace,
-			data.builds[0],
-			data.templates[0],
-			api.Options.AllowWorkspaceRenames,
-		)
-		if err != nil {
-			_ = send(codersdk.ServerSentEvent{
-				Type: codersdk.ServerSentEventTypeError,
-				Data: codersdk.Response{
-					Message: "Internal error converting workspace.",
-					Detail:  err.Error(),
-				},
-			})
-		}
-		_ = send(codersdk.ServerSentEvent{
-			Type: codersdk.ServerSentEventTypeData,
-			Data: w,
-		})
-	}
-
-	cancelWorkspaceSubscribe, err := api.Pubsub.SubscribeWithErr(wspubsub.WorkspaceEventChannel(workspace.OwnerID),
-		wspubsub.HandleWorkspaceEvent(
-			func(ctx context.Context, payload wspubsub.WorkspaceEvent, err error) {
-				if err != nil {
-					return
-				}
-				if payload.WorkspaceID != workspace.ID {
-					return
-				}
-				sendUpdate(ctx, nil)
-			}))
-	if err != nil {
-		_ = send(codersdk.ServerSentEvent{
-			Type: codersdk.ServerSentEventTypeError,
-			Data: codersdk.Response{
-				Message: "Internal error subscribing to workspace events.",
-				Detail:  err.Error(),
-			},
-		})
-		return
-	}
-	defer cancelWorkspaceSubscribe()
-
-	// This is required to show whether the workspace is up-to-date.
-	cancelTemplateSubscribe, err := api.Pubsub.Subscribe(watchTemplateChannel(workspace.TemplateID), sendUpdate)
-	if err != nil {
-		_ = send(codersdk.ServerSentEvent{
-			Type: codersdk.ServerSentEventTypeError,
-			Data: codersdk.Response{
-				Message: "Internal error subscribing to template events.",
-				Detail:  err.Error(),
-			},
-		})
-		return
-	}
-	defer cancelTemplateSubscribe()
-
-	// An initial ping signals to the request that the server is now ready
-	// and the client can begin servicing a channel with data.
-	_ = send(codersdk.ServerSentEvent{
-		Type: codersdk.ServerSentEventTypePing,
-	})
-	// Send updated workspace info after connection is established. This avoids
-	// missing updates if the client connects after an update.
-	sendUpdate(ctx, nil)
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-closed:
-			return
-		}
-	}
-}
+//func (api *API) watchWorkspaceWs(rw http.ResponseWriter, r *http.Request) {
+//	ctx := r.Context()
+//	workspace := httpmw.WorkspaceParam(r)
+//	apiKey := httpmw.APIKey(r)
+//
+//	send, closed, err := httpapi.OneWayWebSocket[codersdk.ServerSentEvent](rw, r)
+//	if err != nil {
+//		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
+//			Message: "Internal error setting up server-sent events.",
+//			Detail:  err.Error(),
+//		})
+//		return
+//	}
+//	// Prevent handler from returning until the sender is closed.
+//	defer func() {
+//		<-closed
+//	}()
+//
+//	sendUpdate := func(_ context.Context, _ []byte) {
+//		workspace, err := api.Database.GetWorkspaceByID(ctx, workspace.ID)
+//		if err != nil {
+//			_ = send(codersdk.ServerSentEvent{
+//				Type: codersdk.ServerSentEventTypeError,
+//				Data: codersdk.Response{
+//					Message: "Internal error fetching workspace.",
+//					Detail:  err.Error(),
+//				},
+//			})
+//			return
+//		}
+//
+//		data, err := api.workspaceData(ctx, []database.Workspace{workspace})
+//		if err != nil {
+//			_ = send(codersdk.ServerSentEvent{
+//				Type: codersdk.ServerSentEventTypeError,
+//				Data: codersdk.Response{
+//					Message: "Internal error fetching workspace data.",
+//					Detail:  err.Error(),
+//				},
+//			})
+//			return
+//		}
+//		if len(data.templates) == 0 {
+//			_ = send(codersdk.ServerSentEvent{
+//				Type: codersdk.ServerSentEventTypeError,
+//				Data: codersdk.Response{
+//					Message: "Forbidden reading template of selected workspace.",
+//				},
+//			})
+//			return
+//		}
+//
+//		w, err := convertWorkspace(
+//			apiKey.UserID,
+//			workspace,
+//			data.builds[0],
+//			data.templates[0],
+//			api.Options.AllowWorkspaceRenames,
+//		)
+//		if err != nil {
+//			_ = send(codersdk.ServerSentEvent{
+//				Type: codersdk.ServerSentEventTypeError,
+//				Data: codersdk.Response{
+//					Message: "Internal error converting workspace.",
+//					Detail:  err.Error(),
+//				},
+//			})
+//		}
+//		_ = send(codersdk.ServerSentEvent{
+//			Type: codersdk.ServerSentEventTypeData,
+//			Data: w,
+//		})
+//	}
+//
+//	cancelWorkspaceSubscribe, err := api.Pubsub.SubscribeWithErr(wspubsub.WorkspaceEventChannel(workspace.OwnerID),
+//		wspubsub.HandleWorkspaceEvent(
+//			func(ctx context.Context, payload wspubsub.WorkspaceEvent, err error) {
+//				if err != nil {
+//					return
+//				}
+//				if payload.WorkspaceID != workspace.ID {
+//					return
+//				}
+//				sendUpdate(ctx, nil)
+//			}))
+//	if err != nil {
+//		_ = send(codersdk.ServerSentEvent{
+//			Type: codersdk.ServerSentEventTypeError,
+//			Data: codersdk.Response{
+//				Message: "Internal error subscribing to workspace events.",
+//				Detail:  err.Error(),
+//			},
+//		})
+//		return
+//	}
+//	defer cancelWorkspaceSubscribe()
+//
+//	// This is required to show whether the workspace is up-to-date.
+//	cancelTemplateSubscribe, err := api.Pubsub.Subscribe(watchTemplateChannel(workspace.TemplateID), sendUpdate)
+//	if err != nil {
+//		_ = send(codersdk.ServerSentEvent{
+//			Type: codersdk.ServerSentEventTypeError,
+//			Data: codersdk.Response{
+//				Message: "Internal error subscribing to template events.",
+//				Detail:  err.Error(),
+//			},
+//		})
+//		return
+//	}
+//	defer cancelTemplateSubscribe()
+//
+//	// An initial ping signals to the request that the server is now ready
+//	// and the client can begin servicing a channel with data.
+//	_ = send(codersdk.ServerSentEvent{
+//		Type: codersdk.ServerSentEventTypePing,
+//	})
+//	// Send updated workspace info after connection is established. This avoids
+//	// missing updates if the client connects after an update.
+//	sendUpdate(ctx, nil)
+//
+//	for {
+//		select {
+//		case <-ctx.Done():
+//			return
+//		case <-closed:
+//			return
+//		}
+//	}
+//}
 
 // @Summary Get workspace timings by ID
 // @ID get-workspace-timings-by-id

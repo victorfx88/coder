@@ -1261,7 +1261,7 @@ func New(options *Options) *API {
 				r.Route("/ttl", func(r chi.Router) {
 					r.Put("/", api.putWorkspaceTTL)
 				})
-				r.Get("/watch", api.watchWorkspace)
+				r.Get("/watch", api.watchWorkspaceSSE)
 				r.Get("/watch-ws", api.watchWorkspaceWs)
 				r.Put("/extend", api.putExtendWorkspace)
 				r.Post("/usage", api.postWorkspaceUsage)

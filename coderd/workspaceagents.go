@@ -1347,7 +1347,7 @@ func (api *API) watchWorkspaceAgentMetadataWs(rw http.ResponseWriter, r *http.Re
 	//nolint:ineffassign // Release memory.
 	initialMD = nil
 
-	send, closed, err := httpapi.OneWayWebSocket[codersdk.ServerSentEvent](rw, r)
+	send, closed, err := httpapi.OneWayWebSocket(rw, r)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
 			Message: "Internal error setting up server-sent events.",
@@ -1377,7 +1377,7 @@ func (api *API) watchWorkspaceAgentMetadataWs(rw http.ResponseWriter, r *http.Re
 
 		log.Debug(ctx, "sending metadata", "num", len(values))
 
-		_ = send(codersdk.ServerSentEvent{
+		_ = send(ctx, codersdk.ServerSentEvent{
 			Type: codersdk.ServerSentEventTypeData,
 			Data: convertWorkspaceAgentMetadata(values),
 		})
@@ -1409,7 +1409,7 @@ func (api *API) watchWorkspaceAgentMetadataWs(rw http.ResponseWriter, r *http.Re
 				if err != nil {
 					if !database.IsQueryCanceledError(err) {
 						log.Error(ctx, "failed to get metadata", slog.Error(err))
-						_ = send(codersdk.ServerSentEvent{
+						_ = send(ctx, codersdk.ServerSentEvent{
 							Type: codersdk.ServerSentEventTypeError,
 							Data: codersdk.Response{
 								Message: "Failed to get metadata.",
