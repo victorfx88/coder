@@ -18,7 +18,8 @@ import {
 	useState,
 } from "react";
 import { useQuery } from "react-query";
-import themes, { DEFAULT_THEME, type Theme } from "theme";
+import themes, { DEFAULT_THEME, generateCustomTheme, type Theme } from "theme";
+import { getCustomThemeFromLocalStorage, hasCustomTheme } from "utils/themeGenerator";
 
 /**
  *
@@ -62,20 +63,50 @@ export const ThemeProvider: FC<PropsWithChildren> = ({ children }) => {
 
 	useEffect(() => {
 		const root = document.documentElement;
+		
+		// Determine the actual theme mode (light or dark)
+		let actualTheme = themePreference;
 		if (themePreference === "auto") {
-			root.classList.add(preferredColorScheme);
-		} else {
-			root.classList.add(themePreference);
+			actualTheme = preferredColorScheme;
+		} else if (themePreference === "custom") {
+			// For custom themes, we still need to set either light or dark class
+			// based on whether it's a light or dark custom theme
+			actualTheme = preferredColorScheme;
 		}
+		
+		root.classList.add(actualTheme);
 
 		return () => {
 			root.classList.remove("light", "dark");
 		};
 	}, [themePreference, preferredColorScheme]);
 
-	const theme =
-		themes[themePreference as keyof typeof themes] ??
-		themes[preferredColorScheme];
+	// Determine which theme to use based on preferences and custom themes
+	const getThemeToUse = (): Theme => {
+		// Handle custom theme preference
+		if (themePreference === "custom" && hasCustomTheme()) {
+			const primaryColor = getCustomThemeFromLocalStorage();
+			if (primaryColor) {
+				// If auto mode, use the system preferred color scheme
+				if (appearanceSettingsQuery.data?.theme_preference === "auto") {
+					// Type assertion to ensure it matches the Theme interface
+					return generateCustomTheme(primaryColor, preferredColorScheme) as Theme;
+				}
+				// Otherwise use light custom theme
+				return generateCustomTheme(primaryColor, "light") as Theme;
+			}
+		}
+
+		// Handle auto theme preference
+		if (themePreference === "auto") {
+			return themes[preferredColorScheme];
+		}
+
+		// Handle normal theme selection (light, dark)
+		return themes[themePreference as keyof typeof themes] ?? themes[preferredColorScheme];
+	};
+
+	const theme = getThemeToUse();
 
 	return (
 		<StyledEngineProvider injectFirst>
