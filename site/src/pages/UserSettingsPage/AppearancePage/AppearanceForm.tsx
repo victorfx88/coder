@@ -38,6 +38,8 @@ export const AppearanceForm: FC<AppearanceFormProps> = ({
 	// Use the proper Theme type from the theme directory
 	const [customLightTheme, setCustomLightTheme] = useState<Theme | null>(null);
 	const [customDarkTheme, setCustomDarkTheme] = useState<Theme | null>(null);
+	// Add state for the preview timeout
+	const [previewTimeout, setPreviewTimeout] = useState<number | null>(null);
 
 	// Load saved custom theme color if exists and setup event listeners
 	useEffect(() => {
@@ -173,7 +175,6 @@ export const AppearanceForm: FC<AppearanceFormProps> = ({
 	};
 
 	// Add mouse events to the preset buttons for better UX
-	const [previewTimeout, setPreviewTimeout] = useState<number | null>(null);
 	
 	// Preview a color, but debounced to avoid performance issues
 	const debouncedPreview = (color: string) => {
