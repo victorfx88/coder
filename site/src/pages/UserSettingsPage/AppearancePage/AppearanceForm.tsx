@@ -39,7 +39,7 @@ export const AppearanceForm: FC<AppearanceFormProps> = ({
 	const [customLightTheme, setCustomLightTheme] = useState<Theme | null>(null);
 	const [customDarkTheme, setCustomDarkTheme] = useState<Theme | null>(null);
 
-	// Load saved custom theme color if exists
+	// Load saved custom theme color if exists and setup event listeners
 	useEffect(() => {
 		const savedColor = getCustomThemeFromLocalStorage();
 		if (savedColor) {
@@ -49,8 +49,34 @@ export const AppearanceForm: FC<AppearanceFormProps> = ({
 			const darkTheme = getCustomTheme(savedColor, "dark");
 			setCustomLightTheme(lightTheme);
 			setCustomDarkTheme(darkTheme);
+			
+			// Set CSS variables for immediate visual feedback
+			document.documentElement.style.setProperty('--primary-color', savedColor);
+			document.documentElement.style.setProperty('--primary-color-preview', savedColor);
 		}
-	}, []);
+		
+		// Setup listener for theme updates to avoid page refreshes
+		const handleThemeUpdate = () => {
+			// This forces components to re-render with the new theme
+			const currentColor = getCustomThemeFromLocalStorage();
+			if (currentColor) {
+				const lightTheme = getCustomTheme(currentColor, "light");
+				const darkTheme = getCustomTheme(currentColor, "dark");
+				setCustomLightTheme(lightTheme);
+				setCustomDarkTheme(darkTheme);
+			}
+		};
+		
+		window.addEventListener('custom-theme-updated', handleThemeUpdate);
+		
+		// Cleanup
+		return () => {
+			window.removeEventListener('custom-theme-updated', handleThemeUpdate);
+			if (previewTimeout !== null) {
+				window.clearTimeout(previewTimeout);
+			}
+		};
+	}, [previewTimeout]);
 
 	const onChangeTheme = async (theme: string) => {
 		if (isUpdating) {
@@ -60,30 +86,33 @@ export const AppearanceForm: FC<AppearanceFormProps> = ({
 		await onSubmit({ theme_preference: theme });
 	};
 
+	// Debounce the theme generation to improve performance when dragging the color picker
 	const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const newColor = e.target.value;
 		setPrimaryColor(newColor);
 		
-		// Generate custom themes based on the new color
-		const lightTheme = getCustomTheme(newColor, "light");
-		const darkTheme = getCustomTheme(newColor, "dark");
-		setCustomLightTheme(lightTheme);
-		setCustomDarkTheme(darkTheme);
+		// Use debounced preview to avoid lag when dragging the color picker
+		debouncedPreview(newColor);
+		
+		// Update primary color CSS var for immediate visual feedback
+		document.documentElement.style.setProperty('--primary-color-preview', newColor);
 	};
 
 	const applyCustomTheme = () => {
 		// Save the custom color to localStorage
 		saveCustomThemeToLocalStorage(primaryColor);
 		
-		// Apply custom color to the current theme without requiring page reload
-		// This will keep the current dark/light selection
-		const updatedLightTheme = getCustomTheme(primaryColor, "light");
-		const updatedDarkTheme = getCustomTheme(primaryColor, "dark");
-		setCustomLightTheme(updatedLightTheme);
-		setCustomDarkTheme(updatedDarkTheme);
+		// Generate themes for preview
+		previewThemeColor(primaryColor);
 		
-		// Force refresh the current theme selection to apply changes immediately
-		onChangeTheme(currentTheme);
+		// Force the context to update with the new theme
+		document.documentElement.style.setProperty('--primary-color', primaryColor);
+		
+		// Wait for next frame to ensure theme is fully updated
+		requestAnimationFrame(() => {
+			// Apply without reloading the page (force a re-render of theme components)
+			window.dispatchEvent(new Event('custom-theme-updated'));
+		});
 	};
 	
 	// Function to reset the theme to default
@@ -94,14 +123,32 @@ export const AppearanceForm: FC<AppearanceFormProps> = ({
 		}
 		
 		// Reset to default color
-		setPrimaryColor("#6A36FC");
+		const defaultColor = "#6A36FC";
+		setPrimaryColor(defaultColor);
 		
-		// Reset custom themes
+		// Reset custom themes to null - will use default themes
 		setCustomLightTheme(null);
 		setCustomDarkTheme(null);
 		
-		// Force refresh the current theme selection to apply changes immediately
-		onChangeTheme(currentTheme);
+		// Reset CSS variable
+		document.documentElement.style.removeProperty('--primary-color');
+		
+		// Wait for next frame to ensure theme is fully updated
+		requestAnimationFrame(() => {
+			// Apply without reloading the page (force a re-render of theme components)
+			window.dispatchEvent(new Event('custom-theme-updated'));
+		});
+	};
+
+	// Function to generate and preview themes based on a color
+	const previewThemeColor = (color: string) => {
+		// Generate themes with this color
+		const lightTheme = getCustomTheme(color, "light");
+		const darkTheme = getCustomTheme(color, "dark");
+		
+		// Update theme previews
+		setCustomLightTheme(lightTheme);
+		setCustomDarkTheme(darkTheme);
 	};
 
 	// Function to set a color from the predefined color palette and apply immediately
@@ -109,17 +156,48 @@ export const AppearanceForm: FC<AppearanceFormProps> = ({
 		// Update color picker value
 		setPrimaryColor(color);
 		
-		// Generate and apply themes with this color
-		const lightTheme = getCustomTheme(color, "light");
-		const darkTheme = getCustomTheme(color, "dark");
-		setCustomLightTheme(lightTheme);
-		setCustomDarkTheme(darkTheme);
+		// Generate themes for preview
+		previewThemeColor(color);
 		
 		// Save to localStorage
 		saveCustomThemeToLocalStorage(color);
 		
-		// Force refresh the current theme selection to apply changes immediately
-		onChangeTheme(currentTheme);
+		// Force the context to update with the new theme
+		document.documentElement.style.setProperty('--primary-color', color);
+		
+		// Wait for next frame to ensure theme is fully updated
+		requestAnimationFrame(() => {
+			// Apply without reloading the page (force a re-render of theme components)
+			window.dispatchEvent(new Event('custom-theme-updated'));
+		});
+	};
+
+	// Add mouse events to the preset buttons for better UX
+	const [previewTimeout, setPreviewTimeout] = useState<number | null>(null);
+	
+	// Preview a color, but debounced to avoid performance issues
+	const debouncedPreview = (color: string) => {
+		// Clear any existing timeout
+		if (previewTimeout !== null) {
+			window.clearTimeout(previewTimeout);
+		}
+		
+		// Set a new timeout to generate themes after a short delay
+		const timeoutId = window.setTimeout(() => {
+			previewThemeColor(color);
+		}, 100); // 100ms delay is enough to feel responsive but not bog down during drag
+		
+		setPreviewTimeout(timeoutId);
+	};
+	
+	// Mouse handlers for color previews
+	const handlePresetMouseEnter = (color: string) => {
+		debouncedPreview(color);
+	};
+	
+	const handlePresetMouseLeave = () => {
+		// On mouse leave, restore the current selected color's preview
+		debouncedPreview(primaryColor);
 	};
 
 	// Predefined color palette examples
@@ -240,8 +318,14 @@ export const AppearanceForm: FC<AppearanceFormProps> = ({
 											cursor: 'pointer',
 											border: `2px solid ${color === primaryColor ? 'white' : 'transparent'}`,
 											boxShadow: color === primaryColor ? '0 0 0 1px #000' : 'none',
+											transition: 'transform 0.1s ease-in-out',
+											'&:hover': {
+												transform: 'scale(1.2)',
+											}
 										}}
 										onClick={() => setPresetColor(color)}
+										onMouseEnter={() => handlePresetMouseEnter(color)}
+										onMouseLeave={handlePresetMouseLeave}
 									/>
 								))}
 							</div>

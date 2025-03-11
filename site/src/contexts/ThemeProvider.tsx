@@ -61,6 +61,9 @@ export const ThemeProvider: FC<PropsWithChildren> = ({ children }) => {
 	// We need to support `themePreference` being wrong anyway because the database
 	// value could be anything, like an empty string.
 
+	// Track if we need to force a theme refresh
+	const [themeUpdateCounter, setThemeUpdateCounter] = useState(0);
+
 	useEffect(() => {
 		const root = document.documentElement;
 		
@@ -76,28 +79,44 @@ export const ThemeProvider: FC<PropsWithChildren> = ({ children }) => {
 		
 		root.classList.add(actualTheme);
 
+		// Add listener for custom theme updates
+		const handleCustomThemeUpdated = () => {
+			// Force a re-render of the theme provider
+			setThemeUpdateCounter(prev => prev + 1);
+		};
+
+		window.addEventListener('custom-theme-updated', handleCustomThemeUpdated);
+
 		return () => {
 			root.classList.remove("light", "dark");
+			window.removeEventListener('custom-theme-updated', handleCustomThemeUpdated);
 		};
 	}, [themePreference, preferredColorScheme]);
 
 	// Determine which theme to use based on preferences and custom themes
 	const getThemeToUse = (): Theme => {
-		// Handle custom theme preference
-		if (themePreference === "custom" && hasCustomTheme()) {
-			const primaryColor = getCustomThemeFromLocalStorage();
-			if (primaryColor) {
-				// If auto mode, use the system preferred color scheme
-				if (appearanceSettingsQuery.data?.theme_preference === "auto") {
-					// Type assertion to ensure it matches the Theme interface
-					return generateCustomTheme(primaryColor, preferredColorScheme) as Theme;
-				}
-				// Otherwise use light custom theme
+		// This will force the function to re-run when themeUpdateCounter changes
+		// eslint-disable-next-line no-unused-vars
+		const _ = themeUpdateCounter;
+
+		// Check if custom theme from CSS var
+		const primaryColorVar = document.documentElement.style.getPropertyValue('--primary-color');
+		const hasCustomVar = primaryColorVar && primaryColorVar.length > 0;
+
+		// First check for in-memory custom themes
+		if (hasCustomTheme() || hasCustomVar) {
+			const primaryColor = getCustomThemeFromLocalStorage() || primaryColorVar || "#6A36FC";
+			
+			// Select the right mode based on current theme preference
+			if (themePreference === "light" || 
+			   (themePreference === "auto" && preferredColorScheme === "light")) {
 				return generateCustomTheme(primaryColor, "light") as Theme;
+			} else {
+				return generateCustomTheme(primaryColor, "dark") as Theme;
 			}
 		}
 
-		// Handle auto theme preference
+		// Handle auto theme preference 
 		if (themePreference === "auto") {
 			return themes[preferredColorScheme];
 		}
