@@ -1,8 +1,13 @@
 import type { NewTheme } from "../experimental";
 import tw from "../tailwindColors";
+import darkExperimental from "../dark/experimental";
 
-// Using the dark experimental theme as a basis but with purple colors
+// Create purple experimental theme by extending dark theme
 const experimental: NewTheme = {
+	// Start with dark theme
+	...darkExperimental,
+	
+	// Override with purple-specific styles
 	l1: {
 		background: tw.purple[950],
 		outline: tw.purple[700],

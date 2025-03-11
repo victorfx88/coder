@@ -1,8 +1,13 @@
 import tw from "../tailwindColors";
 import type { Branding } from "../branding";
+import darkBranding from "../dark/branding";
 
-// Purple theme branding
+// Create purple branding by extending dark branding
 const branding: Branding = {
+	// Start with dark branding
+	...darkBranding,
+	
+	// Override with purple-specific branding
 	enterprise: {
 		background: tw.purple[800],
 		divider: tw.purple[600],

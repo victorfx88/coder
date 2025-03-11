@@ -1,13 +1,15 @@
 // biome-ignore lint/nursery/noRestrictedImports: createTheme
 import { createTheme } from "@mui/material/styles";
-import { BODY_FONT_FAMILY, borderRadius } from "../constants";
-import { components } from "../mui";
+import darkTheme from "../dark/mui";
 import tw from "../tailwindColors";
 
-// Create a simple purple theme based on the dark theme structure
+// Create a purple theme based on the dark theme
+// This significantly reduces code duplication
 const muiTheme = createTheme({
+	...darkTheme,
 	palette: {
-		mode: "dark", // Using dark mode as the base
+		...darkTheme.palette,
+		// Override with purple-specific colors
 		primary: {
 			main: tw.purple[500],
 			contrastText: tw.white,
@@ -29,27 +31,6 @@ const muiTheme = createTheme({
 			disabled: tw.purple[500],
 		},
 		divider: tw.purple[700],
-		warning: {
-			light: tw.amber[500],
-			main: tw.amber[800],
-			dark: tw.amber[950],
-		},
-		success: {
-			main: tw.green[500],
-			dark: tw.green[600],
-		},
-		info: {
-			light: tw.blue[400],
-			main: tw.blue[600],
-			dark: tw.blue[950],
-			contrastText: tw.white,
-		},
-		error: {
-			light: tw.red[400],
-			main: tw.red[500],
-			dark: tw.red[950],
-			contrastText: tw.white,
-		},
 		action: {
 			hover: tw.purple[600],
 			active: tw.purple[500],
@@ -57,30 +38,11 @@ const muiTheme = createTheme({
 			disabledBackground: tw.purple[800],
 			selected: tw.purple[600],
 		},
-		neutral: {
-			main: tw.zinc[50],
-		},
 		dots: tw.purple[500],
 	},
-	typography: {
-		fontFamily: BODY_FONT_FAMILY,
-		allVariants: {
-			color: tw.white,
-		},
-		body1: {
-			fontSize: "1rem",
-			lineHeight: "160%",
-		},
-		body2: {
-			fontSize: "0.875rem",
-			lineHeight: "160%",
-		},
-	},
-	shape: {
-		borderRadius,
-	},
 	components: {
-		...components,
+		...darkTheme.components,
+		// Override only the components that need purple-specific styling
 		MuiMenuItem: {
 			styleOverrides: {
 				root: {
@@ -151,15 +113,6 @@ const muiTheme = createTheme({
 			styleOverrides: {
 				indicator: {
 					backgroundColor: tw.purple[400],
-				},
-			},
-		},
-		MuiChip: {
-			styleOverrides: {
-				root: {
-					"& .MuiChip-label": {
-						textTransform: "none",
-					},
 				},
 			},
 		},
