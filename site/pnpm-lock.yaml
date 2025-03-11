@@ -147,6 +147,9 @@ importers:
       cmdk:
         specifier: 1.0.4
         version: 1.0.4(@types/react-dom@18.3.1)(@types/react@18.3.12)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      color:
+        specifier: 5.0.0
+        version: 5.0.0
       color-convert:
         specifier: 2.0.1
         version: 2.0.1
@@ -189,6 +192,9 @@ importers:
       monaco-editor:
         specifier: 0.52.0
         version: 0.52.0
+      polished:
+        specifier: 4.3.1
+        version: 4.3.1
       pretty-bytes:
         specifier: 6.1.1
         version: 6.1.1
@@ -337,6 +343,9 @@ importers:
       '@types/chroma-js':
         specifier: 2.4.0
         version: 2.4.0
+      '@types/color':
+        specifier: 4.2.0
+        version: 4.2.0
       '@types/color-convert':
         specifier: 2.0.4
         version: 2.0.4
@@ -2552,6 +2561,9 @@ packages:
   '@types/color-name@1.1.5':
     resolution: {integrity: sha512-j2K5UJqGTxeesj6oQuGpMgifpT5k9HprgQd8D1Y0lOFqKHl3PJu5GMeS4Y5EgjS55AE6OQxf8mPED9uaGbf4Cg==, tarball: https://registry.npmjs.org/@types/color-name/-/color-name-1.1.5.tgz}
 
+  '@types/color@4.2.0':
+    resolution: {integrity: sha512-6+xrIRImMtGAL2X3qYkd02Mgs+gFGs+WsK0b7VVMaO4mYRISwyTjcqNrO0mNSmYEoq++rSLDB2F5HDNmqfOe+A==, tarball: https://registry.npmjs.org/@types/color/-/color-4.2.0.tgz}
+
   '@types/connect@3.4.35':
     resolution: {integrity: sha512-cdeYyv4KWoEgpBISTxWvqYsVy444DOqehiF3fM3ne10AmJ62RSyNkUnxMJXHQWRQQX2eR94m5y1IZyDwBjV9FQ==, tarball: https://registry.npmjs.org/@types/connect/-/connect-3.4.35.tgz}
 
@@ -3254,11 +3266,27 @@ packages:
     resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==, tarball: https://registry.npmjs.org/color-convert/-/color-convert-2.0.1.tgz}
     engines: {node: '>=7.0.0'}
 
+  color-convert@3.0.1:
+    resolution: {integrity: sha512-5kQah2eolfQV7HCrxtsBBArPfT5dwaKYMCXeMQsdRO7ihTO/cuNLGjd50ITCDn+ZU/YbS0Go64SjP9154eopxg==, tarball: https://registry.npmjs.org/color-convert/-/color-convert-3.0.1.tgz}
+    engines: {node: '>=14.6'}
+
   color-name@1.1.3:
     resolution: {integrity: sha512-72fSenhMw2HZMTVHeCA9KCmpEIbzWiQsjN+BHcBbS9vr1mtt+vJjPdksIBNUmKAW8TFUDPJK5SUU3QhE9NEXDw==, tarball: https://registry.npmjs.org/color-name/-/color-name-1.1.3.tgz}
 
   color-name@1.1.4:
     resolution: {integrity: sha512-dOy+3AuW3a2wNbZHIuMZpTcgjGuLU/uBL/ubcZF9OXbDo8ff4O8yVp5Bf0efS8uEoYo5q4Fx7dY9OgQGXgAsQA==, tarball: https://registry.npmjs.org/color-name/-/color-name-1.1.4.tgz}
+
+  color-name@2.0.0:
+    resolution: {integrity: sha512-SbtvAMWvASO5TE2QP07jHBMXKafgdZz8Vrsrn96fiL+O92/FN/PLARzUW5sKt013fjAprK2d2iCn2hk2Xb5oow==, tarball: https://registry.npmjs.org/color-name/-/color-name-2.0.0.tgz}
+    engines: {node: '>=12.20'}
+
+  color-string@2.0.1:
+    resolution: {integrity: sha512-5z9FbYTZPAo8iKsNEqRNv+OlpBbDcoE+SY9GjLfDUHEfcNNV7tS9eSAlFHEaub/r5tBL9LtskAeq1l9SaoZ5tQ==, tarball: https://registry.npmjs.org/color-string/-/color-string-2.0.1.tgz}
+    engines: {node: '>=18'}
+
+  color@5.0.0:
+    resolution: {integrity: sha512-16BlyiuyLq3MLxpRWyOTiWsO3ii/eLQLJUQXBSNcxMBBSnyt1ee9YUdaozQp03ifwm5woztEZGDbk9RGVuCsdw==, tarball: https://registry.npmjs.org/color/-/color-5.0.0.tgz}
+    engines: {node: '>=18'}
 
   combined-stream@1.0.8:
     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==, tarball: https://registry.npmjs.org/combined-stream/-/combined-stream-1.0.8.tgz}
@@ -8638,6 +8666,10 @@ snapshots:
 
   '@types/color-name@1.1.5': {}
 
+  '@types/color@4.2.0':
+    dependencies:
+      '@types/color-convert': 2.0.4
+
   '@types/connect@3.4.35':
     dependencies:
       '@types/node': 20.17.16
@@ -9394,9 +9426,24 @@ snapshots:
     dependencies:
       color-name: 1.1.4
 
+  color-convert@3.0.1:
+    dependencies:
+      color-name: 2.0.0
+
   color-name@1.1.3: {}
 
   color-name@1.1.4: {}
+
+  color-name@2.0.0: {}
+
+  color-string@2.0.1:
+    dependencies:
+      color-name: 2.0.0
+
+  color@5.0.0:
+    dependencies:
+      color-convert: 3.0.1
+      color-string: 2.0.1
 
   combined-stream@1.0.8:
     dependencies:
