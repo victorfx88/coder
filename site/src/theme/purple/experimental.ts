@@ -50,6 +50,12 @@ const experimental: NewTheme = {
 		outline: tw.purple[700],
 		text: tw.white,
 	},
+	
+	avatar: {
+		background: tw.purple[200],
+		text: tw.purple[900],
+		border: tw.purple[300],
+	},
 };
 
 export default experimental;

@@ -8,4 +8,9 @@ export interface NewTheme {
 		outline: string;
 		text: string;
 	};
+	avatar: {
+		background: string;
+		text: string;
+		border: string;
+	};
 }

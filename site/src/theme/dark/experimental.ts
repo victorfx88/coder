@@ -49,4 +49,10 @@ export default {
 		outline: colors.zinc[700],
 		text: colors.zinc[200],
 	},
+	
+	avatar: {
+		background: colors.zinc[700],
+		text: colors.zinc[100],
+		border: colors.zinc[600],
+	},
 } satisfies NewTheme;

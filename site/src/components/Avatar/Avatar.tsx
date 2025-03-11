@@ -18,7 +18,7 @@ import { getExternalImageStylesFromUrl } from "theme/externalImages";
 import { cn } from "utils/cn";
 
 const avatarVariants = cva(
-	"relative flex shrink-0 overflow-hidden rounded border border-solid bg-purple-200 text-purple-900",
+	"relative flex shrink-0 overflow-hidden rounded border border-solid",
 	{
 		variants: {
 			size: {
@@ -70,6 +70,11 @@ const Avatar = React.forwardRef<
 		<AvatarPrimitive.Root
 			ref={ref}
 			className={cn(avatarVariants({ size, variant, className }))}
+			css={{
+				backgroundColor: theme.avatar?.background,
+				color: theme.avatar?.text,
+				borderColor: theme.avatar?.border,
+			}}
 			{...props}
 		>
 			<AvatarPrimitive.Image
