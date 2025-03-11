@@ -62,22 +62,22 @@ GIT_FLAGS = GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
 
 # All ${OS}_${ARCH} combos we build for. Windows binaries have the .exe suffix.
 OS_ARCHES := \
-	linux_amd64 linux_arm64 linux_armv7 \
+	linux_amd64 linux_arm64 linux_armv7 linux_riscv64 \
 	darwin_amd64 darwin_arm64 \
 	windows_amd64.exe windows_arm64.exe
 
 # Archive formats and their corresponding ${OS}_${ARCH} combos.
-ARCHIVE_TAR_GZ := linux_amd64 linux_arm64 linux_armv7
+ARCHIVE_TAR_GZ := linux_amd64 linux_arm64 linux_armv7 linux_riscv64
 ARCHIVE_ZIP    := \
 	darwin_amd64 darwin_arm64 \
 	windows_amd64 windows_arm64
 
 # All package formats we build and the ${OS}_${ARCH} combos we build them for.
 PACKAGE_FORMATS   := apk deb rpm
-PACKAGE_OS_ARCHES := linux_amd64 linux_armv7 linux_arm64
+PACKAGE_OS_ARCHES := linux_amd64 linux_armv7 linux_arm64 linux_riscv64
 
 # All architectures we build Docker images for (Linux only).
-DOCKER_ARCHES := amd64 arm64 armv7
+DOCKER_ARCHES := amd64 arm64 armv7 riscv64
 
 # All ${OS}_${ARCH} combos we build the desktop dylib for.
 DYLIB_ARCHES := darwin_amd64 darwin_arm64
@@ -123,8 +123,25 @@ clean:
 build-slim: $(CODER_SLIM_BINARIES)
 .PHONY: build-slim
 
+build-slim-riscv64:
+	mkdir -p build site/out/bin
+	GOOS=linux GOARCH=riscv64 go build -o build/coder-slim_linux_riscv64 -tags slim,ts_omit_aws,ts_omit_bird,ts_omit_tap,ts_omit_kube ./enterprise/cmd/coder
+	rm -f build/coder-slim_$(VERSION)_linux_riscv64
+	ln -sf build/coder-slim_linux_riscv64 build/coder-slim_$(VERSION)_linux_riscv64
+.PHONY: build-slim-riscv64
+
 build-fat build-full build: $(CODER_FAT_BINARIES)
 .PHONY: build-fat build-full build
+
+build-fat-riscv64:
+	mkdir -p build site/out/bin
+	GOOS=linux GOARCH=riscv64 go build -o build/coder_linux_riscv64 -tags embed,ts_omit_aws,ts_omit_bird,ts_omit_tap,ts_omit_kube ./enterprise/cmd/coder
+	rm -f build/coder_$(VERSION)_linux_riscv64
+	ln -sf build/coder_linux_riscv64 build/coder_$(VERSION)_linux_riscv64
+.PHONY: build-fat-riscv64
+
+build-riscv64: build-slim-riscv64 build-fat-riscv64
+.PHONY: build-riscv64
 
 release: $(CODER_FAT_BINARIES) $(CODER_ALL_ARCHIVES) $(CODER_ALL_PACKAGES) $(CODER_ARCH_IMAGES) build/coder_helm_$(VERSION).tgz
 .PHONY: release
