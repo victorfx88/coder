@@ -66,14 +66,19 @@ const Avatar = React.forwardRef<
 >(({ className, size, variant, src, fallback, children, ...props }, ref) => {
 	const theme = useTheme();
 
+	// Default fallback colors if theme values aren't available
+	const bgColor = theme.experimental?.avatar?.background || "#f4f4f4";
+	const textColor = theme.experimental?.avatar?.text || "#333333";  
+	const borderColor = theme.experimental?.avatar?.border || "#e0e0e0";
+
 	return (
 		<AvatarPrimitive.Root
 			ref={ref}
 			className={cn(avatarVariants({ size, variant, className }))}
 			css={{
-				backgroundColor: theme.experimental.avatar?.background,
-				color: theme.experimental.avatar?.text,
-				borderColor: theme.experimental.avatar?.border,
+				backgroundColor: bgColor,
+				color: textColor,
+				borderColor: borderColor,
 			}}
 			{...props}
 		>
