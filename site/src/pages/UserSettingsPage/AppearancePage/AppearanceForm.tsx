@@ -13,7 +13,7 @@ import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { PreviewBadge } from "components/Badges/Badges";
 import { Stack } from "components/Stack/Stack";
 import { ThemeOverride } from "contexts/ThemeProvider";
-import { type FC, useState, useEffect } from "react";
+import { type FC, useState, useEffect, useRef, useCallback } from "react";
 import themes, { DEFAULT_THEME, type Theme } from "theme";
 import light from "theme/light";
 import dark from "theme/dark";
@@ -88,28 +88,47 @@ export const AppearanceForm: FC<AppearanceFormProps> = ({
 		await onSubmit({ theme_preference: theme });
 	};
 
-	// Debounce the theme generation to improve performance when dragging the color picker
+	// Track if user is actively dragging 
+	const [isDragging, setIsDragging] = useState(false);
+	
+	// Placeholder for the useEffect that will be defined after previewThemeColor
+	// We need to move this useEffect after previewThemeColor is defined to fix the TypeScript error
+	
+	// Extremely optimized color picker with drag detection
 	const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const newColor = e.target.value;
 		setPrimaryColor(newColor);
 		
-		// Use debounced preview to avoid lag when dragging the color picker
-		debouncedPreview(newColor);
+		// First time we get a change, user has started dragging
+		if (!isDragging) {
+			setIsDragging(true);
+			// Cancel any pending previews
+			if (previewTimeout !== null) {
+				window.clearTimeout(previewTimeout);
+				setPreviewTimeout(null);
+			}
+		}
 		
-		// Update primary color CSS var for immediate visual feedback
+		// ONLY update CSS variables during drag - no theme generation at all
+		// This is extremely fast and keeps the UI responsive
 		document.documentElement.style.setProperty('--primary-color-preview', newColor);
+		document.getElementById('apply-color-button')?.style.setProperty('background-color', newColor);
 	};
 
 	const applyCustomTheme = () => {
+		// Use the button background color's CSS var for immediate feedback
+		document.documentElement.style.setProperty('--primary-color-preview', primaryColor);
+		
 		// Save the custom color to localStorage
 		saveCustomThemeToLocalStorage(primaryColor);
 		
-		// Generate themes for preview
+		// Generate themes (don't need to do this again if already previewed)
 		previewThemeColor(primaryColor);
 		
 		// Force the context to update with the new theme
 		document.documentElement.style.setProperty('--primary-color', primaryColor);
 		
+		// Use a more efficient rendering approach
 		// Wait for next frame to ensure theme is fully updated
 		requestAnimationFrame(() => {
 			// Apply without reloading the page (force a re-render of theme components)
@@ -142,53 +161,134 @@ export const AppearanceForm: FC<AppearanceFormProps> = ({
 		});
 	};
 
-	// Function to generate and preview themes based on a color
-	const previewThemeColor = (color: string) => {
-		// Generate themes with this color
-		const lightTheme = getCustomTheme(color, "light");
-		const darkTheme = getCustomTheme(color, "dark");
+	// Cache for generated themes to avoid redundant calculations
+	const themeCache = useRef<{[key: string]: {light?: Theme, dark?: Theme}}>({});
+	
+	// Function to generate and preview themes based on a color with caching
+	// Using useCallback to memoize the function and avoid dependency issues
+	const previewThemeColor = useCallback((color: string) => {
+		// Return immediately if dragging (we'll generate when drag ends)
+		if (isDragging) return;
 		
-		// Update theme previews
-		setCustomLightTheme(lightTheme);
-		setCustomDarkTheme(darkTheme);
-	};
+		// Check cache first
+		if (!themeCache.current[color]) {
+			themeCache.current[color] = {};
+		}
+		
+		// Use requestAnimationFrame to batch visual updates efficiently
+		requestAnimationFrame(() => {
+			// Determine which theme(s) we need based on current mode
+			const needsLightTheme = currentTheme === "light" || 
+				(currentTheme === "auto" && window.matchMedia('(prefers-color-scheme: light)').matches);
+			const needsDarkTheme = currentTheme === "dark" || 
+				(currentTheme === "auto" && !window.matchMedia('(prefers-color-scheme: light)').matches);
+			
+			// Use cached versions if available, generate if not
+			if (needsLightTheme) {
+				if (!themeCache.current[color].light) {
+					// Notify UI that we're computing a theme (could show a spinner)
+					console.log("Generating light theme for", color);
+					themeCache.current[color].light = getCustomTheme(color, "light");
+				}
+				setCustomLightTheme(themeCache.current[color].light!);
+			}
+			
+			if (needsDarkTheme) {
+				if (!themeCache.current[color].dark) {
+					// Notify UI that we're computing a theme (could show a spinner)
+					console.log("Generating dark theme for", color);
+					themeCache.current[color].dark = getCustomTheme(color, "dark");
+				}
+				setCustomDarkTheme(themeCache.current[color].dark!);
+			}
+		});
+	}, [isDragging, currentTheme, setCustomLightTheme, setCustomDarkTheme]);
+	
+	// Now that previewThemeColor is defined, we can use it in useEffect
+	useEffect(() => {
+		// Handle mouse and touch events to detect active dragging
+		const handleMouseUp = () => {
+			if (isDragging) {
+				setIsDragging(false);
+				// Generate preview only after user stops dragging
+				previewThemeColor(primaryColor);
+			}
+		};
+		
+		window.addEventListener('mouseup', handleMouseUp);
+		window.addEventListener('touchend', handleMouseUp);
+		
+		return () => {
+			window.removeEventListener('mouseup', handleMouseUp);
+			window.removeEventListener('touchend', handleMouseUp);
+		};
+	}, [isDragging, primaryColor, previewThemeColor]);
 
 	// Function to set a color from the predefined color palette and apply immediately
 	const setPresetColor = (color: string) => {
 		// Update color picker value
 		setPrimaryColor(color);
 		
-		// Generate themes for preview
-		previewThemeColor(color);
+		// Update the button color immediately (pure CSS, no lag)
+		document.documentElement.style.setProperty('--primary-color-preview', color);
+		document.getElementById('apply-color-button')?.style.setProperty('background-color', color);
 		
-		// Save to localStorage
-		saveCustomThemeToLocalStorage(color);
-		
-		// Force the context to update with the new theme
-		document.documentElement.style.setProperty('--primary-color', color);
-		
-		// Wait for next frame to ensure theme is fully updated
-		requestAnimationFrame(() => {
-			// Apply without reloading the page (force a re-render of theme components)
-			window.dispatchEvent(new Event('custom-theme-updated'));
-		});
+		// Use the cached theme if available, generate if not (but with minimal UI blocking)
+		setTimeout(() => {
+			// Generate themes for preview (will use cache if available)
+			previewThemeColor(color);
+			
+			// Save to localStorage
+			saveCustomThemeToLocalStorage(color);
+			
+			// Force the context to update with the new theme
+			document.documentElement.style.setProperty('--primary-color', color);
+			
+			// Wait for next frame to ensure theme is fully updated
+			requestAnimationFrame(() => {
+				// Apply without reloading the page (force a re-render of theme components)
+				window.dispatchEvent(new Event('custom-theme-updated'));
+			});
+		}, 0); // Minimal timeout to prevent UI freeze
 	};
 
 	// Add mouse events to the preset buttons for better UX
 	
-	// Preview a color, but debounced to avoid performance issues
+	// More aggressive debouncing for previews to improve performance
 	const debouncedPreview = (color: string) => {
+		// Skip entirely during drag operations
+		if (isDragging) return;
+		
 		// Clear any existing timeout
 		if (previewTimeout !== null) {
 			window.clearTimeout(previewTimeout);
 		}
 		
-		// Set a new timeout to generate themes after a short delay
-		const timeoutId = window.setTimeout(() => {
-			previewThemeColor(color);
-		}, 100); // 100ms delay is enough to feel responsive but not bog down during drag
+		// Set CSS variable immediately for instant visual feedback
+		document.documentElement.style.setProperty('--primary-color-preview', color);
+		document.getElementById('apply-color-button')?.style.setProperty('background-color', color);
 		
-		setPreviewTimeout(timeoutId);
+		// Only generate theme if we haven't already cached it
+		const needsGeneration = !themeCache.current[color] || 
+			(!themeCache.current[color].light && currentTheme === "light") ||
+			(!themeCache.current[color].dark && currentTheme === "dark");
+			
+		// If we need to generate a theme, use a long delay to ensure UI responsiveness
+		if (needsGeneration) {
+			// Using a very long delay (500ms) prevents UI freeze during quick hover movements
+			const timeoutId = window.setTimeout(() => {
+				previewThemeColor(color);
+			}, 500);
+			
+			setPreviewTimeout(timeoutId);
+		} else {
+			// If theme is cached, we can apply it immediately with minimal delay
+			const timeoutId = window.setTimeout(() => {
+				previewThemeColor(color);
+			}, 50);
+			
+			setPreviewTimeout(timeoutId);
+		}
 	};
 	
 	// Mouse handlers for color previews
@@ -279,6 +379,7 @@ export const AppearanceForm: FC<AppearanceFormProps> = ({
 							sx={{ width: 200 }}
 						/>
 						<Button 
+							id="apply-color-button"
 							variant="contained" 
 							onClick={applyCustomTheme}
 							disabled={isUpdating}
