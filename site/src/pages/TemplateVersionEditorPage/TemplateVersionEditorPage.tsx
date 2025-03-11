@@ -16,7 +16,7 @@ import { displayError } from "components/GlobalSnackbar/utils";
 import { Loader } from "components/Loader/Loader";
 import { linkToTemplate, useLinks } from "modules/navigation";
 import { useWatchVersionLogs } from "modules/templates/useWatchVersionLogs";
-import { type FC, useEffect, useState, createContext } from "react";
+import { type FC, useEffect, useState, createContext, useContext } from "react";
 import { Helmet } from "react-helmet-async";
 import { useMutation, useQuery, useQueryClient } from "react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -25,6 +25,26 @@ import { pageTitle } from "utils/page";
 import { TarReader, TarWriter } from "utils/tar";
 import { createTemplateVersionFileTree } from "utils/templateVersion";
 import { TemplateVersionEditor } from "./TemplateVersionEditor";
+
+// Create context for the template version editor page
+export type TemplateVersionEditorContextValue = {
+	templateData?: any;
+	versionData?: TemplateVersion;
+};
+
+export const TemplateVersionEditorContext = createContext<
+	TemplateVersionEditorContextValue | undefined
+>(undefined);
+
+export const useTemplateVersionEditorContext = (): TemplateVersionEditorContextValue => {
+	const context = useContext(TemplateVersionEditorContext);
+	if (!context) {
+		throw new Error(
+			"useTemplateVersionEditorContext can only be used inside TemplateVersionEditorPage"
+		);
+	}
+	return context;
+};
 
 export const TemplateVersionEditorPage: FC = () => {
 	const getLink = useLinks();
