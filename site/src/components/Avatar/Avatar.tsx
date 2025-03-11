@@ -71,9 +71,9 @@ const Avatar = React.forwardRef<
 			ref={ref}
 			className={cn(avatarVariants({ size, variant, className }))}
 			css={{
-				backgroundColor: theme.avatar?.background,
-				color: theme.avatar?.text,
-				borderColor: theme.avatar?.border,
+				backgroundColor: theme.experimental.avatar?.background,
+				color: theme.experimental.avatar?.text,
+				borderColor: theme.experimental.avatar?.border,
 			}}
 			{...props}
 		>

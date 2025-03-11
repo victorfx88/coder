@@ -1,7 +1,7 @@
 import type { NewTheme } from "../experimental";
 import colors from "../tailwindColors";
 
-export default {
+const experimental: NewTheme = {
 	l1: {
 		background: colors.gray[50],
 		outline: colors.gray[300],
@@ -55,4 +55,6 @@ export default {
 		text: colors.zinc[700],
 		border: colors.zinc[300],
 	},
-} satisfies NewTheme;
+};
+
+export default experimental;
