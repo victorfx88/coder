@@ -38,4 +38,30 @@ describe("appearance page", () => {
 			theme_preference: "light",
 		});
 	});
+
+	it("shows the purple theme option", async () => {
+		renderWithAuth(<AppearancePage />);
+		
+		// Check that the purple option is displayed
+		const purple = await screen.findByText("Purple");
+		expect(purple).toBeInTheDocument();
+	});
+
+	it("changes theme to purple", async () => {
+		renderWithAuth(<AppearancePage />);
+
+		jest.spyOn(API, "updateAppearanceSettings").mockResolvedValueOnce({
+			...MockUser,
+			theme_preference: "purple",
+		});
+
+		const purple = await screen.findByText("Purple");
+		await userEvent.click(purple);
+
+		// Check if the API was called correctly with purple theme
+		expect(API.updateAppearanceSettings).toBeCalledTimes(1);
+		expect(API.updateAppearanceSettings).toHaveBeenCalledWith({
+			theme_preference: "purple",
+		});
+	});
 });

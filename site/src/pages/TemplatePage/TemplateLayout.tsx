@@ -51,9 +51,9 @@ const fetchTemplate = async (organizationId: string, templateName: string) => {
 	};
 };
 
-type TemplateLayoutContextValue = Awaited<ReturnType<typeof fetchTemplate>>;
+export type TemplateLayoutContextValue = Awaited<ReturnType<typeof fetchTemplate>>;
 
-const TemplateLayoutContext = createContext<
+export const TemplateLayoutContext = createContext<
 	TemplateLayoutContextValue | undefined
 >(undefined);
 

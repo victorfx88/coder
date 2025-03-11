@@ -69,7 +69,7 @@ export const ThemeProvider: FC<PropsWithChildren> = ({ children }) => {
 		}
 
 		return () => {
-			root.classList.remove("light", "dark");
+			root.classList.remove("light", "dark", "purple");
 		};
 	}, [themePreference, preferredColorScheme]);
 

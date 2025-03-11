@@ -27,10 +27,17 @@ export const MonacoEditor: FC<MonacoEditorProps> = ({
 				monaco.editor.remeasureFonts();
 			})
 			.catch(() => {
-				// Not a biggie!
+				// Not a biggie\!
 			});
 
-		monaco.editor.defineTheme("min", theme.monaco);
+		// Check if theme has monaco property to avoid errors
+		if (theme && theme.monaco) {
+			try {
+				monaco.editor.defineTheme("min", theme.monaco);
+			} catch (error) {
+				console.error("Error defining Monaco theme:", error);
+			}
+		}
 	}, [theme]);
 
 	return (
@@ -56,16 +63,24 @@ export const MonacoEditor: FC<MonacoEditorProps> = ({
 			onMount={(editor) => {
 				// This jank allows for Ctrl + Enter to work outside the editor.
 				// We use this keybind to trigger a build.
-				// biome-ignore lint/suspicious/noExplicitAny: Private type in Monaco!
+				// biome-ignore lint/suspicious/noExplicitAny: Private type in Monaco\!
 				(editor as any)._standaloneKeybindingService.addDynamicKeybinding(
 					"-editor.action.insertLineAfter",
 					monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter,
 					() => {},
 				);
 
-				editor.updateOptions({
-					theme: "min",
-				});
+				try {
+					editor.updateOptions({
+						theme: theme && theme.monaco ? "min" : "vs-dark",
+					});
+				} catch (error) {
+					console.error("Error updating editor theme:", error);
+					// Fallback to default theme
+					editor.updateOptions({
+						theme: "vs-dark",
+					});
+				}
 			}}
 		/>
 	);

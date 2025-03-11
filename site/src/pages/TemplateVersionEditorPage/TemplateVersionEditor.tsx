@@ -276,13 +276,14 @@ export const TemplateVersionEditor: FC<TemplateVersionEditorProps> = ({
 							/>
 						</div>
 
-						<TopbarButton
-							variant="default"
-							disabled={dirty || !canPublish}
-							onClick={onPublish}
-						>
-							Publish
-						</TopbarButton>
+							<TopbarButton
+								variant="default"
+								disabled={dirty || !canPublish}
+								onClick={onPublish}
+								css={{ backgroundColor: theme.palette.primary.main, color: "white" }}
+							>
+								Publish
+							</TopbarButton>
 					</div>
 				</Topbar>
 

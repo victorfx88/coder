@@ -32,7 +32,12 @@ export const UserDropdown: FC<UserDropdownProps> = ({
 					type="button"
 					className="bg-transparent border-0 cursor-pointer p-0"
 				>
-					<Avatar fallback={user.username} src={user.avatar_url} size="lg" />
+					<Avatar 
+						fallback={user.username} 
+						src={user.avatar_url} 
+						size="lg"
+						className="text-purple-900 bg-purple-200"
+					/>
 				</button>
 			</PopoverTrigger>
 

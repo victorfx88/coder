@@ -2,6 +2,7 @@ import { css } from "@emotion/css";
 import { useTheme } from "@emotion/react";
 import IconButton, { type IconButtonProps } from "@mui/material/IconButton";
 import { Avatar, type AvatarProps } from "components/Avatar/Avatar";
+import { cn } from "utils/cn";
 import { Button, type ButtonProps } from "components/Button/Button";
 import {
 	type FC,
@@ -54,7 +55,11 @@ export const TopbarIconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
 
 export const TopbarButton = forwardRef<HTMLButtonElement, ButtonProps>(
 	(props: ButtonProps, ref) => {
-		return <Button ref={ref} variant="outline" size="sm" {...props} />;
+		return <Button ref={ref} variant="outline" size="sm" {...props} css={{
+			'&.MuiButton-containedPrimary': {
+				color: 'white',
+			}
+		}} />;
 	},
 );
 
@@ -82,7 +87,7 @@ export const TopbarDivider: FC<HTMLAttributes<HTMLSpanElement>> = (props) => {
 };
 
 export const TopbarAvatar: FC<AvatarProps> = (props) => {
-	return <Avatar {...props} variant="icon" size="sm" />;
+	return <Avatar {...props} variant="icon" size="sm" className={cn("text-purple-900 bg-purple-200", props.className)} />;
 };
 
 type TopbarIconProps = HTMLAttributes<HTMLOrSVGElement>;
