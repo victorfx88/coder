@@ -25,8 +25,7 @@ Give your template a name, description, and icon and press `Create template`.
 
 ![Name and icon](../../images/admin/templates/import-template.png)
 
-> [!NOTE]
-> If template creation fails, Coder is likely not authorized to
+> **⚠️ Note**: If template creation fails, Coder is likely not authorized to
 > deploy infrastructure in the given location. Learn how to configure
 > [provisioner authentication](./extending-templates/provider-authentication.md).
 
@@ -65,8 +64,7 @@ Next, push it to Coder with the
 coder templates push
 ```
 
-> [!NOTE]
-> If `template push` fails, Coder is likely not authorized to deploy
+> ⚠️ Note: If `template push` fails, Coder is likely not authorized to deploy
 > infrastructure in the given location. Learn how to configure
 > [provisioner authentication](../provisioners.md).
 

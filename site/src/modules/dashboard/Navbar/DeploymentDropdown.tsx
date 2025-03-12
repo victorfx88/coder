@@ -1,6 +1,7 @@
 import { type Interpolation, type Theme, css, useTheme } from "@emotion/react";
 import MenuItem from "@mui/material/MenuItem";
 import { Button } from "components/Button/Button";
+import { FeatureStageBadge } from "components/FeatureStageBadge/FeatureStageBadge";
 import {
 	Popover,
 	PopoverContent,
@@ -81,7 +82,7 @@ const DeploymentDropdownContent: FC<DeploymentDropdownProps> = ({
 			{canViewDeployment && (
 				<MenuItem
 					component={NavLink}
-					to="/deployment"
+					to="/deployment/general"
 					css={styles.menuItem}
 					onClick={onPopoverClose}
 				>

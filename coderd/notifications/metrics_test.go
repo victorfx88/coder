@@ -67,8 +67,7 @@ func TestMetrics(t *testing.T) {
 	})
 	handler := &fakeHandler{}
 	mgr.WithHandlers(map[database.NotificationMethod]notifications.Handler{
-		method:                           handler,
-		database.NotificationMethodInbox: &fakeHandler{},
+		method: handler,
 	})
 
 	enq, err := notifications.NewStoreEnqueuer(cfg, store, defaultHelpers(), logger.Named("enqueuer"), quartz.NewReal())
@@ -78,10 +77,7 @@ func TestMetrics(t *testing.T) {
 
 	// Build fingerprints for the two different series we expect.
 	methodTemplateFP := fingerprintLabels(notifications.LabelMethod, string(method), notifications.LabelTemplateID, tmpl.String())
-	methodTemplateFPWithInbox := fingerprintLabels(notifications.LabelMethod, string(database.NotificationMethodInbox), notifications.LabelTemplateID, tmpl.String())
-
 	methodFP := fingerprintLabels(notifications.LabelMethod, string(method))
-	methodFPWithInbox := fingerprintLabels(notifications.LabelMethod, string(database.NotificationMethodInbox))
 
 	expected := map[string]func(metric *dto.Metric, series string) bool{
 		"coderd_notifications_dispatch_attempts_total": func(metric *dto.Metric, series string) bool {
@@ -95,8 +91,7 @@ func TestMetrics(t *testing.T) {
 			var match string
 			for result, val := range results {
 				seriesFP := fingerprintLabels(notifications.LabelMethod, string(method), notifications.LabelTemplateID, tmpl.String(), notifications.LabelResult, result)
-				seriesFPWithInbox := fingerprintLabels(notifications.LabelMethod, string(database.NotificationMethodInbox), notifications.LabelTemplateID, tmpl.String(), notifications.LabelResult, result)
-				if !hasMatchingFingerprint(metric, seriesFP) && !hasMatchingFingerprint(metric, seriesFPWithInbox) {
+				if !hasMatchingFingerprint(metric, seriesFP) {
 					continue
 				}
 
@@ -120,7 +115,7 @@ func TestMetrics(t *testing.T) {
 			return metric.Counter.GetValue() == target
 		},
 		"coderd_notifications_retry_count": func(metric *dto.Metric, series string) bool {
-			assert.Truef(t, hasMatchingFingerprint(metric, methodTemplateFP) || hasMatchingFingerprint(metric, methodTemplateFPWithInbox), "found unexpected series %q", series)
+			assert.Truef(t, hasMatchingFingerprint(metric, methodTemplateFP), "found unexpected series %q", series)
 
 			if debug {
 				t.Logf("coderd_notifications_retry_count == %v: %v", maxAttempts-1, metric.Counter.GetValue())
@@ -130,7 +125,7 @@ func TestMetrics(t *testing.T) {
 			return metric.Counter.GetValue() == maxAttempts-1
 		},
 		"coderd_notifications_queued_seconds": func(metric *dto.Metric, series string) bool {
-			assert.Truef(t, hasMatchingFingerprint(metric, methodFP) || hasMatchingFingerprint(metric, methodFPWithInbox), "found unexpected series %q", series)
+			assert.Truef(t, hasMatchingFingerprint(metric, methodFP), "found unexpected series %q", series)
 
 			if debug {
 				t.Logf("coderd_notifications_queued_seconds > 0: %v", metric.Histogram.GetSampleSum())
@@ -145,7 +140,7 @@ func TestMetrics(t *testing.T) {
 			return metric.Histogram.GetSampleSum() > 0
 		},
 		"coderd_notifications_dispatcher_send_seconds": func(metric *dto.Metric, series string) bool {
-			assert.Truef(t, hasMatchingFingerprint(metric, methodFP) || hasMatchingFingerprint(metric, methodFPWithInbox), "found unexpected series %q", series)
+			assert.Truef(t, hasMatchingFingerprint(metric, methodFP), "found unexpected series %q", series)
 
 			if debug {
 				t.Logf("coderd_notifications_dispatcher_send_seconds > 0: %v", metric.Histogram.GetSampleSum())
@@ -175,7 +170,7 @@ func TestMetrics(t *testing.T) {
 			}
 
 			// 1 message will exceed its maxAttempts, 1 will succeed on the first try.
-			return metric.Counter.GetValue() == (maxAttempts+1)*2 // *2 because we have 2 enqueuers.
+			return metric.Counter.GetValue() == maxAttempts+1
 		},
 	}
 
@@ -257,11 +252,8 @@ func TestPendingUpdatesMetric(t *testing.T) {
 		assert.NoError(t, mgr.Stop(ctx))
 	})
 	handler := &fakeHandler{}
-	inboxHandler := &fakeHandler{}
-
 	mgr.WithHandlers(map[database.NotificationMethod]notifications.Handler{
-		method:                           handler,
-		database.NotificationMethodInbox: inboxHandler,
+		method: handler,
 	})
 
 	enq, err := notifications.NewStoreEnqueuer(cfg, store, defaultHelpers(), logger.Named("enqueuer"), quartz.NewReal())
@@ -293,7 +285,7 @@ func TestPendingUpdatesMetric(t *testing.T) {
 	}()
 
 	// Both handler calls should be pending in the metrics.
-	require.EqualValues(t, 4, promtest.ToFloat64(metrics.PendingUpdates))
+	require.EqualValues(t, 2, promtest.ToFloat64(metrics.PendingUpdates))
 
 	// THEN:
 	// Trigger syncing updates
@@ -301,13 +293,13 @@ func TestPendingUpdatesMetric(t *testing.T) {
 
 	// Wait until we intercept the calls to sync the pending updates to the store.
 	success := testutil.RequireRecvCtx(testutil.Context(t, testutil.WaitShort), t, interceptor.updateSuccess)
-	require.EqualValues(t, 2, success)
+	require.EqualValues(t, 1, success)
 	failure := testutil.RequireRecvCtx(testutil.Context(t, testutil.WaitShort), t, interceptor.updateFailure)
-	require.EqualValues(t, 2, failure)
+	require.EqualValues(t, 1, failure)
 
 	// Validate that the store synced the expected number of updates.
 	require.Eventually(t, func() bool {
-		return syncer.sent.Load() == 2 && syncer.failed.Load() == 2
+		return syncer.sent.Load() == 1 && syncer.failed.Load() == 1
 	}, testutil.WaitShort, testutil.IntervalFast)
 
 	// Wait for the updates to be synced and the metric to reflect that.
@@ -350,8 +342,7 @@ func TestInflightDispatchesMetric(t *testing.T) {
 	// Barrier handler will wait until all notification messages are in-flight.
 	barrier := newBarrierHandler(msgCount, handler)
 	mgr.WithHandlers(map[database.NotificationMethod]notifications.Handler{
-		method:                           barrier,
-		database.NotificationMethodInbox: &fakeHandler{},
+		method: barrier,
 	})
 
 	enq, err := notifications.NewStoreEnqueuer(cfg, store, defaultHelpers(), logger.Named("enqueuer"), quartz.NewReal())
@@ -387,7 +378,7 @@ func TestInflightDispatchesMetric(t *testing.T) {
 
 	// Wait for the updates to be synced and the metric to reflect that.
 	require.Eventually(t, func() bool {
-		return promtest.ToFloat64(metrics.InflightDispatches.WithLabelValues(string(method), tmpl.String())) == 0
+		return promtest.ToFloat64(metrics.InflightDispatches) == 0
 	}, testutil.WaitShort, testutil.IntervalFast)
 }
 
@@ -436,9 +427,8 @@ func TestCustomMethodMetricCollection(t *testing.T) {
 	smtpHandler := &fakeHandler{}
 	webhookHandler := &fakeHandler{}
 	mgr.WithHandlers(map[database.NotificationMethod]notifications.Handler{
-		defaultMethod:                    smtpHandler,
-		customMethod:                     webhookHandler,
-		database.NotificationMethodInbox: &fakeHandler{},
+		defaultMethod: smtpHandler,
+		customMethod:  webhookHandler,
 	})
 
 	enq, err := notifications.NewStoreEnqueuer(cfg, store, defaultHelpers(), logger.Named("enqueuer"), quartz.NewReal())

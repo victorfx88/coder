@@ -1,8 +1,11 @@
 # Appearance
 
-> [!NOTE]
-> Customizing Coder's appearance is an Enterprise and Premium feature.
-> [Learn more](https://coder.com/pricing#compare-plans).
+<blockquote class="info">
+
+Customizing Coder's appearance is an Enterprise and Premium feature.
+[Learn more](https://coder.com/pricing#compare-plans).
+
+</blockquote>
 
 Customize the look of your Coder deployment to meet your enterprise
 requirements.

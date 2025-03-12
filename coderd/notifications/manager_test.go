@@ -38,7 +38,6 @@ func TestBufferedUpdates(t *testing.T) {
 
 	interceptor := &syncInterceptor{Store: store}
 	santa := &santaHandler{}
-	santaInbox := &santaHandler{}
 
 	cfg := defaultNotificationsConfig(database.NotificationMethodSmtp)
 	cfg.StoreSyncInterval = serpent.Duration(time.Hour) // Ensure we don't sync the store automatically.
@@ -46,13 +45,9 @@ func TestBufferedUpdates(t *testing.T) {
 	// GIVEN: a manager which will pass or fail notifications based on their "nice" labels
 	mgr, err := notifications.NewManager(cfg, interceptor, defaultHelpers(), createMetrics(), logger.Named("notifications-manager"))
 	require.NoError(t, err)
-
-	handlers := map[database.NotificationMethod]notifications.Handler{
-		database.NotificationMethodSmtp:  santa,
-		database.NotificationMethodInbox: santaInbox,
-	}
-
-	mgr.WithHandlers(handlers)
+	mgr.WithHandlers(map[database.NotificationMethod]notifications.Handler{
+		database.NotificationMethodSmtp: santa,
+	})
 	enq, err := notifications.NewStoreEnqueuer(cfg, interceptor, defaultHelpers(), logger.Named("notifications-enqueuer"), quartz.NewReal())
 	require.NoError(t, err)
 
@@ -84,7 +79,7 @@ func TestBufferedUpdates(t *testing.T) {
 	// Wait for the expected number of buffered updates to be accumulated.
 	require.Eventually(t, func() bool {
 		success, failure := mgr.BufferedUpdatesCount()
-		return success == expectedSuccess*len(handlers) && failure == expectedFailure*len(handlers)
+		return success == expectedSuccess && failure == expectedFailure
 	}, testutil.WaitShort, testutil.IntervalFast)
 
 	// Stop the manager which forces an update of buffered updates.
@@ -98,8 +93,8 @@ func TestBufferedUpdates(t *testing.T) {
 			ct.FailNow()
 		}
 
-		assert.EqualValues(ct, expectedFailure*len(handlers), interceptor.failed.Load())
-		assert.EqualValues(ct, expectedSuccess*len(handlers), interceptor.sent.Load())
+		assert.EqualValues(ct, expectedFailure, interceptor.failed.Load())
+		assert.EqualValues(ct, expectedSuccess, interceptor.sent.Load())
 	}, testutil.WaitMedium, testutil.IntervalFast)
 }
 
@@ -234,7 +229,7 @@ type enqueueInterceptor struct {
 }
 
 func newEnqueueInterceptor(db notifications.Store, metadataFn func() database.FetchNewMessageMetadataRow) *enqueueInterceptor {
-	return &enqueueInterceptor{Store: db, payload: make(chan types.MessagePayload, 2), metadataFn: metadataFn}
+	return &enqueueInterceptor{Store: db, payload: make(chan types.MessagePayload, 1), metadataFn: metadataFn}
 }
 
 func (e *enqueueInterceptor) EnqueueNotificationMessage(_ context.Context, arg database.EnqueueNotificationMessageParams) error {

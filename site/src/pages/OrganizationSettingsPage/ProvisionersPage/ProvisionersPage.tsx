@@ -2,7 +2,6 @@ import { EmptyState } from "components/EmptyState/EmptyState";
 import { TabLink, Tabs, TabsList } from "components/Tabs/Tabs";
 import { useSearchParamsKey } from "hooks/useSearchParamsKey";
 import { useOrganizationSettings } from "modules/management/OrganizationSettingsLayout";
-import { RequirePermission } from "modules/permissions/RequirePermission";
 import type { FC } from "react";
 import { Helmet } from "react-helmet-async";
 import { pageTitle } from "utils/page";
@@ -17,32 +16,26 @@ const ProvisionersPage: FC = () => {
 	});
 
 	if (!organization || !organizationPermissions?.viewProvisionerJobs) {
-		return <EmptyState message="Organization not found" />;
-	}
-
-	const helmet = (
-		<Helmet>
-			<title>
-				{pageTitle(
-					"Provisioners",
-					organization.display_name || organization.name,
-				)}
-			</title>
-		</Helmet>
-	);
-
-	if (!organizationPermissions?.viewProvisioners) {
 		return (
 			<>
-				{helmet}
-				<RequirePermission isFeatureVisible={false} />
+				<Helmet>
+					<title>{pageTitle("Provisioners")}</title>
+				</Helmet>
+				<EmptyState message="Organization not found" />
 			</>
 		);
 	}
 
 	return (
 		<>
-			{helmet}
+			<Helmet>
+				<title>
+					{pageTitle(
+						"Provisioners",
+						organization.display_name || organization.name,
+					)}
+				</title>
+			</Helmet>
 
 			<div className="flex flex-col gap-12">
 				<header className="flex flex-row items-baseline justify-between">

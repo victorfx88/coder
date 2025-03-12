@@ -1,3 +1,4 @@
+import type { Interpolation, Theme } from "@emotion/react";
 import TextField from "@mui/material/TextField";
 import { isApiValidationError } from "api/errors";
 import type {

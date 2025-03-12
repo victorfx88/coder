@@ -1,6 +1,7 @@
 import AlertTitle from "@mui/material/AlertTitle";
 import type {
 	DAUsResponse,
+	Entitlements,
 	Experiments,
 	SerpentOption,
 } from "api/typesGenerated";
@@ -14,14 +15,14 @@ import { Alert } from "../../../components/Alert/Alert";
 import OptionsTable from "../OptionsTable";
 import { UserEngagementChart } from "./UserEngagementChart";
 
-export type OverviewPageViewProps = {
+export type GeneralSettingsPageViewProps = {
 	deploymentOptions: SerpentOption[];
 	dailyActiveUsers: DAUsResponse | undefined;
 	readonly invalidExperiments: Experiments | string[];
 	readonly safeExperiments: Experiments | string[];
 };
 
-export const OverviewPageView: FC<OverviewPageViewProps> = ({
+export const GeneralSettingsPageView: FC<GeneralSettingsPageViewProps> = ({
 	deploymentOptions,
 	dailyActiveUsers,
 	safeExperiments,

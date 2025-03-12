@@ -14,8 +14,7 @@
       "initiator": "rob",
       "suspended_account_name": "bobby"
     },
-    "data": null,
-    "targets": null
+    "data": null
   },
   "title": "Your account \"bobby\" has been suspended",
   "title_markdown": "Your account \"bobby\" has been suspended",

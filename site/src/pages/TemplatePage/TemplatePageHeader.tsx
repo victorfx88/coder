@@ -168,6 +168,7 @@ export const TemplatePageHeader: FC<TemplatePageHeaderProps> = ({
 	onDeleteTemplate,
 }) => {
 	const getLink = useLinks();
+	const hasIcon = template.icon && template.icon !== "";
 	const templateLink = getLink(
 		linkToTemplate(template.organization_name, template.name),
 	);

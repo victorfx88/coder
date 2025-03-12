@@ -6,7 +6,6 @@ import { Alert } from "components/Alert/Alert";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { Avatar } from "components/Avatar/Avatar";
 import { Button } from "components/Button/Button";
-import { FeatureStageBadge } from "components/FeatureStageBadge/FeatureStageBadge";
 import { SelectFilter } from "components/Filter/SelectFilter";
 import {
 	FormFields,
@@ -275,12 +274,9 @@ export const CreateWorkspacePageView: FC<CreateWorkspacePageViewProps> = ({
 
 						{presets.length > 0 && (
 							<Stack direction="column" spacing={2}>
-								<Stack direction="row" spacing={2} alignItems="center">
-									<span css={styles.description}>
-										Select a preset to get started
-									</span>
-									<FeatureStageBadge contentType={"beta"} size="md" />
-								</Stack>
+								<span css={styles.description}>
+									Select a preset to get started
+								</span>
 								<Stack direction="row" spacing={2}>
 									<SelectFilter
 										label="Preset"

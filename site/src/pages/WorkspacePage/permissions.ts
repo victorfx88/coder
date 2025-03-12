@@ -25,7 +25,7 @@ export const workspaceChecks = (workspace: Workspace, template: Template) =>
 			},
 			action: "update",
 		},
-		viewDeploymentConfig: {
+		viewDeploymentValues: {
 			object: {
 				resource_type: "deployment_config",
 			},

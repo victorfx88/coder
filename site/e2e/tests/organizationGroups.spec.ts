@@ -2,11 +2,10 @@ import { expect, test } from "@playwright/test";
 import {
 	createGroup,
 	createOrganization,
-	createOrganizationMember,
 	createUser,
 	setupApiCalls,
 } from "../api";
-import { defaultOrganizationId, defaultOrganizationName } from "../constants";
+import { defaultOrganizationName } from "../constants";
 import { expectUrl } from "../expectUrl";
 import { login, randomName, requiresLicense } from "../helpers";
 import { beforeCoderTest } from "../hooks";
@@ -33,11 +32,6 @@ test("create group", async ({ page }) => {
 
 	// Create a new organization
 	const org = await createOrganization();
-	const orgUserAdmin = await createOrganizationMember({
-		[org.id]: ["organization-user-admin"],
-	});
-
-	await login(page, orgUserAdmin);
 	await page.goto(`/organizations/${org.name}`);
 
 	// Navigate to groups page
@@ -70,7 +64,8 @@ test("create group", async ({ page }) => {
 	await expect(addedRow).toBeVisible();
 
 	// Ensure we can't add a user who isn't in the org
-	const personToReject = await createUser(defaultOrganizationId);
+	const otherOrg = await createOrganization();
+	const personToReject = await createUser(otherOrg.id);
 	await page
 		.getByPlaceholder("User email or username")
 		.fill(personToReject.email);
@@ -98,12 +93,8 @@ test("change quota settings", async ({ page }) => {
 	// Create a new organization and group
 	const org = await createOrganization();
 	const group = await createGroup(org.id);
-	const orgUserAdmin = await createOrganizationMember({
-		[org.id]: ["organization-user-admin"],
-	});
 
 	// Go to settings
-	await login(page, orgUserAdmin);
 	await page.goto(`/organizations/${org.name}/groups/${group.name}`);
 	await page.getByRole("button", { name: "Settings", exact: true }).click();
 	expectUrl(page).toHavePathName(

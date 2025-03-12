@@ -117,7 +117,9 @@ This mode is useful for testing HA or validating more complex setups.
 
 ### Deploying a PR
 
-You need to be a member or collaborator of the [coder](https://github.com/coder) GitHub organization to be able to deploy a PR.
+> You need to be a member or collaborator of the of
+> [coder](https://github.com/coder) GitHub organization to be able to deploy a
+> PR.
 
 You can test your changes by creating a PR deployment. There are two ways to do
 this:
@@ -140,8 +142,7 @@ this:
   name and PR number, etc.
 - `-y` or `--yes`, will skip the CLI confirmation prompt.
 
-> [!NOTE]
-> PR deployment will be re-deployed automatically when the PR is updated.
+> Note: PR deployment will be re-deployed automatically when the PR is updated.
 > It will use the last values automatically for redeployment.
 
 Once the deployment is finished, a unique link and credentials will be posted in
@@ -255,7 +256,8 @@ Our frontend guide can be found [here](./contributing/frontend.md).
 
 ## Reviews
 
-The following information has been borrowed from [Go's review philosophy](https://go.dev/doc/contribute#reviews).
+> The following information has been borrowed from
+> [Go's review philosophy](https://go.dev/doc/contribute#reviews).
 
 Coder values thorough reviews. For each review comment that you receive, please
 "close" it by implementing the suggestion or providing an explanation on why the
@@ -343,7 +345,6 @@ Breaking changes can be triggered in two ways:
 
 ### Security
 
-> [!CAUTION]
 > If you find a vulnerability, **DO NOT FILE AN ISSUE**. Instead, send an email
 > to <security@coder.com>.
 

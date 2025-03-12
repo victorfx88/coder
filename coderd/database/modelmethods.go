@@ -168,12 +168,6 @@ func (TemplateVersion) RBACObject(template Template) rbac.Object {
 	return template.RBACObject()
 }
 
-func (i InboxNotification) RBACObject() rbac.Object {
-	return rbac.ResourceInboxNotification.
-		WithID(i.ID).
-		WithOwner(i.UserID.String())
-}
-
 // RBACObjectNoTemplate is for orphaned template versions.
 func (v TemplateVersion) RBACObjectNoTemplate() rbac.Object {
 	return rbac.ResourceTemplate.InOrg(v.OrganizationID)
@@ -253,10 +247,6 @@ func (m OrganizationMember) RBACObject() rbac.Object {
 }
 
 func (m OrganizationMembersRow) RBACObject() rbac.Object {
-	return m.OrganizationMember.RBACObject()
-}
-
-func (m PaginatedOrganizationMembersRow) RBACObject() rbac.Object {
 	return m.OrganizationMember.RBACObject()
 }
 
@@ -410,19 +400,20 @@ func ConvertUserRows(rows []GetUsersRow) []User {
 	users := make([]User, len(rows))
 	for i, r := range rows {
 		users[i] = User{
-			ID:             r.ID,
-			Email:          r.Email,
-			Username:       r.Username,
-			Name:           r.Name,
-			HashedPassword: r.HashedPassword,
-			CreatedAt:      r.CreatedAt,
-			UpdatedAt:      r.UpdatedAt,
-			Status:         r.Status,
-			RBACRoles:      r.RBACRoles,
-			LoginType:      r.LoginType,
-			AvatarURL:      r.AvatarURL,
-			Deleted:        r.Deleted,
-			LastSeenAt:     r.LastSeenAt,
+			ID:              r.ID,
+			Email:           r.Email,
+			Username:        r.Username,
+			Name:            r.Name,
+			HashedPassword:  r.HashedPassword,
+			CreatedAt:       r.CreatedAt,
+			UpdatedAt:       r.UpdatedAt,
+			Status:          r.Status,
+			RBACRoles:       r.RBACRoles,
+			LoginType:       r.LoginType,
+			AvatarURL:       r.AvatarURL,
+			Deleted:         r.Deleted,
+			LastSeenAt:      r.LastSeenAt,
+			ThemePreference: r.ThemePreference,
 		}
 	}
 

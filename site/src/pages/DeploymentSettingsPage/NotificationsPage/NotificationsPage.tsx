@@ -9,8 +9,9 @@ import { Loader } from "components/Loader/Loader";
 import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import { TabLink, Tabs, TabsList } from "components/Tabs/Tabs";
 import { useSearchParamsKey } from "hooks/useSearchParamsKey";
-import { useDeploymentConfig } from "modules/management/DeploymentConfigProvider";
+import { useDeploymentSettings } from "modules/management/DeploymentSettingsProvider";
 import { castNotificationMethod } from "modules/notifications/utils";
+import { Section } from "pages/UserSettingsPage/Section";
 import type { FC } from "react";
 import { Helmet } from "react-helmet-async";
 import { useQueries } from "react-query";
@@ -22,7 +23,7 @@ import { NotificationEvents } from "./NotificationEvents";
 import { Troubleshooting } from "./Troubleshooting";
 
 export const NotificationsPage: FC = () => {
-	const { deploymentConfig } = useDeploymentConfig();
+	const { deploymentConfig } = useDeploymentSettings();
 	const [templatesByGroup, dispatchMethods] = useQueries({
 		queries: [
 			{

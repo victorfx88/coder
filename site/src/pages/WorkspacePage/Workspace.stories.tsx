@@ -5,13 +5,14 @@ import { ProxyContext, getPreferredProxy } from "contexts/ProxyContext";
 import * as Mocks from "testHelpers/entities";
 import { withDashboardProvider } from "testHelpers/storybook";
 import { Workspace } from "./Workspace";
+import { WorkspaceBuildLogsSection } from "./WorkspaceBuildLogsSection";
 import type { WorkspacePermissions } from "./permissions";
 
 const permissions: WorkspacePermissions = {
 	readWorkspace: true,
 	updateWorkspace: true,
 	updateTemplate: true,
-	viewDeploymentConfig: true,
+	viewDeploymentValues: true,
 };
 
 const meta: Meta<typeof Workspace> = {

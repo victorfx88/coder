@@ -22,7 +22,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: FC<SidebarProps> = ({ user }) => {
-	const { entitlements } = useDashboard();
+	const { entitlements, experiments } = useDashboard();
 	const showSchedulePage =
 		entitlements.features.advanced_template_scheduling.enabled;
 

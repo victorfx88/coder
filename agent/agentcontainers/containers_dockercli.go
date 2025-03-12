@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/user"
 	"slices"
 	"sort"
@@ -14,7 +15,6 @@ import (
 	"time"
 
 	"github.com/coder/coder/v2/agent/agentexec"
-	"github.com/coder/coder/v2/agent/usershell"
 	"github.com/coder/coder/v2/codersdk"
 
 	"golang.org/x/exp/maps"
@@ -37,7 +37,6 @@ func NewDocker(execer agentexec.Execer) Lister {
 // DockerEnvInfoer is an implementation of agentssh.EnvInfoer that returns
 // information about a container.
 type DockerEnvInfoer struct {
-	usershell.SystemEnvInfo
 	container string
 	user      *user.User
 	userShell string
@@ -123,13 +122,26 @@ func EnvInfo(ctx context.Context, execer agentexec.Execer, container, containerU
 	return &dei, nil
 }
 
-func (dei *DockerEnvInfoer) User() (*user.User, error) {
+func (dei *DockerEnvInfoer) CurrentUser() (*user.User, error) {
 	// Clone the user so that the caller can't modify it
 	u := *dei.user
 	return &u, nil
 }
 
-func (dei *DockerEnvInfoer) Shell(string) (string, error) {
+func (*DockerEnvInfoer) Environ() []string {
+	// Return a clone of the environment so that the caller can't modify it
+	return os.Environ()
+}
+
+func (*DockerEnvInfoer) UserHomeDir() (string, error) {
+	// We default the working directory of the command to the user's home
+	// directory. Since this came from inside the container, we cannot guarantee
+	// that this exists on the host. Return the "real" home directory of the user
+	// instead.
+	return os.UserHomeDir()
+}
+
+func (dei *DockerEnvInfoer) UserShell(string) (string, error) {
 	return dei.userShell, nil
 }
 
@@ -182,18 +194,17 @@ func devcontainerEnv(ctx context.Context, execer agentexec.Execer, container str
 	if !ok {
 		return nil, nil
 	}
-
-	meta := make([]DevContainerMeta, 0)
+	meta := struct {
+		RemoteEnv map[string]string `json:"remoteEnv"`
+	}{}
 	if err := json.Unmarshal([]byte(rawMeta), &meta); err != nil {
 		return nil, xerrors.Errorf("unmarshal devcontainer.metadata: %w", err)
 	}
 
 	// The environment variables are stored in the `remoteEnv` key.
-	env := make([]string, 0)
-	for _, m := range meta {
-		for k, v := range m.RemoteEnv {
-			env = append(env, fmt.Sprintf("%s=%s", k, v))
-		}
+	env := make([]string, 0, len(meta.RemoteEnv))
+	for k, v := range meta.RemoteEnv {
+		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 	slices.Sort(env)
 	return env, nil
@@ -254,16 +265,11 @@ func (dcl *DockerCLILister) List(ctx context.Context) (codersdk.WorkspaceAgentLi
 		return codersdk.WorkspaceAgentListContainersResponse{}, xerrors.Errorf("scan docker ps output: %w", err)
 	}
 
-	res := codersdk.WorkspaceAgentListContainersResponse{
-		Containers: make([]codersdk.WorkspaceAgentDevcontainer, 0, len(ids)),
-		Warnings:   make([]string, 0),
-	}
 	dockerPsStderr := strings.TrimSpace(stderrBuf.String())
-	if dockerPsStderr != "" {
-		res.Warnings = append(res.Warnings, dockerPsStderr)
-	}
 	if len(ids) == 0 {
-		return res, nil
+		return codersdk.WorkspaceAgentListContainersResponse{
+			Warnings: []string{dockerPsStderr},
+		}, nil
 	}
 
 	// now we can get the detailed information for each container
@@ -279,10 +285,13 @@ func (dcl *DockerCLILister) List(ctx context.Context) (codersdk.WorkspaceAgentLi
 		return codersdk.WorkspaceAgentListContainersResponse{}, xerrors.Errorf("run docker inspect: %w", err)
 	}
 
-	for _, in := range ins {
+	res := codersdk.WorkspaceAgentListContainersResponse{
+		Containers: make([]codersdk.WorkspaceAgentDevcontainer, len(ins)),
+	}
+	for idx, in := range ins {
 		out, warns := convertDockerInspect(in)
 		res.Warnings = append(res.Warnings, warns...)
-		res.Containers = append(res.Containers, out)
+		res.Containers[idx] = out
 	}
 
 	if dockerPsStderr != "" {

@@ -31,8 +31,8 @@ const NotFoundPage = lazy(() => import("./pages/404Page/404Page"));
 const DeploymentSettingsLayout = lazy(
 	() => import("./modules/management/DeploymentSettingsLayout"),
 );
-const DeploymentConfigProvider = lazy(
-	() => import("./modules/management/DeploymentConfigProvider"),
+const DeploymentSettingsProvider = lazy(
+	() => import("./modules/management/DeploymentSettingsProvider"),
 );
 const OrganizationSidebarLayout = lazy(
 	() => import("./modules/management/OrganizationSidebarLayout"),
@@ -98,8 +98,11 @@ const TemplateSummaryPage = lazy(
 const CreateWorkspacePage = lazy(
 	() => import("./pages/CreateWorkspacePage/CreateWorkspacePage"),
 );
-const OverviewPage = lazy(
-	() => import("./pages/DeploymentSettingsPage/OverviewPage/OverviewPage"),
+const GeneralSettingsPage = lazy(
+	() =>
+		import(
+			"./pages/DeploymentSettingsPage/GeneralSettingsPage/GeneralSettingsPage"
+		),
 );
 const SecuritySettingsPage = lazy(
 	() =>
@@ -432,8 +435,8 @@ export const router = createBrowserRouter(
 					</Route>
 
 					<Route path="/deployment" element={<DeploymentSettingsLayout />}>
-						<Route element={<DeploymentConfigProvider />}>
-							<Route path="overview" element={<OverviewPage />} />
+						<Route element={<DeploymentSettingsProvider />}>
+							<Route path="general" element={<GeneralSettingsPage />} />
 							<Route path="security" element={<SecuritySettingsPage />} />
 							<Route
 								path="observability"
@@ -450,6 +453,8 @@ export const router = createBrowserRouter(
 								path="notifications"
 								element={<DeploymentNotificationsPage />}
 							/>
+							<Route path="idp-org-sync" element={<IdpOrgSyncPage />} />
+							<Route path="premium" element={<PremiumPage />} />
 						</Route>
 
 						<Route path="licenses">
@@ -471,9 +476,6 @@ export const router = createBrowserRouter(
 						<Route path="users/create" element={<CreateUserPage />} />
 
 						{groupsRouter()}
-
-						<Route path="idp-org-sync" element={<IdpOrgSyncPage />} />
-						<Route path="premium" element={<PremiumPage />} />
 					</Route>
 
 					<Route path="/settings" element={<UserSettingsLayout />}>

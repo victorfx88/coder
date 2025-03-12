@@ -1,6 +1,6 @@
 name: "🐞 Bug"
 description: "File a bug report."
-title: "bug: "
+title: "<title>"
 labels: ["needs-triage"]
 body:
   - type: checkboxes

@@ -24,7 +24,7 @@ Then open the **Schedule** tab to see your workspace scheduling options.
 
 ## Autostart
 
-Autostart must be enabled in the template settings by your administrator.
+> Autostart must be enabled in the template settings by your administrator.
 
 Use autostart to start a workspace at a specified time and which days of the
 week. Also, you can choose your preferred timezone. Admins may restrict which
@@ -51,9 +51,12 @@ for your workspace.
 
 ## Autostop requirement
 
-> [!NOTE]
-> Autostop requirement is an Enterprise and Premium feature.
-> [Learn more](https://coder.com/pricing#compare-plans).
+<blockquote class="info">
+
+Autostop requirement is an Enterprise and Premium feature.
+[Learn more](https://coder.com/pricing#compare-plans).
+
+</blockquote>
 
 Licensed template admins may enforce a required stop for workspaces to apply
 updates or undergo maintenance. These stops ignore any active connections or
@@ -62,14 +65,17 @@ frequency for updates, either in **days** or **weeks**. Workspaces will apply
 the template autostop requirement on the given day **in the user's timezone**
 and specified quiet hours (see below).
 
-Admins: See the template schedule settings for more information on configuring
-Autostop Requirement.
+> Admins: See the template schedule settings for more information on configuring
+> Autostop Requirement.
 
 ### User quiet hours
 
-> [!NOTE]
-> User quiet hours are an Enterprise and Premium feature.
-> [Learn more](https://coder.com/pricing#compare-plans).
+<blockquote class="info">
+
+User quiet hours are an Enterprise and Premium feature.
+[Learn more](https://coder.com/pricing#compare-plans).
+
+</blockquote>
 
 User quiet hours can be configured in the user's schedule settings page.
 Workspaces on templates with an autostop requirement will only be forcibly
@@ -84,8 +90,7 @@ powerful system for scheduling your workspace. However, synchronizing all of
 them simultaneously can be somewhat challenging, here are a few example
 configurations to better understand how they interact.
 
-> [!NOTE]
-> The inactivity timer must be configured by your template admin.
+> Note that the inactivity timer must be configured by your template admin.
 
 ### Working hours
 
@@ -110,9 +115,12 @@ hours of inactivity.
 
 ## Dormancy
 
-> [!NOTE]
-> Dormancy is an Enterprise and Premium feature.
-> [Learn more](https://coder.com/pricing#compare-plans).
+<blockquote class="info">
+
+Dormancy is an Enterprise and Premium feature.
+[Learn more](https://coder.com/pricing#compare-plans).
+
+</blockquote>
 
 Dormancy automatically deletes workspaces which remain unused for long
 durations. Template admins configure an inactivity period after which your

@@ -31,8 +31,11 @@ you can require users authenticate via git prior to creating a workspace:
 
 ### Native git authentication will auto-refresh tokens
 
-> [!TIP]
-> This is the preferred authentication method.
+<blockquote class="info">
+  <p>
+  This is the preferred authentication method.
+  </p>
+</blockquote>
 
 By default, the coder agent will configure native `git` authentication via the
 `GIT_ASKPASS` environment variable. Meaning, with no additional configuration,

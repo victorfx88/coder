@@ -5,7 +5,7 @@ import {
 } from "@testing-library/react";
 import { AppProviders } from "App";
 import type { ProxyProvider } from "contexts/ProxyContext";
-import { ThemeOverride } from "contexts/ThemeProvider";
+import { ThemeProvider } from "contexts/ThemeProvider";
 import { RequireAuth } from "contexts/auth/RequireAuth";
 import { DashboardLayout } from "modules/dashboard/DashboardLayout";
 import type { DashboardProvider } from "modules/dashboard/DashboardProvider";
@@ -19,7 +19,6 @@ import {
 	RouterProvider,
 	createMemoryRouter,
 } from "react-router-dom";
-import themes, { DEFAULT_THEME } from "theme";
 import { MockUser } from "./entities";
 
 export function createTestQueryClient() {
@@ -246,8 +245,6 @@ export const waitForLoaderToBeRemoved = async (): Promise<void> => {
 
 export const renderComponent = (component: React.ReactElement) => {
 	return testingLibraryRender(component, {
-		wrapper: ({ children }) => (
-			<ThemeOverride theme={themes[DEFAULT_THEME]}>{children}</ThemeOverride>
-		),
+		wrapper: ({ children }) => <ThemeProvider>{children}</ThemeProvider>,
 	});
 };

@@ -19,8 +19,7 @@
       "threshold": "90%",
       "workspace": "bobby-workspace"
     },
-    "data": null,
-    "targets": null
+    "data": null
   },
   "title": "Your workspace \"bobby-workspace\" is low on memory",
   "title_markdown": "Your workspace \"bobby-workspace\" is low on memory",

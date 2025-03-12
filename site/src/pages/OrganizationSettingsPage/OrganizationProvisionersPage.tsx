@@ -4,7 +4,6 @@ import { EmptyState } from "components/EmptyState/EmptyState";
 import { useEmbeddedMetadata } from "hooks/useEmbeddedMetadata";
 import { useDashboard } from "modules/dashboard/useDashboard";
 import { useOrganizationSettings } from "modules/management/OrganizationSettingsLayout";
-import { RequirePermission } from "modules/permissions/RequirePermission";
 import type { FC } from "react";
 import { Helmet } from "react-helmet-async";
 import { useQuery } from "react-query";
@@ -16,7 +15,7 @@ const OrganizationProvisionersPage: FC = () => {
 	const { organization: organizationName } = useParams() as {
 		organization: string;
 	};
-	const { organization, organizationPermissions } = useOrganizationSettings();
+	const { organization } = useOrganizationSettings();
 	const { entitlements } = useDashboard();
 	const { metadata } = useEmbeddedMetadata();
 	const buildInfoQuery = useQuery(buildInfo(metadata["build-info"]));
@@ -26,29 +25,16 @@ const OrganizationProvisionersPage: FC = () => {
 		return <EmptyState message="Organization not found" />;
 	}
 
-	const helmet = (
-		<Helmet>
-			<title>
-				{pageTitle(
-					"Provisioners",
-					organization.display_name || organization.name,
-				)}
-			</title>
-		</Helmet>
-	);
-
-	if (!organizationPermissions?.viewProvisioners) {
-		return (
-			<>
-				{helmet}
-				<RequirePermission isFeatureVisible={false} />
-			</>
-		);
-	}
-
 	return (
 		<>
-			{helmet}
+			<Helmet>
+				<title>
+					{pageTitle(
+						"Provisioners",
+						organization.display_name || organization.name,
+					)}
+				</title>
+			</Helmet>
 			<OrganizationProvisionersPageView
 				showPaywall={!entitlements.features.multiple_organizations.enabled}
 				error={provisionersQuery.error}

@@ -18,8 +18,7 @@
     "labels": {
       "one_time_passcode": "00000000-0000-0000-0000-000000000000"
     },
-    "data": null,
-    "targets": null
+    "data": null
   },
   "title": "Reset your password for Coder",
   "title_markdown": "Reset your password for Coder",

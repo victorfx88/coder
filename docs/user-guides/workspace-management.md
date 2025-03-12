@@ -90,9 +90,12 @@ manually updated the workspace.
 
 ## Bulk operations
 
-> [!NOTE]
-> Bulk operations are an Enterprise and Premium feature.
-> [Learn more](https://coder.com/pricing#compare-plans).
+<blockquote class="info">
+
+Bulk operations are an Enterprise and Premium feature.
+[Learn more](https://coder.com/pricing#compare-plans).
+
+</blockquote>
 
 Licensed admins may apply bulk operations (update, delete, start, stop) in the
 **Workspaces** tab. Select the workspaces you'd like to modify with the
@@ -179,5 +182,4 @@ Coder stores macOS and Linux logs at the following locations:
 | `shutdown_script` | `/tmp/coder-shutdown-script.log` |
 | Agent             | `/tmp/coder-agent.log`           |
 
-> [!NOTE]
-> Logs are truncated once they reach 5MB in size.
+> Note: Logs are truncated once they reach 5MB in size.

@@ -20,8 +20,7 @@
       "deleted_account_user_name": "William Tables",
       "initiator": "rob"
     },
-    "data": null,
-    "targets": null
+    "data": null
   },
   "title": "User account \"bobby\" deleted",
   "title_markdown": "User account \"bobby\" deleted",

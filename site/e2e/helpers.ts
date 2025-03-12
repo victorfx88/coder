@@ -61,13 +61,13 @@ export function requireTerraformProvisioner() {
 	test.skip(!requireTerraformTests);
 }
 
-export type LoginOptions = {
+type LoginOptions = {
 	username: string;
 	email: string;
 	password: string;
 };
 
-export async function login(page: Page, options: LoginOptions = users.owner) {
+export async function login(page: Page, options: LoginOptions = users.admin) {
 	const ctx = page.context();
 	// biome-ignore lint/suspicious/noExplicitAny: reset the current user
 	(ctx as any)[Symbol.for("currentUser")] = undefined;
@@ -267,13 +267,8 @@ export const createTemplate = async (
 			);
 		}
 
-		// picker is disabled if only one org is available
-		const pickerIsDisabled = await orgPicker.isDisabled();
-
-		if (!pickerIsDisabled) {
-			await orgPicker.click();
-			await page.getByText(orgName, { exact: true }).click();
-		}
+		await orgPicker.click();
+		await page.getByText(orgName, { exact: true }).click();
 	}
 
 	const name = randomName();
@@ -515,7 +510,7 @@ export const waitUntilUrlIsNotResponding = async (url: string) => {
 	while (retries < maxRetries) {
 		try {
 			await axiosInstance.get(url);
-		} catch {
+		} catch (error) {
 			return;
 		}
 
@@ -1067,7 +1062,6 @@ type UserValues = {
 export async function createUser(
 	page: Page,
 	userValues: Partial<UserValues> = {},
-	orgName = defaultOrganizationName,
 ): Promise<UserValues> {
 	const returnTo = page.url();
 
@@ -1088,16 +1082,6 @@ export async function createUser(
 		await page.getByLabel("Full name").fill(name);
 	}
 	await page.getByLabel("Email").fill(email);
-
-	// If the organization picker is present on the page, select the default
-	// organization.
-	const orgPicker = page.getByLabel("Organization *");
-	const organizationsEnabled = await orgPicker.isVisible();
-	if (organizationsEnabled) {
-		await orgPicker.click();
-		await page.getByText(orgName, { exact: true }).click();
-	}
-
 	await page.getByLabel("Login Type").click();
 	await page.getByRole("option", { name: "Password", exact: false }).click();
 	// Using input[name=password] due to the select element utilizing 'password'
@@ -1142,31 +1126,4 @@ export async function createOrganization(page: Page): Promise<{
 	await expect(page.getByText("Organization created.")).toBeVisible();
 
 	return { name, displayName, description };
-}
-
-/**
- * @param organization organization name
- * @param user user email or username
- */
-export async function addUserToOrganization(
-	page: Page,
-	organization: string,
-	user: string,
-	roles: string[] = [],
-): Promise<void> {
-	await page.goto(`/organizations/${organization}`, {
-		waitUntil: "domcontentloaded",
-	});
-
-	await page.getByPlaceholder("User email or username").fill(user);
-	await page.getByRole("option", { name: user }).click();
-	await page.getByRole("button", { name: "Add user" }).click();
-	const addedRow = page.locator("tr", { hasText: user });
-	await expect(addedRow).toBeVisible();
-
-	await addedRow.getByLabel("Edit user roles").click();
-	for (const role of roles) {
-		await page.getByText(role).click();
-	}
-	await page.mouse.click(10, 10); // close the popover by clicking outside of it
 }

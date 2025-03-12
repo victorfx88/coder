@@ -25,6 +25,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -252,8 +253,10 @@ func TestServer(t *testing.T) {
 			"--access-url", "http://localhost:3000/",
 			"--cache-dir", t.TempDir(),
 		)
-		pty := ptytest.New(t).Attach(inv)
-		require.NoError(t, pty.Resize(20, 80))
+		stdoutRW := syncReaderWriter{}
+		stderrRW := syncReaderWriter{}
+		inv.Stdout = io.MultiWriter(os.Stdout, &stdoutRW)
+		inv.Stderr = io.MultiWriter(os.Stderr, &stderrRW)
 		clitest.Start(t, inv)
 
 		// Wait for startup
@@ -267,9 +270,8 @@ func TestServer(t *testing.T) {
 		// normally shown to the user, so we'll ignore them.
 		ignoreLines := []string{
 			"isn't externally reachable",
-			"open install.sh: file does not exist",
+			"install.sh will be unavailable",
 			"telemetry disabled, unable to notify of security issues",
-			"installed terraform version newer than expected",
 		}
 
 		countLines := func(fullOutput string) int {
@@ -280,11 +282,9 @@ func TestServer(t *testing.T) {
 			for _, line := range linesByNewline {
 				for _, ignoreLine := range ignoreLines {
 					if strings.Contains(line, ignoreLine) {
-						t.Logf("Ignoring: %q", line)
 						continue lineLoop
 					}
 				}
-				t.Logf("Counting: %q", line)
 				if line == "" {
 					// Empty lines take up one line.
 					countByWidth++
@@ -295,10 +295,17 @@ func TestServer(t *testing.T) {
 			return countByWidth
 		}
 
-		out := pty.ReadAll()
-		numLines := countLines(string(out))
-		t.Logf("numLines: %d", numLines)
-		require.Less(t, numLines, 12, "expected less than 12 lines of output (terminal width 80), got %d", numLines)
+		stdout, err := io.ReadAll(&stdoutRW)
+		if err != nil {
+			t.Fatalf("failed to read stdout: %v", err)
+		}
+		stderr, err := io.ReadAll(&stderrRW)
+		if err != nil {
+			t.Fatalf("failed to read stderr: %v", err)
+		}
+
+		numLines := countLines(string(stdout)) + countLines(string(stderr))
+		require.Less(t, numLines, 20)
 	})
 
 	t.Run("OAuth2GitHubDefaultProvider", func(t *testing.T) {
@@ -2347,4 +2354,23 @@ func mockTelemetryServer(t *testing.T) (*url.URL, chan *telemetry.Deployment, ch
 	require.NoError(t, err)
 
 	return serverURL, deployment, snapshot
+}
+
+// syncWriter provides a thread-safe io.ReadWriter implementation
+type syncReaderWriter struct {
+	buf bytes.Buffer
+	mu  sync.Mutex
+}
+
+func (w *syncReaderWriter) Write(p []byte) (n int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.buf.Write(p)
+}
+
+func (w *syncReaderWriter) Read(p []byte) (n int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	return w.buf.Read(p)
 }
