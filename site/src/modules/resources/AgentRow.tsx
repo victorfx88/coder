@@ -35,6 +35,7 @@ import { AgentMetadata } from "./AgentMetadata";
 import { AgentStatus } from "./AgentStatus";
 import { AgentVersion } from "./AgentVersion";
 import { AppLink } from "./AppLink/AppLink";
+import { AIAgentProgress } from "./AIAgentProgress/AIAgentProgress";
 import { DownloadAgentLogsButton } from "./DownloadAgentLogsButton";
 import { PortForwardButton } from "./PortForwardButton";
 import { AgentSSHButton } from "./SSHButton/SSHButton";
@@ -94,6 +95,7 @@ export const AgentRow: FC<AgentRowProps> = ({
 		["starting", "start_timeout"].includes(agent.lifecycle_state) &&
 			hasStartupFeatures,
 	);
+	const [showAIAgentLogs, setShowAIAgentLogs] = useState(false);
 	const agentLogs = useAgentLogs({
 		workspaceId: workspace.id,
 		agentId: agent.id,
@@ -331,6 +333,19 @@ export const AgentRow: FC<AgentRowProps> = ({
 						</AutoSizer>
 					</Collapse>
 
+					<Collapse in={showAIAgentLogs}>
+						<AutoSizer disableHeight>
+							{({ width }) => (
+								<div style={{ width }}>
+									<AIAgentProgress
+										logs={agentLogs ?? []}
+										sources={agent.log_sources}
+									/>
+								</div>
+							)}
+						</AutoSizer>
+					</Collapse>
+
 					<Stack css={{ padding: "12px 16px" }} direction="row" spacing={1}>
 						<Button
 							variant="text"
@@ -339,6 +354,17 @@ export const AgentRow: FC<AgentRowProps> = ({
 							onClick={() => setShowLogs((v) => !v)}
 						>
 							Logs
+						</Button>
+						<Divider orientation="vertical" variant="middle" flexItem />
+						<Button
+							variant="text"
+							size="small"
+							startIcon={
+								<DropdownArrow close={showAIAgentLogs} margin={false} />
+							}
+							onClick={() => setShowAIAgentLogs((v) => !v)}
+						>
+							AI Agent Progress
 						</Button>
 						<Divider orientation="vertical" variant="middle" flexItem />
 						<DownloadAgentLogsButton workspaceId={workspace.id} agent={agent} />
