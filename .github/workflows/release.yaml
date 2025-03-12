@@ -305,7 +305,7 @@ jobs:
           version="$(./scripts/version.sh)"
           make gen/mark-fresh
           make -j \
-            build/coder_"$version"_linux_{amd64,armv7,arm64}.{tar.gz,apk,deb,rpm} \
+            build/coder_"$version"_linux_{amd64,armv7,arm64,riscv64}.{tar.gz,apk,deb,rpm} \
             build/coder_"$version"_{darwin,windows}_{amd64,arm64}.zip \
             build/coder_"$version"_windows_amd64_installer.exe \
             build/coder_helm_"$version".tgz \
@@ -359,7 +359,7 @@ jobs:
           project: wl5hnrrkns
           context: base-build-context
           file: scripts/Dockerfile.base
-          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/riscv64
           provenance: true
           pull: true
           no-cache: true
@@ -391,11 +391,12 @@ jobs:
               jq -r '.manifests[].platform | .os + "/" + .architecture + (if .variant then "/" + .variant else "" end)'
           )
 
-          # Verify all 3 platforms are present.
+          # Verify all 4 platforms are present.
           set -euxo pipefail
           echo "$manifests" | grep -q linux/amd64
           echo "$manifests" | grep -q linux/arm64
           echo "$manifests" | grep -q linux/arm/v7
+          echo "$manifests" | grep -q linux/riscv64
 
       - name: Build Linux Docker images
         run: |
@@ -410,7 +411,7 @@ jobs:
 
           # build Docker images for each architecture
           version="$(./scripts/version.sh)"
-          make build/coder_"$version"_linux_{amd64,arm64,armv7}.tag
+          make build/coder_"$version"_linux_{amd64,arm64,armv7,riscv64}.tag
 
           # build and push multi-arch manifest, this depends on the other images
           # being pushed so will automatically push them.
@@ -423,7 +424,7 @@ jobs:
             ./scripts/build_docker_multiarch.sh \
               --push \
               --target "$(./scripts/image_tag.sh --version latest)" \
-              $(cat build/coder_"$version"_linux_{amd64,arm64,armv7}.tag)
+              $(cat build/coder_"$version"_linux_{amd64,arm64,armv7,riscv64}.tag)
           fi
         env:
           CODER_BASE_IMAGE_TAG: ${{ steps.image-base-tag.outputs.tag }}
