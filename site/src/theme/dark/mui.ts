@@ -19,15 +19,15 @@ const muiTheme = createTheme({
 			dark: tw.zinc[400],
 		},
 		background: {
-			default: tw.zinc[950],
-			paper: tw.zinc[900],
+			default: tw.green[900],
+			paper: tw.green[800],
 		},
 		text: {
-			primary: tw.zinc[50],
-			secondary: tw.zinc[400],
-			disabled: tw.zinc[500],
+			primary: tw.green[50],
+			secondary: tw.green[200],
+			disabled: tw.green[300],
 		},
-		divider: tw.zinc[700],
+		divider: tw.green[700],
 		warning: {
 			light: tw.amber[500],
 			main: tw.amber[800],
@@ -50,7 +50,7 @@ const muiTheme = createTheme({
 			contrastText: tw.zinc[200],
 		},
 		action: {
-			hover: tw.zinc[800],
+			hover: tw.green[700],
 		},
 		neutral: {
 			main: tw.zinc[50],
