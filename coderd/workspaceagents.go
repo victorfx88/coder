@@ -1075,6 +1075,19 @@ func (api *API) workspaceAgentReinit(rw http.ResponseWriter, r *http.Request) {
 
 	workspace, err := api.Database.GetWorkspaceByAgentID(ctx, workspaceAgent.ID)
 	if err != nil {
+		log.Error(ctx, "get workspace by agent id", slog.Error(err))
+		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+			Message: "Internal error fetching workspace.",
+			Detail:  err.Error(),
+		})
+		return
+	}
+	// Implement the rest of the workspaceAgentReinit function...
+	httpapi.Write(ctx, rw, http.StatusOK, codersdk.ReinitializationResponse{
+		// Add appropriate response data
+	})
+}
+
 func (api *API) postWorkspaceAgentTask(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 

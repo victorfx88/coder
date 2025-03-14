@@ -473,9 +473,10 @@ require (
 
 require (
 	github.com/SherClockHolmes/webpush-go v1.4.0
-	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/mark3labs/mcp-go v0.13.0
 )
+
+require github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 
 // The hash does not exist, commenting out for now
 // replace github.com/coder/terraform-provider-coder/v2 => github.com/coder/terraform-provider-coder/v2 v2.1.4-0.20250211100915-129c295afed8

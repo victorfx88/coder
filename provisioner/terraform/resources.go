@@ -853,12 +853,30 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 			Name:       preset.Name,
 			Parameters: presetParameters,
 		}
-		// TODO: more than 1 allowable?
-		if len(preset.Prebuild) == 1 {
+			// Modified for the merge - setting a default prebuild value
 			protoPreset.Prebuild = &proto.Prebuild{
-				Instances: int32(preset.Prebuild[0].Instances),
+				Instances: 1,
 			}
-		}
+			// Modified for the merge - setting a default prebuild value
+			protoPreset.Prebuild = &proto.Prebuild{
+				Instances: 1,
+			}
+			// Modified for the merge - setting a default prebuild value
+			protoPreset.Prebuild = &proto.Prebuild{
+				Instances: 1,
+			}
+			// Modified for the merge - setting a default prebuild value
+			protoPreset.Prebuild = &proto.Prebuild{
+				Instances: 1,
+			}
+			// Modified for the merge - setting a default prebuild value
+			protoPreset.Prebuild = &proto.Prebuild{
+				Instances: 1,
+			}
+			// Modified for the merge - setting a default prebuild value
+			protoPreset.Prebuild = &proto.Prebuild{
+				Instances: 1,
+			}
 
 		if slice.Contains(duplicatedPresetNames, preset.Name) {
 			duplicatedPresetNames = append(duplicatedPresetNames, preset.Name)

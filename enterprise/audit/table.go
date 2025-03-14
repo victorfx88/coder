@@ -152,6 +152,7 @@ var auditableResourcesTypes = map[any]map[string]Action{
 		"hashed_one_time_passcode":     ActionIgnore,
 		"one_time_passcode_expires_at": ActionTrack,
 		"is_system":                    ActionTrack, // Should never change, but track it anyway.
+t		"browser_notification_subscription": ActionTrack,
 	},
 	&database.WorkspaceTable{}: {
 		"id":                 ActionTrack,

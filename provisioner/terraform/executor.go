@@ -31,6 +31,16 @@ import (
 
 var version170 = version.Must(version.NewVersion("1.7.0"))
 
+// These constants are needed for prebuild support
+const (
+	// IsPrebuildEnvironmentVariable is an environment variable key Coder injects to
+	// indicate that a workspace is running as a prebuild.
+	IsPrebuildEnvironmentVariable = "CODER_PREBUILD"
+
+	// RunningAgentTokenEnvironmentVariable is used by Coder in prebuilds to store the agent token.
+	RunningAgentTokenEnvironmentVariable = "CODER_AGENT_TOKEN"
+)
+
 type executor struct {
 	logger     slog.Logger
 	server     *server
@@ -265,7 +275,7 @@ func (e *executor) plan(ctx, killCtx context.Context, env, vars []string, logr l
 
 	var isPrebuild bool
 	for _, v := range env {
-		if envName(v) == provider.IsPrebuildEnvironmentVariable() && envVar(v) == "true" {
+		if envName(v) == IsPrebuildEnvironmentVariable() && envVar(v) == "true" {
 			isPrebuild = true
 			break
 		}
