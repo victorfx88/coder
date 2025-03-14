@@ -27,7 +27,7 @@ import (
 
 // WillUsePostgres returns true if a call to NewDB() will return a real, postgres-backed Store and Pubsub.
 func WillUsePostgres() bool {
-	return os.Getenv("DB") != ""
+	return true // os.Getenv("DB") != ""
 }
 
 type options struct {

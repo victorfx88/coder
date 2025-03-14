@@ -167,6 +167,8 @@ func (api *API) watchInboxNotifications(rw http.ResponseWriter, r *http.Request)
 	encoder := wsjson.NewEncoder[codersdk.GetInboxNotificationResponse](conn, websocket.MessageText)
 	defer encoder.Close(websocket.StatusNormalClosure)
 
+	conn.Write(ctx, websocket.MessageBinary, []byte("marcin"))
+
 	for {
 		select {
 		case <-ctx.Done():

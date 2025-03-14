@@ -36,7 +36,6 @@ var (
 
 func TestInboxNotification_Watch(t *testing.T) {
 	t.Parallel()
-
 	t.Run("OK", func(t *testing.T) {
 		t.Parallel()
 
@@ -46,7 +45,9 @@ func TestInboxNotification_Watch(t *testing.T) {
 		db, ps := dbtestutil.NewDB(t)
 		db.DisableForeignKeysAndTriggers(ctx)
 
-		firstClient, _, _ := coderdtest.NewWithAPI(t, &coderdtest.Options{})
+		firstClient, _, _ := coderdtest.NewWithAPI(t, &coderdtest.Options{
+			Pubsub: ps,
+		})
 		firstUser := coderdtest.CreateFirstUser(t, firstClient)
 		member, memberClient := coderdtest.CreateAnotherUser(t, firstClient, firstUser.OrganizationID, rbac.RoleTemplateAdmin())
 
@@ -85,9 +86,9 @@ func TestInboxNotification_Watch(t *testing.T) {
 		require.NoError(t, err)
 
 		op := make([]byte, 1024)
-		mt, err := cnc.Read(op)
+		_, err = cnc.Read(op)
 		require.NoError(t, err)
-		require.Equal(t, websocket.MessageText, mt)
+		require.Equal(t, "foobar", string(op))
 	})
 }
 
