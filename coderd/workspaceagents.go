@@ -62,6 +62,7 @@ func (api *API) workspaceAgent(rw http.ResponseWriter, r *http.Request) {
 		dbApps     []database.WorkspaceApp
 		scripts    []database.WorkspaceAgentScript
 		logSources []database.WorkspaceAgentLogSource
+		tasks      []database.WorkspaceAgentTask
 	)
 
 	var eg errgroup.Group
@@ -77,6 +78,11 @@ func (api *API) workspaceAgent(rw http.ResponseWriter, r *http.Request) {
 	eg.Go(func() (err error) {
 		//nolint:gocritic // TODO: can we make this not require system restricted?
 		logSources, err = api.Database.GetWorkspaceAgentLogSourcesByAgentIDs(dbauthz.AsSystemRestricted(ctx), []uuid.UUID{workspaceAgent.ID})
+		return err
+	})
+	eg.Go(func() (err error) {
+		//nolint:gocritic // TODO: can we make this not require system restricted?
+		tasks, err = api.Database.GetWorkspaceAgentTasksByAgentIDs(dbauthz.AsSystemRestricted(ctx), []uuid.UUID{workspaceAgent.ID})
 		return err
 	})
 	err := eg.Wait()
@@ -127,7 +133,7 @@ func (api *API) workspaceAgent(rw http.ResponseWriter, r *http.Request) {
 
 	apiAgent, err := db2sdk.WorkspaceAgent(
 		api.DERPMap(), *api.TailnetCoordinator.Load(), workspaceAgent, db2sdk.Apps(dbApps, workspaceAgent, owner.Username, workspace), convertScripts(scripts), convertLogSources(logSources), api.AgentInactiveDisconnectTimeout,
-		api.DeploymentValues.AgentFallbackTroubleshootingURL.String(),
+		api.DeploymentValues.AgentFallbackTroubleshootingURL.String(), tasks,
 	)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
@@ -589,7 +595,7 @@ func (api *API) workspaceAgentListeningPorts(rw http.ResponseWriter, r *http.Req
 
 	apiAgent, err := db2sdk.WorkspaceAgent(
 		api.DERPMap(), *api.TailnetCoordinator.Load(), workspaceAgent, nil, nil, nil, api.AgentInactiveDisconnectTimeout,
-		api.DeploymentValues.AgentFallbackTroubleshootingURL.String(),
+		api.DeploymentValues.AgentFallbackTroubleshootingURL.String(), nil,
 	)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
@@ -723,6 +729,7 @@ func (api *API) workspaceAgentListContainers(rw http.ResponseWriter, r *http.Req
 		nil,
 		api.AgentInactiveDisconnectTimeout,
 		api.DeploymentValues.AgentFallbackTroubleshootingURL.String(),
+		nil,
 	)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
@@ -1054,7 +1061,7 @@ func (api *API) workspaceAgentPostLogSource(rw http.ResponseWriter, r *http.Requ
 // @Produce json
 // @Tags Agents
 // @Success 200 {object} agentsdk.ReinitializationResponse
-// @Router /workspaceagents/me/reinit [get]
+// @Router \/workspaceagents\/me\/reinit [get]
 func (api *API) workspaceAgentReinit(rw http.ResponseWriter, r *http.Request) {
 	// Allow us to interrupt watch via cancel.
 	ctx, cancel := context.WithCancel(r.Context())
@@ -1068,736 +1075,32 @@ func (api *API) workspaceAgentReinit(rw http.ResponseWriter, r *http.Request) {
 
 	workspace, err := api.Database.GetWorkspaceByAgentID(ctx, workspaceAgent.ID)
 	if err != nil {
-		log.Error(ctx, "failed to retrieve workspace from agent token", slog.Error(err))
-		httpapi.InternalServerError(rw, xerrors.New("failed to determine workspace from agent token"))
-	}
-
-	log.Info(ctx, "agent waiting for reinit instruction")
-
-	prebuildClaims := make(chan uuid.UUID, 1)
-	cancelSub, err := api.Pubsub.Subscribe(agentsdk.PrebuildClaimedChannel(workspace.ID), func(inner context.Context, id []byte) {
-		select {
-		case <-ctx.Done():
-			return
-		case <-inner.Done():
-			return
-		default:
-		}
-
-		parsed, err := uuid.ParseBytes(id)
-		if err != nil {
-			log.Error(ctx, "invalid prebuild claimed channel payload", slog.F("input", string(id)))
-			return
-		}
-		prebuildClaims <- parsed
-	})
-	if err != nil {
-		log.Error(ctx, "failed to subscribe to prebuild claimed channel", slog.Error(err))
-		httpapi.InternalServerError(rw, xerrors.New("failed to subscribe to prebuild claimed channel"))
-		return
-	}
-	defer cancelSub()
-
-	sseSendEvent, sseSenderClosed, err := httpapi.ServerSentEventSender(rw, r)
-	if err != nil {
-		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-			Message: "Internal error setting up server-sent events.",
-			Detail:  err.Error(),
-		})
-		return
-	}
-	// Prevent handler from returning until the sender is closed.
-	defer func() {
-		cancel()
-		<-sseSenderClosed
-	}()
-	// Synchronize cancellation from SSE -> context, this lets us simplify the
-	// cancellation logic.
-	go func() {
-		select {
-		case <-ctx.Done():
-		case <-sseSenderClosed:
-			cancel()
-		}
-	}()
-
-	// An initial ping signals to the request that the server is now ready
-	// and the client can begin servicing a channel with data.
-	_ = sseSendEvent(ctx, codersdk.ServerSentEvent{
-		Type: codersdk.ServerSentEventTypePing,
-	})
-
-	// Expand with future use-cases for agent reinitialization.
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case user := <-prebuildClaims:
-			err = sseSendEvent(ctx, codersdk.ServerSentEvent{
-				Type: codersdk.ServerSentEventTypeData,
-				Data: agentsdk.ReinitializationResponse{
-					Message: fmt.Sprintf("prebuild claimed by user: %s", user),
-					Reason:  agentsdk.ReinitializeReasonPrebuildClaimed,
-				},
-			})
-			log.Warn(ctx, "failed to send SSE response to trigger reinit", slog.Error(err))
-		}
-	}
-}
-
-// convertProvisionedApps converts applications that are in the middle of provisioning process.
-// It means that they may not have an agent or workspace assigned (dry-run job).
-func convertProvisionedApps(dbApps []database.WorkspaceApp) []codersdk.WorkspaceApp {
-	return db2sdk.Apps(dbApps, database.WorkspaceAgent{}, "", database.Workspace{})
-}
-
-func convertLogSources(dbLogSources []database.WorkspaceAgentLogSource) []codersdk.WorkspaceAgentLogSource {
-	logSources := make([]codersdk.WorkspaceAgentLogSource, 0)
-	for _, dbLogSource := range dbLogSources {
-		logSources = append(logSources, codersdk.WorkspaceAgentLogSource{
-			ID:               dbLogSource.ID,
-			DisplayName:      dbLogSource.DisplayName,
-			WorkspaceAgentID: dbLogSource.WorkspaceAgentID,
-			CreatedAt:        dbLogSource.CreatedAt,
-			Icon:             dbLogSource.Icon,
-		})
-	}
-	return logSources
-}
-
-func convertScripts(dbScripts []database.WorkspaceAgentScript) []codersdk.WorkspaceAgentScript {
-	scripts := make([]codersdk.WorkspaceAgentScript, 0)
-	for _, dbScript := range dbScripts {
-		scripts = append(scripts, codersdk.WorkspaceAgentScript{
-			ID:               dbScript.ID,
-			LogPath:          dbScript.LogPath,
-			LogSourceID:      dbScript.LogSourceID,
-			Script:           dbScript.Script,
-			Cron:             dbScript.Cron,
-			RunOnStart:       dbScript.RunOnStart,
-			RunOnStop:        dbScript.RunOnStop,
-			StartBlocksLogin: dbScript.StartBlocksLogin,
-			Timeout:          time.Duration(dbScript.TimeoutSeconds) * time.Second,
-			DisplayName:      dbScript.DisplayName,
-		})
-	}
-	return scripts
-}
-
-// @Summary Watch for workspace agent metadata updates
-// @ID watch-for-workspace-agent-metadata-updates
-// @Security CoderSessionToken
-// @Tags Agents
-// @Success 200 "Success"
-// @Param workspaceagent path string true "Workspace agent ID" format(uuid)
-// @Router /workspaceagents/{workspaceagent}/watch-metadata [get]
-// @x-apidocgen {"skip": true}
-func (api *API) watchWorkspaceAgentMetadata(rw http.ResponseWriter, r *http.Request) {
-	// Allow us to interrupt watch via cancel.
-	ctx, cancel := context.WithCancel(r.Context())
-	defer cancel()
-	r = r.WithContext(ctx) // Rewire context for SSE cancellation.
-
-	workspaceAgent := httpmw.WorkspaceAgentParam(r)
-	log := api.Logger.Named("workspace_metadata_watcher").With(
-		slog.F("workspace_agent_id", workspaceAgent.ID),
-	)
-
-	// Send metadata on updates, we must ensure subscription before sending
-	// initial metadata to guarantee that events in-between are not missed.
-	update := make(chan agentapi.WorkspaceAgentMetadataChannelPayload, 1)
-	cancelSub, err := api.Pubsub.Subscribe(agentapi.WatchWorkspaceAgentMetadataChannel(workspaceAgent.ID), func(_ context.Context, byt []byte) {
-		if ctx.Err() != nil {
-			return
-		}
-
-		var payload agentapi.WorkspaceAgentMetadataChannelPayload
-		err := json.Unmarshal(byt, &payload)
-		if err != nil {
-			log.Error(ctx, "failed to unmarshal pubsub message", slog.Error(err))
-			return
-		}
-
-		log.Debug(ctx, "received metadata update", "payload", payload)
-
-		select {
-		case prev := <-update:
-			payload.Keys = appendUnique(prev.Keys, payload.Keys)
-		default:
-		}
-		// This can never block since we pop and merge beforehand.
-		update <- payload
-	})
-	if err != nil {
-		httpapi.InternalServerError(rw, err)
-		return
-	}
-	defer cancelSub()
-
-	// We always use the original Request context because it contains
-	// the RBAC actor.
-	initialMD, err := api.Database.GetWorkspaceAgentMetadata(ctx, database.GetWorkspaceAgentMetadataParams{
-		WorkspaceAgentID: workspaceAgent.ID,
-		Keys:             nil,
-	})
-	if err != nil {
-		// If we can't successfully pull the initial metadata, pubsub
-		// updates will be no-op so we may as well terminate the
-		// connection early.
-		httpapi.InternalServerError(rw, err)
-		return
-	}
-
-	log.Debug(ctx, "got initial metadata", "num", len(initialMD))
-
-	metadataMap := make(map[string]database.WorkspaceAgentMetadatum, len(initialMD))
-	for _, datum := range initialMD {
-		metadataMap[datum.Key] = datum
-	}
-	//nolint:ineffassign // Release memory.
-	initialMD = nil
-
-	sseSendEvent, sseSenderClosed, err := httpapi.ServerSentEventSender(rw, r)
-	if err != nil {
-		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-			Message: "Internal error setting up server-sent events.",
-			Detail:  err.Error(),
-		})
-		return
-	}
-	// Prevent handler from returning until the sender is closed.
-	defer func() {
-		cancel()
-		<-sseSenderClosed
-	}()
-	// Synchronize cancellation from SSE -> context, this lets us simplify the
-	// cancellation logic.
-	go func() {
-		select {
-		case <-ctx.Done():
-		case <-sseSenderClosed:
-			cancel()
-		}
-	}()
-
-	var lastSend time.Time
-	sendMetadata := func() {
-		lastSend = time.Now()
-		values := maps.Values(metadataMap)
-
-		log.Debug(ctx, "sending metadata", "num", len(values))
-
-		_ = sseSendEvent(ctx, codersdk.ServerSentEvent{
-			Type: codersdk.ServerSentEventTypeData,
-			Data: convertWorkspaceAgentMetadata(values),
-		})
-	}
-
-	// We send updates exactly every second.
-	const sendInterval = time.Second * 1
-	sendTicker := time.NewTicker(sendInterval)
-	defer sendTicker.Stop()
-
-	// Send initial metadata.
-	sendMetadata()
-
-	// Fetch updated metadata keys as they come in.
-	fetchedMetadata := make(chan []database.WorkspaceAgentMetadatum)
-	go func() {
-		defer close(fetchedMetadata)
-		defer cancel()
-
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case payload := <-update:
-				md, err := api.Database.GetWorkspaceAgentMetadata(ctx, database.GetWorkspaceAgentMetadataParams{
-					WorkspaceAgentID: workspaceAgent.ID,
-					Keys:             payload.Keys,
-				})
-				if err != nil {
-					if !database.IsQueryCanceledError(err) {
-						log.Error(ctx, "failed to get metadata", slog.Error(err))
-						_ = sseSendEvent(ctx, codersdk.ServerSentEvent{
-							Type: codersdk.ServerSentEventTypeError,
-							Data: codersdk.Response{
-								Message: "Failed to get metadata.",
-								Detail:  err.Error(),
-							},
-						})
-					}
-					return
-				}
-				select {
-				case <-ctx.Done():
-					return
-				// We want to block here to avoid constantly pinging the
-				// database when the metadata isn't being processed.
-				case fetchedMetadata <- md:
-					log.Debug(ctx, "fetched metadata update for keys", "keys", payload.Keys, "num", len(md))
-				}
-			}
-		}
-	}()
-	defer func() {
-		<-fetchedMetadata
-	}()
-
-	pendingChanges := true
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case md, ok := <-fetchedMetadata:
-			if !ok {
-				return
-			}
-			for _, datum := range md {
-				metadataMap[datum.Key] = datum
-			}
-			pendingChanges = true
-			continue
-		case <-sendTicker.C:
-			// We send an update even if there's no change every 5 seconds
-			// to ensure that the frontend always has an accurate "Result.Age".
-			if !pendingChanges && time.Since(lastSend) < 5*time.Second {
-				continue
-			}
-			pendingChanges = false
-		}
-
-		sendMetadata()
-	}
-}
-
-// appendUnique is like append and adds elements from src to dst,
-// skipping any elements that already exist in dst.
-func appendUnique[T comparable](dst, src []T) []T {
-	exists := make(map[T]struct{}, len(dst))
-	for _, key := range dst {
-		exists[key] = struct{}{}
-	}
-	for _, key := range src {
-		if _, ok := exists[key]; !ok {
-			dst = append(dst, key)
-		}
-	}
-	return dst
-}
-
-func convertWorkspaceAgentMetadata(db []database.WorkspaceAgentMetadatum) []codersdk.WorkspaceAgentMetadata {
-	// Sort the input database slice by DisplayOrder and then by Key before processing
-	sort.Slice(db, func(i, j int) bool {
-		if db[i].DisplayOrder == db[j].DisplayOrder {
-			return db[i].Key < db[j].Key
-		}
-		return db[i].DisplayOrder < db[j].DisplayOrder
-	})
-
-	// An empty array is easier for clients to handle than a null.
-	result := make([]codersdk.WorkspaceAgentMetadata, len(db))
-	for i, datum := range db {
-		result[i] = codersdk.WorkspaceAgentMetadata{
-			Result: codersdk.WorkspaceAgentMetadataResult{
-				Value:       datum.Value,
-				Error:       datum.Error,
-				CollectedAt: datum.CollectedAt.UTC(),
-				Age:         int64(time.Since(datum.CollectedAt).Seconds()),
-			},
-			Description: codersdk.WorkspaceAgentMetadataDescription{
-				DisplayName: datum.DisplayName,
-				Key:         datum.Key,
-				Script:      datum.Script,
-				Interval:    datum.Interval,
-				Timeout:     datum.Timeout,
-			},
-		}
-	}
-	return result
-}
-
-// workspaceAgentsExternalAuth returns an access token for a given URL
-// or finds a provider by ID.
-//
-// @Summary Get workspace agent external auth
-// @ID get-workspace-agent-external-auth
-// @Security CoderSessionToken
-// @Produce json
-// @Tags Agents
-// @Param match query string true "Match"
-// @Param id query string true "Provider ID"
-// @Param listen query bool false "Wait for a new token to be issued"
-// @Success 200 {object} agentsdk.ExternalAuthResponse
-// @Router /workspaceagents/me/external-auth [get]
-func (api *API) workspaceAgentsExternalAuth(rw http.ResponseWriter, r *http.Request) {
+func (api *API) postWorkspaceAgentTask(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	query := r.URL.Query()
-	// Either match or configID must be provided!
-	match := query.Get("match")
-	if match == "" {
-		// Support legacy agents!
-		match = query.Get("url")
-	}
-	id := query.Get("id")
-	if match == "" && id == "" {
-		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
-			Message: "'url' or 'id' must be provided!",
-		})
-		return
-	}
-	if match != "" && id != "" {
-		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
-			Message: "'url' and 'id' cannot be provided together!",
-		})
+
+	var req agentsdk.PostTaskRequest
+	if !httpapi.Read(ctx, rw, r, &req) {
 		return
 	}
 
-	// listen determines if the request will wait for a
-	// new token to be issued!
-	listen := r.URL.Query().Has("listen")
-
-	var externalAuthConfig *externalauth.Config
-	for _, extAuth := range api.ExternalAuthConfigs {
-		if extAuth.ID == id {
-			externalAuthConfig = extAuth
-			break
-		}
-		if match == "" || extAuth.Regex == nil {
-			continue
-		}
-		matches := extAuth.Regex.MatchString(match)
-		if !matches {
-			continue
-		}
-		externalAuthConfig = extAuth
-	}
-	if externalAuthConfig == nil {
-		detail := "External auth provider not found."
-		if len(api.ExternalAuthConfigs) > 0 {
-			regexURLs := make([]string, 0, len(api.ExternalAuthConfigs))
-			for _, extAuth := range api.ExternalAuthConfigs {
-				if extAuth.Regex == nil {
-					continue
-				}
-				regexURLs = append(regexURLs, fmt.Sprintf("%s=%q", extAuth.ID, extAuth.Regex.String()))
-			}
-			detail = fmt.Sprintf("The configured external auth provider have regex filters that do not match the url. Provider url regex: %s", strings.Join(regexURLs, ","))
-		}
-		httpapi.Write(ctx, rw, http.StatusNotFound, codersdk.Response{
-			Message: fmt.Sprintf("No matching external auth provider found in Coder for the url %q.", match),
-			Detail:  detail,
-		})
-		return
-	}
 	workspaceAgent := httpmw.WorkspaceAgent(r)
-	// We must get the workspace to get the owner ID!
-	resource, err := api.Database.GetWorkspaceResourceByID(ctx, workspaceAgent.ResourceID)
-	if err != nil {
-		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-			Message: "Failed to get workspace resource.",
-			Detail:  err.Error(),
-		})
-		return
-	}
-	build, err := api.Database.GetWorkspaceBuildByJobID(ctx, resource.JobID)
-	if err != nil {
-		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-			Message: "Failed to get build.",
-			Detail:  err.Error(),
-		})
-		return
-	}
-	workspace, err := api.Database.GetWorkspaceByID(ctx, build.WorkspaceID)
-	if err != nil {
-		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-			Message: "Failed to get workspace.",
-			Detail:  err.Error(),
-		})
-		return
-	}
 
-	var previousToken *database.ExternalAuthLink
-	// handleRetrying will attempt to continually check for a new token
-	// if listen is true. This is useful if an error is encountered in the
-	// original single flow.
-	//
-	// By default, if no errors are encountered, then the single flow response
-	// is returned.
-	handleRetrying := func(code int, response any) {
-		if !listen {
-			httpapi.Write(ctx, rw, code, response)
-			return
-		}
-
-		api.workspaceAgentsExternalAuthListen(ctx, rw, previousToken, externalAuthConfig, workspace)
-	}
-
-	// This is the URL that will redirect the user with a state token.
-	redirectURL, err := api.AccessURL.Parse(fmt.Sprintf("/external-auth/%s", externalAuthConfig.ID))
-	if err != nil {
-		handleRetrying(http.StatusInternalServerError, codersdk.Response{
-			Message: "Failed to parse access URL.",
-			Detail:  err.Error(),
-		})
-		return
-	}
-
-	externalAuthLink, err := api.Database.GetExternalAuthLink(ctx, database.GetExternalAuthLinkParams{
-		ProviderID: externalAuthConfig.ID,
-		UserID:     workspace.OwnerID,
+	task, err := api.Database.InsertWorkspaceAgentTask(ctx, database.InsertWorkspaceAgentTaskParams{
+		ID:        uuid.New(),
+		AgentID:   workspaceAgent.ID,
+		CreatedAt: dbtime.Now(),
+		Reporter:  req.Reporter,
+		Summary:   req.Summary,
+		LinkTo:    req.LinkTo,
+		Icon:      req.Icon,
 	})
 	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			handleRetrying(http.StatusInternalServerError, codersdk.Response{
-				Message: "Failed to get external auth link.",
-				Detail:  err.Error(),
-			})
-			return
-		}
-
-		handleRetrying(http.StatusOK, agentsdk.ExternalAuthResponse{
-			URL: redirectURL.String(),
-		})
+		httpapi.InternalServerError(rw, err)
 		return
 	}
 
-	refreshedLink, err := externalAuthConfig.RefreshToken(ctx, api.Database, externalAuthLink)
-	if err != nil && !externalauth.IsInvalidTokenError(err) {
-		handleRetrying(http.StatusInternalServerError, codersdk.Response{
-			Message: "Failed to refresh external auth token.",
-			Detail:  err.Error(),
-		})
-		return
-	}
-	if err != nil {
-		// Set the previous token so the retry logic will skip validating the
-		// same token again. This should only be set if the token is invalid and there
-		// was no error. If it is invalid because of an error, then we should recheck.
-		previousToken = &refreshedLink
-		handleRetrying(http.StatusOK, agentsdk.ExternalAuthResponse{
-			URL: redirectURL.String(),
-		})
-		return
-	}
-	resp, err := createExternalAuthResponse(externalAuthConfig.Type, refreshedLink.OAuthAccessToken, refreshedLink.OAuthExtra)
-	if err != nil {
-		handleRetrying(http.StatusInternalServerError, codersdk.Response{
-			Message: "Failed to create external auth response.",
-			Detail:  err.Error(),
-		})
-		return
-	}
-	httpapi.Write(ctx, rw, http.StatusOK, resp)
-}
-
-func (api *API) workspaceAgentsExternalAuthListen(ctx context.Context, rw http.ResponseWriter, previous *database.ExternalAuthLink, externalAuthConfig *externalauth.Config, workspace database.Workspace) {
-	// Since we're ticking frequently and this sign-in operation is rare,
-	// we are OK with polling to avoid the complexity of pubsub.
-	ticker, done := api.NewTicker(time.Second)
-	defer done()
-	// If we have a previous token that is invalid, we should not check this again.
-	// This serves to prevent doing excessive unauthorized requests to the external
-	// auth provider. For github, this limit is 60 per hour, so saving a call
-	// per invalid token can be significant.
-	var previousToken database.ExternalAuthLink
-	if previous != nil {
-		previousToken = *previous
-	}
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker:
-		}
-		externalAuthLink, err := api.Database.GetExternalAuthLink(ctx, database.GetExternalAuthLinkParams{
-			ProviderID: externalAuthConfig.ID,
-			UserID:     workspace.OwnerID,
-		})
-		if err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				continue
-			}
-			httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-				Message: "Failed to get external auth link.",
-				Detail:  err.Error(),
-			})
-			return
-		}
-
-		// Expiry may be unset if the application doesn't configure tokens
-		// to expire.
-		// See
-		// https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/generating-a-user-access-token-for-a-github-app.
-		if externalAuthLink.OAuthExpiry.Before(dbtime.Now()) && !externalAuthLink.OAuthExpiry.IsZero() {
-			continue
-		}
-
-		// Only attempt to revalidate an oauth token if it has actually changed.
-		// No point in trying to validate the same token over and over again.
-		if previousToken.OAuthAccessToken == externalAuthLink.OAuthAccessToken &&
-			previousToken.OAuthRefreshToken == externalAuthLink.OAuthRefreshToken &&
-			previousToken.OAuthExpiry == externalAuthLink.OAuthExpiry {
-			continue
-		}
-
-		valid, _, err := externalAuthConfig.ValidateToken(ctx, externalAuthLink.OAuthToken())
-		if err != nil {
-			api.Logger.Warn(ctx, "failed to validate external auth token",
-				slog.F("workspace_owner_id", workspace.OwnerID.String()),
-				slog.F("validate_url", externalAuthConfig.ValidateURL),
-				slog.Error(err),
-			)
-		}
-		previousToken = externalAuthLink
-		if !valid {
-			continue
-		}
-		resp, err := createExternalAuthResponse(externalAuthConfig.Type, externalAuthLink.OAuthAccessToken, externalAuthLink.OAuthExtra)
-		if err != nil {
-			httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-				Message: "Failed to create external auth response.",
-				Detail:  err.Error(),
-			})
-			return
-		}
-		httpapi.Write(ctx, rw, http.StatusOK, resp)
-		return
-	}
-}
-
-// @Summary User-scoped tailnet RPC connection
-// @ID user-scoped-tailnet-rpc-connection
-// @Security CoderSessionToken
-// @Tags Agents
-// @Success 101
-// @Router /tailnet [get]
-func (api *API) tailnetRPCConn(rw http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-
-	// This is used by Enterprise code to control the functionality of this route.
-	// Namely, disabling the route using `CODER_BROWSER_ONLY`.
-	override := api.WorkspaceClientCoordinateOverride.Load()
-	if override != nil {
-		overrideFunc := *override
-		if overrideFunc != nil && overrideFunc(rw) {
-			return
-		}
-	}
-
-	version := "2.0"
-	qv := r.URL.Query().Get("version")
-	if qv != "" {
-		version = qv
-	}
-	if err := proto.CurrentVersion.Validate(version); err != nil {
-		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
-			Message: "Unknown or unsupported API version",
-			Validations: []codersdk.ValidationError{
-				{Field: "version", Detail: err.Error()},
-			},
-		})
-		return
-	}
-
-	peerID, err := api.handleResumeToken(ctx, rw, r)
-	if err != nil {
-		// handleResumeToken has already written the response.
-		return
-	}
-
-	// Used to authorize tunnel request
-	sshPrep, err := api.HTTPAuth.AuthorizeSQLFilter(r, policy.ActionSSH, rbac.ResourceWorkspace.Type)
-	if err != nil {
-		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-			Message: "Internal error preparing sql filter.",
-			Detail:  err.Error(),
-		})
-		return
-	}
-
-	api.WebsocketWaitMutex.Lock()
-	api.WebsocketWaitGroup.Add(1)
-	api.WebsocketWaitMutex.Unlock()
-	defer api.WebsocketWaitGroup.Done()
-
-	conn, err := websocket.Accept(rw, r, nil)
+	latestBuild := httpmw.LatestBuild(r)
+	workspace, err := api.Database.GetWorkspaceByID(ctx, latestBuild.WorkspaceID)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
-			Message: "Failed to accept websocket.",
-			Detail:  err.Error(),
-		})
-		return
-	}
-	ctx, wsNetConn := codersdk.WebsocketNetConn(ctx, conn, websocket.MessageBinary)
-	defer wsNetConn.Close()
-	defer conn.Close(websocket.StatusNormalClosure, "")
-
-	go httpapi.Heartbeat(ctx, conn)
-	err = api.TailnetClientService.ServeClient(ctx, version, wsNetConn, tailnet.StreamID{
-		Name: "client",
-		ID:   peerID,
-		Auth: tailnet.ClientUserCoordinateeAuth{
-			Auth: &rbacAuthorizer{
-				sshPrep: sshPrep,
-				db:      api.Database,
-			},
-		},
-	})
-	if err != nil && !xerrors.Is(err, io.EOF) && !xerrors.Is(err, context.Canceled) {
-		_ = conn.Close(websocket.StatusInternalError, err.Error())
-		return
-	}
-}
-
-// createExternalAuthResponse creates an ExternalAuthResponse based on the
-// provider type. This is to support legacy `/workspaceagents/me/gitauth`
-// which uses `Username` and `Password`.
-func createExternalAuthResponse(typ, token string, extra pqtype.NullRawMessage) (agentsdk.ExternalAuthResponse, error) {
-	var resp agentsdk.ExternalAuthResponse
-	switch typ {
-	case string(codersdk.EnhancedExternalAuthProviderGitLab):
-		// https://stackoverflow.com/questions/25409700/using-gitlab-token-to-clone-without-authentication
-		resp = agentsdk.ExternalAuthResponse{
-			Username: "oauth2",
-			Password: token,
-		}
-	case string(codersdk.EnhancedExternalAuthProviderBitBucketCloud), string(codersdk.EnhancedExternalAuthProviderBitBucketServer):
-		// The string "bitbucket" was a legacy parameter that needs to still be supported.
-		// https://support.atlassian.com/bitbucket-cloud/docs/use-oauth-on-bitbucket-cloud/#Cloning-a-repository-with-an-access-token
-		resp = agentsdk.ExternalAuthResponse{
-			Username: "x-token-auth",
-			Password: token,
-		}
-	default:
-		resp = agentsdk.ExternalAuthResponse{
-			Username: token,
-		}
-	}
-	resp.AccessToken = token
-	resp.Type = typ
-
-	var err error
-	if extra.Valid {
-		err = json.Unmarshal(extra.RawMessage, &resp.TokenExtra)
-	}
-	return resp, err
-}
-
-func convertWorkspaceAgentLogs(logs []database.WorkspaceAgentLog) []codersdk.WorkspaceAgentLog {
-	sdk := make([]codersdk.WorkspaceAgentLog, 0, len(logs))
-	for _, logEntry := range logs {
-		sdk = append(sdk, convertWorkspaceAgentLog(logEntry))
-	}
-	return sdk
-}
-
-func convertWorkspaceAgentLog(logEntry database.WorkspaceAgentLog) codersdk.WorkspaceAgentLog {
-	return codersdk.WorkspaceAgentLog{
-		ID:        logEntry.ID,
-		CreatedAt: logEntry.CreatedAt,
-		Output:    logEntry.Output,
-		Level:     codersdk.LogLevel(logEntry.Level),
-		SourceID:  logEntry.LogSourceID,
-	}
-}
+			Message: "Internal error fetching workspace.",

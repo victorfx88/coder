@@ -215,6 +215,20 @@ of the template will be used.
             "subsystems": [
               "envbox"
             ],
+            "task_completed_at": "string",
+            "task_notifications": true,
+            "task_waiting_for_user_input": true,
+            "tasks": [
+              {
+                "agent_id": "string",
+                "created_at": "string",
+                "icon": "string",
+                "id": "string",
+                "link_to": "string",
+                "reporter": "string",
+                "summary": "string"
+              }
+            ],
             "troubleshooting_url": "string",
             "updated_at": "2019-08-24T14:15:22Z",
             "version": "string"
@@ -464,6 +478,20 @@ curl -X GET http://coder-server:8080/api/v2/users/{user}/workspace/{workspacenam
             "status": "connecting",
             "subsystems": [
               "envbox"
+            ],
+            "task_completed_at": "string",
+            "task_notifications": true,
+            "task_waiting_for_user_input": true,
+            "tasks": [
+              {
+                "agent_id": "string",
+                "created_at": "string",
+                "icon": "string",
+                "id": "string",
+                "link_to": "string",
+                "reporter": "string",
+                "summary": "string"
+              }
             ],
             "troubleshooting_url": "string",
             "updated_at": "2019-08-24T14:15:22Z",
@@ -741,6 +769,20 @@ of the template will be used.
             "subsystems": [
               "envbox"
             ],
+            "task_completed_at": "string",
+            "task_notifications": true,
+            "task_waiting_for_user_input": true,
+            "tasks": [
+              {
+                "agent_id": "string",
+                "created_at": "string",
+                "icon": "string",
+                "id": "string",
+                "link_to": "string",
+                "reporter": "string",
+                "summary": "string"
+              }
+            ],
             "troubleshooting_url": "string",
             "updated_at": "2019-08-24T14:15:22Z",
             "version": "string"
@@ -989,6 +1031,20 @@ curl -X GET http://coder-server:8080/api/v2/workspaces \
                 "status": "connecting",
                 "subsystems": [
                   "envbox"
+                ],
+                "task_completed_at": "string",
+                "task_notifications": true,
+                "task_waiting_for_user_input": true,
+                "tasks": [
+                  {
+                    "agent_id": "string",
+                    "created_at": "string",
+                    "icon": "string",
+                    "id": "string",
+                    "link_to": "string",
+                    "reporter": "string",
+                    "summary": "string"
+                  }
                 ],
                 "troubleshooting_url": "string",
                 "updated_at": "2019-08-24T14:15:22Z",
@@ -1240,6 +1296,20 @@ curl -X GET http://coder-server:8080/api/v2/workspaces/{workspace} \
             "status": "connecting",
             "subsystems": [
               "envbox"
+            ],
+            "task_completed_at": "string",
+            "task_notifications": true,
+            "task_waiting_for_user_input": true,
+            "tasks": [
+              {
+                "agent_id": "string",
+                "created_at": "string",
+                "icon": "string",
+                "id": "string",
+                "link_to": "string",
+                "reporter": "string",
+                "summary": "string"
+              }
             ],
             "troubleshooting_url": "string",
             "updated_at": "2019-08-24T14:15:22Z",
@@ -1606,6 +1676,20 @@ curl -X PUT http://coder-server:8080/api/v2/workspaces/{workspace}/dormant \
             "status": "connecting",
             "subsystems": [
               "envbox"
+            ],
+            "task_completed_at": "string",
+            "task_notifications": true,
+            "task_waiting_for_user_input": true,
+            "tasks": [
+              {
+                "agent_id": "string",
+                "created_at": "string",
+                "icon": "string",
+                "id": "string",
+                "link_to": "string",
+                "reporter": "string",
+                "summary": "string"
+              }
             ],
             "troubleshooting_url": "string",
             "updated_at": "2019-08-24T14:15:22Z",

@@ -855,6 +855,7 @@ CREATE TABLE users (
     hashed_one_time_passcode bytea,
     one_time_passcode_expires_at timestamp with time zone,
     is_system boolean DEFAULT false,
+    browser_notification_subscription jsonb,
     CONSTRAINT one_time_passcode_set CHECK ((((hashed_one_time_passcode IS NULL) AND (one_time_passcode_expires_at IS NULL)) OR ((hashed_one_time_passcode IS NOT NULL) AND (one_time_passcode_expires_at IS NOT NULL))))
 );
 
@@ -1699,6 +1700,16 @@ CREATE TABLE workspace_agent_stats (
     usage boolean DEFAULT false NOT NULL
 );
 
+CREATE TABLE workspace_agent_tasks (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    agent_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    reporter text NOT NULL,
+    summary text NOT NULL,
+    link_to text NOT NULL,
+    icon text NOT NULL
+);
+
 CREATE TABLE workspace_agent_volume_resource_monitors (
     agent_id uuid NOT NULL,
     enabled boolean NOT NULL,
@@ -1742,6 +1753,9 @@ CREATE TABLE workspace_agents (
     display_apps display_app[] DEFAULT '{vscode,vscode_insiders,web_terminal,ssh_helper,port_forwarding_helper}'::display_app[],
     api_version text DEFAULT ''::text NOT NULL,
     display_order integer DEFAULT 0 NOT NULL,
+    task_waiting_for_user_input boolean DEFAULT false NOT NULL,
+    task_completed_at timestamp with time zone,
+    task_notifications boolean DEFAULT true NOT NULL,
     CONSTRAINT max_logs_length CHECK ((logs_length <= 1048576)),
     CONSTRAINT subsystems_not_none CHECK ((NOT ('none'::workspace_agent_subsystem = ANY (subsystems))))
 );
@@ -2317,6 +2331,9 @@ ALTER TABLE ONLY workspace_agent_scripts
 ALTER TABLE ONLY workspace_agent_logs
     ADD CONSTRAINT workspace_agent_startup_logs_pkey PRIMARY KEY (id);
 
+ALTER TABLE ONLY workspace_agent_tasks
+    ADD CONSTRAINT workspace_agent_tasks_pkey PRIMARY KEY (id);
+
 ALTER TABLE ONLY workspace_agent_volume_resource_monitors
     ADD CONSTRAINT workspace_agent_volume_resource_monitors_pkey PRIMARY KEY (agent_id, path);
 
@@ -2827,6 +2844,9 @@ ALTER TABLE ONLY workspace_agent_scripts
 
 ALTER TABLE ONLY workspace_agent_logs
     ADD CONSTRAINT workspace_agent_startup_logs_agent_id_fkey FOREIGN KEY (agent_id) REFERENCES workspace_agents(id) ON DELETE CASCADE;
+
+ALTER TABLE ONLY workspace_agent_tasks
+    ADD CONSTRAINT workspace_agent_tasks_agent_id_fkey FOREIGN KEY (agent_id) REFERENCES workspace_agents(id);
 
 ALTER TABLE ONLY workspace_agent_volume_resource_monitors
     ADD CONSTRAINT workspace_agent_volume_resource_monitors_agent_id_fkey FOREIGN KEY (agent_id) REFERENCES workspace_agents(id) ON DELETE CASCADE;

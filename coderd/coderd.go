@@ -1191,6 +1191,7 @@ func New(options *Options) *API {
 							r.Get("/", api.userNotificationPreferences)
 							r.Put("/", api.putUserNotificationPreferences)
 						})
+						r.Post("/browser", api.postUserBrowserNotificationSubscription)
 					})
 				})
 			})
@@ -1218,8 +1219,9 @@ func New(options *Options) *API {
 				r.Get("/gitauth", api.workspaceAgentsGitAuth)
 				r.Get("/external-auth", api.workspaceAgentsExternalAuth)
 				r.Get("/gitsshkey", api.agentGitSSHKey)
-				r.Post("/log-source", api.workspaceAgentPostLogSource)
-				r.Get("/reinit", api.workspaceAgentReinit)
+					r.Post("/log-source", api.workspaceAgentPostLogSource)
+					r.Get("/reinit", api.workspaceAgentReinit)
+					r.Post("/task", api.postWorkspaceAgentTask)
 			})
 			r.Route("/{workspaceagent}", func(r chi.Router) {
 				r.Use(
@@ -1474,6 +1476,13 @@ type API struct {
 
 	// DeploymentID is loaded from the database on startup.
 	DeploymentID string
+
+	// NotificationsVAPIDPublicKey is the public key for the VAPID key pair.
+	// This is used to send notifications to the user's browser.
+	NotificationsVAPIDPublicKey string
+	// NotificationsVAPIDPrivateKey is the private key for the VAPID key pair.
+	// This is used to send notifications to the user's browser.
+	NotificationsVAPIDPrivateKey string
 
 	*Options
 	// ID is a uniquely generated ID on initialization.

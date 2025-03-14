@@ -1,6 +1,8 @@
 module github.com/coder/coder/v2
 
-go 1.22.9
+go 1.23
+
+toolchain go1.23.7
 
 // Required until a v3 of chroma is created to lazily initialize all XML files.
 // None of our dependencies seem to use the registries anyways, so this
@@ -469,4 +471,11 @@ require (
 	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
-replace github.com/coder/terraform-provider-coder/v2 => github.com/coder/terraform-provider-coder/v2 v2.1.4-0.20250211100915-129c295afed8
+require (
+	github.com/SherClockHolmes/webpush-go v1.4.0
+	github.com/golang-jwt/jwt/v5 v5.2.1
+	github.com/mark3labs/mcp-go v0.13.0
+)
+
+// The hash does not exist, commenting out for now
+// replace github.com/coder/terraform-provider-coder/v2 => github.com/coder/terraform-provider-coder/v2 v2.1.4-0.20250211100915-129c295afed8
