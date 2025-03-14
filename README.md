@@ -100,13 +100,13 @@ Use `coder --help` to get a list of flags and environment variables. Use our [in
 
 ## Documentation
 
-Browse our docs [here](https://coder.com/docs) or visit a specific section below:
+Coder provides comprehensive documentation to help you get the most out of the platform. Browse our [complete documentation here](https://coder.com/docs) or jump directly to a specific section:
 
-- [**Templates**](https://coder.com/docs/templates): Templates are written in Terraform and describe the infrastructure for workspaces
-- [**Workspaces**](https://coder.com/docs/workspaces): Workspaces contain the IDEs, dependencies, and configuration information needed for software development
-- [**IDEs**](https://coder.com/docs/ides): Connect your existing editor to a workspace
-- [**Administration**](https://coder.com/docs/admin): Learn how to operate Coder
-- [**Premium**](https://coder.com/pricing#compare-plans): Learn about our paid features built for large teams
+- [**Templates**](https://coder.com/docs/templates): Learn how to use Terraform to define your development environment infrastructure
+- [**Workspaces**](https://coder.com/docs/workspaces): Discover how workspaces package IDEs, dependencies, and configuration for seamless development
+- [**IDEs**](https://coder.com/docs/ides): Connect VS Code, JetBrains, and other popular editors to your remote workspaces
+- [**Administration**](https://coder.com/docs/admin): Master deployment, configuration, and operational best practices
+- [**Premium**](https://coder.com/pricing#compare-plans): Explore enterprise features designed for security, compliance, and scale
 
 ## Support
 
