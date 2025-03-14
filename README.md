@@ -49,18 +49,27 @@
 
 ## Quickstart
 
-The most convenient way to try Coder is to install it on your local machine and experiment with provisioning cloud development environments using Docker (works on Linux, macOS, and Windows).
+The fastest way to get started with Coder is to install it on your local machine and provision development environments using Docker. This method works on Linux, macOS, and Windows.
+
+### Step 1: Install Coder
 
 ```shell
-# First, install Coder
 curl -L https://coder.com/install.sh | sh
-
-# Start the Coder server (caches data in ~/.cache/coder)
-coder server
-
-# Navigate to http://localhost:3000 to create your initial user,
-# create a Docker template and provision a workspace
 ```
+
+### Step 2: Start the Coder server
+
+```shell
+# Data is cached in ~/.cache/coder
+coder server
+```
+
+### Step 3: Set up your first workspace
+
+1. Navigate to http://localhost:3000
+2. Create your initial admin user
+3. Add a Docker template
+4. Provision your first workspace
 
 ## Install
 
