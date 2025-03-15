@@ -16,7 +16,7 @@ const (
 )
 
 // GetVAPIDPublicKey retrieves the VAPID public key from the database
-func (q *querier) GetVAPIDPublicKey(ctx context.Context) (string, error) {
+func (q *sqlQuerier) GetVAPIDPublicKey(ctx context.Context) (string, error) {
 	row, err := q.db.QueryContext(ctx, "SELECT value FROM properties WHERE name = $1", VAPIDPublicKey)
 	if err != nil {
 		return "", xerrors.Errorf("query VAPID public key: %w", err)
@@ -37,7 +37,7 @@ func (q *querier) GetVAPIDPublicKey(ctx context.Context) (string, error) {
 }
 
 // GetVAPIDPrivateKey retrieves the VAPID private key from the database
-func (q *querier) GetVAPIDPrivateKey(ctx context.Context) (string, error) {
+func (q *sqlQuerier) GetVAPIDPrivateKey(ctx context.Context) (string, error) {
 	row, err := q.db.QueryContext(ctx, "SELECT value FROM properties WHERE name = $1", VAPIDPrivateKey)
 	if err != nil {
 		return "", xerrors.Errorf("query VAPID private key: %w", err)
@@ -58,7 +58,7 @@ func (q *querier) GetVAPIDPrivateKey(ctx context.Context) (string, error) {
 }
 
 // InsertVAPIDPublicKey inserts the VAPID public key into the database
-func (q *querier) InsertVAPIDPublicKey(ctx context.Context, publicKey string) error {
+func (q *sqlQuerier) InsertVAPIDPublicKey(ctx context.Context, publicKey string) error {
 	_, err := q.db.ExecContext(ctx, "INSERT INTO properties (name, value) VALUES ($1, $2)", VAPIDPublicKey, publicKey)
 	if err != nil {
 		return xerrors.Errorf("insert VAPID public key: %w", err)
@@ -67,7 +67,7 @@ func (q *querier) InsertVAPIDPublicKey(ctx context.Context, publicKey string) er
 }
 
 // InsertVAPIDPrivateKey inserts the VAPID private key into the database
-func (q *querier) InsertVAPIDPrivateKey(ctx context.Context, privateKey string) error {
+func (q *sqlQuerier) InsertVAPIDPrivateKey(ctx context.Context, privateKey string) error {
 	_, err := q.db.ExecContext(ctx, "INSERT INTO properties (name, value) VALUES ($1, $2)", VAPIDPrivateKey, privateKey)
 	if err != nil {
 		return xerrors.Errorf("insert VAPID private key: %w", err)
