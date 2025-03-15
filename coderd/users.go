@@ -1535,8 +1535,9 @@ func userOrganizationIDs(ctx context.Context, api *API, user database.User) ([]u
 // @Router /users/{user}/browsernotifications [put]
 func (api *API) updateUserBrowserNotifications(rw http.ResponseWriter, r *http.Request) {
 	var (
-		ctx  = r.Context()
-		user = httpmw.UserParam(r)
+		ctx = r.Context()
+		// We get the user from middleware but don't use it yet
+		_ = httpmw.UserParam(r)
 	)
 
 	var params codersdk.UpdateUserBrowserNotificationSubscription
