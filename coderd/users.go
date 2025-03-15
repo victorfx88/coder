@@ -1524,6 +1524,38 @@ func userOrganizationIDs(ctx context.Context, api *API, user database.User) ([]u
 	return member.OrganizationIDs, nil
 }
 
+// @Summary Update browser notification subscription
+// @ID update-browser-notification-subscription
+// @Security CoderSessionToken
+// @Accept json
+// @Tags Users
+// @Param user path string true "User ID, name, or me"
+// @Param request body codersdk.UpdateUserBrowserNotificationSubscription true "Update browser notification subscription request"
+// @Success 204
+// @Router /users/{user}/browsernotifications [put]
+func (api *API) updateUserBrowserNotifications(rw http.ResponseWriter, r *http.Request) {
+	var (
+		ctx  = r.Context()
+		user = httpmw.UserParam(r)
+	)
+
+	var params codersdk.UpdateUserBrowserNotificationSubscription
+	if !httpapi.Read(ctx, rw, r, &params) {
+		return
+	}
+
+	// If we're unsubscribing, we just need to delete the subscription
+	if params.Subscription == nil {
+		// No need to do anything for now
+		rw.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// Here we would persist the subscription in the database
+	// For now, we just return success
+	rw.WriteHeader(http.StatusNoContent)
+}
+
 func convertAPIKey(k database.APIKey) codersdk.APIKey {
 	return codersdk.APIKey{
 		ID:              k.ID,

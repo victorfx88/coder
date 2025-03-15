@@ -3118,6 +3118,9 @@ type BuildInfoResponse struct {
 	AgentAPIVersion string `json:"agent_api_version"`
 	// ProvisionerAPIVersion is the current version of the Provisioner API
 	ProvisionerAPIVersion string `json:"provisioner_api_version"`
+	
+	// NotificationsVAPIDPublicKey is the public key used for browser push notifications
+	NotificationsVAPIDPublicKey string `json:"notifications_vapid_public_key"`
 
 	// UpgradeMessage is the message displayed to users when an outdated client
 	// is detected.

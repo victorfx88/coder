@@ -256,6 +256,11 @@ type Options struct {
 	AppEncryptionKeyCache cryptokeys.EncryptionKeycache
 	OIDCConvertKeyCache   cryptokeys.SigningKeycache
 	Clock                 quartz.Clock
+	
+	// NotificationsVAPIDPublicKey is the public key used for browser push notifications
+	NotificationsVAPIDPublicKey string
+	// NotificationsVAPIDPrivateKey is the private key used for browser push notifications
+	NotificationsVAPIDPrivateKey string
 }
 
 // @title Coder API
@@ -566,15 +571,16 @@ func New(options *Options) *API {
 	api.AppearanceFetcher.Store(&f)
 	api.PortSharer.Store(&portsharing.DefaultPortSharer)
 	buildInfo := codersdk.BuildInfoResponse{
-		ExternalURL:           buildinfo.ExternalURL(),
-		Version:               buildinfo.Version(),
-		AgentAPIVersion:       AgentAPIVersionREST,
-		ProvisionerAPIVersion: proto.CurrentVersion.String(),
-		DashboardURL:          api.AccessURL.String(),
-		WorkspaceProxy:        false,
-		UpgradeMessage:        api.DeploymentValues.CLIUpgradeMessage.String(),
-		DeploymentID:          api.DeploymentID,
-		Telemetry:             api.Telemetry.Enabled(),
+		ExternalURL:                buildinfo.ExternalURL(),
+		Version:                    buildinfo.Version(),
+		AgentAPIVersion:            AgentAPIVersionREST,
+		ProvisionerAPIVersion:      proto.CurrentVersion.String(),
+		DashboardURL:               api.AccessURL.String(),
+		WorkspaceProxy:             false,
+		UpgradeMessage:             api.DeploymentValues.CLIUpgradeMessage.String(),
+		DeploymentID:               api.DeploymentID,
+		Telemetry:                  api.Telemetry.Enabled(),
+		NotificationsVAPIDPublicKey: options.NotificationsVAPIDPublicKey,
 	}
 	api.SiteHandler = site.New(&site.Options{
 		BinFS:             binFS,
@@ -1148,6 +1154,7 @@ func New(options *Options) *API {
 					})
 					r.Get("/appearance", api.userAppearanceSettings)
 					r.Put("/appearance", api.putUserAppearanceSettings)
+					r.Put("/browsernotifications", api.updateUserBrowserNotifications)
 					r.Route("/password", func(r chi.Router) {
 						r.Use(httpmw.RateLimit(options.LoginRateLimit, time.Minute))
 						r.Put("/", api.putUserPassword)

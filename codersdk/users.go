@@ -197,6 +197,23 @@ type UpdateUserAppearanceSettingsRequest struct {
 	ThemePreference string `json:"theme_preference" validate:"required"`
 }
 
+// UserBrowserNotificationKeys represents the encryption keys for browser push notifications
+type UserBrowserNotificationKeys struct {
+	Auth   string `json:"auth"`
+	P256dh string `json:"p256dh"`
+}
+
+// UserBrowserNotificationSubscription represents a user's browser push notification subscription
+type UserBrowserNotificationSubscription struct {
+	Endpoint string                      `json:"endpoint"`
+	Keys     UserBrowserNotificationKeys `json:"keys"`
+}
+
+// UpdateUserBrowserNotificationSubscription is a request to update a user's browser notification subscription
+type UpdateUserBrowserNotificationSubscription struct {
+	Subscription *UserBrowserNotificationSubscription `json:"subscription"`
+}
+
 type UpdateUserPasswordRequest struct {
 	OldPassword string `json:"old_password" validate:""`
 	Password    string `json:"password" validate:"required"`
@@ -478,6 +495,19 @@ func (c *Client) UpdateUserAppearanceSettings(ctx context.Context, user string, 
 	}
 	var resp User
 	return resp, json.NewDecoder(res.Body).Decode(&resp)
+}
+
+// UpdateUserBrowserNotificationSubscription updates a user's browser notification subscription.
+func (c *Client) UpdateUserBrowserNotificationSubscription(ctx context.Context, user string, req UpdateUserBrowserNotificationSubscription) error {
+	res, err := c.Request(ctx, http.MethodPut, fmt.Sprintf("/api/v2/users/%s/browsernotifications", user), req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusNoContent {
+		return ReadBodyAsError(res)
+	}
+	return nil
 }
 
 // UpdateUserPassword updates a user password.

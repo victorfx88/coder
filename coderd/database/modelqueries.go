@@ -50,6 +50,12 @@ type customQuerier interface {
 	workspaceQuerier
 	userQuerier
 	auditLogQuerier
+	
+	// Browser notification methods
+	GetVAPIDPublicKey(ctx context.Context) (string, error)
+	GetVAPIDPrivateKey(ctx context.Context) (string, error)
+	InsertVAPIDPublicKey(ctx context.Context, publicKey string) error
+	InsertVAPIDPrivateKey(ctx context.Context, privateKey string) error
 }
 
 type templateQuerier interface {

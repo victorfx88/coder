@@ -1,6 +1,7 @@
 import type * as TypesGen from "api/typesGenerated";
 import { ExternalImage } from "components/ExternalImage/ExternalImage";
 import { CoderIcon } from "components/Icons/CoderIcon";
+import { BrowserNotificationButton } from "components/BrowserNotificationButton";
 import type { ProxyContextValue } from "contexts/ProxyContext";
 import type { FC } from "react";
 import { NavLink, useLocation } from "react-router-dom";
@@ -57,6 +58,8 @@ export const NavbarView: FC<NavbarViewProps> = ({
 				{proxyContextValue && (
 					<ProxyMenu proxyContextValue={proxyContextValue} />
 				)}
+
+				<BrowserNotificationButton />
 
 				<DeploymentDropdown
 					canViewAuditLog={canViewAuditLog}
