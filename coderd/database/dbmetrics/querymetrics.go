@@ -73,6 +73,34 @@ func (m queryMetricsStore) PGLocks(ctx context.Context) (database.PGLocks, error
 	return locks, err
 }
 
+func (m queryMetricsStore) GetVAPIDPublicKey(ctx context.Context) (string, error) {
+	start := time.Now()
+	value, err := m.s.GetVAPIDPublicKey(ctx)
+	m.queryLatencies.WithLabelValues("GetVAPIDPublicKey").Observe(time.Since(start).Seconds())
+	return value, err
+}
+
+func (m queryMetricsStore) GetVAPIDPrivateKey(ctx context.Context) (string, error) {
+	start := time.Now()
+	value, err := m.s.GetVAPIDPrivateKey(ctx)
+	m.queryLatencies.WithLabelValues("GetVAPIDPrivateKey").Observe(time.Since(start).Seconds())
+	return value, err
+}
+
+func (m queryMetricsStore) InsertVAPIDPublicKey(ctx context.Context, publicKey string) error {
+	start := time.Now()
+	err := m.s.InsertVAPIDPublicKey(ctx, publicKey)
+	m.queryLatencies.WithLabelValues("InsertVAPIDPublicKey").Observe(time.Since(start).Seconds())
+	return err
+}
+
+func (m queryMetricsStore) InsertVAPIDPrivateKey(ctx context.Context, privateKey string) error {
+	start := time.Now()
+	err := m.s.InsertVAPIDPrivateKey(ctx, privateKey)
+	m.queryLatencies.WithLabelValues("InsertVAPIDPrivateKey").Observe(time.Since(start).Seconds())
+	return err
+}
+
 func (m queryMetricsStore) InTx(f func(database.Store) error, options *database.TxOptions) error {
 	return m.dbMetrics.InTx(f, options)
 }

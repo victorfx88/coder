@@ -686,6 +686,26 @@ func (q *querier) PGLocks(ctx context.Context) (database.PGLocks, error) {
 	return q.db.PGLocks(ctx)
 }
 
+// GetVAPIDPublicKey implements database.Store
+func (q *querier) GetVAPIDPublicKey(ctx context.Context) (string, error) {
+	return q.db.GetVAPIDPublicKey(ctx)
+}
+
+// GetVAPIDPrivateKey implements database.Store
+func (q *querier) GetVAPIDPrivateKey(ctx context.Context) (string, error) {
+	return q.db.GetVAPIDPrivateKey(ctx)
+}
+
+// InsertVAPIDPublicKey implements database.Store
+func (q *querier) InsertVAPIDPublicKey(ctx context.Context, publicKey string) error {
+	return q.db.InsertVAPIDPublicKey(ctx, publicKey)
+}
+
+// InsertVAPIDPrivateKey implements database.Store
+func (q *querier) InsertVAPIDPrivateKey(ctx context.Context, privateKey string) error {
+	return q.db.InsertVAPIDPrivateKey(ctx, privateKey)
+}
+
 // InTx runs the given function in a transaction.
 func (q *querier) InTx(function func(querier database.Store) error, txOpts *database.TxOptions) error {
 	return q.db.InTx(func(tx database.Store) error {
