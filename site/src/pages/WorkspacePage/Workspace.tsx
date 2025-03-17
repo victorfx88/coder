@@ -3,6 +3,8 @@ import { useTheme } from "@emotion/react";
 import HistoryOutlined from "@mui/icons-material/HistoryOutlined";
 import HubOutlined from "@mui/icons-material/HubOutlined";
 import AlertTitle from "@mui/material/AlertTitle";
+import AddOutlined from "@mui/icons-material/AddOutlined";
+import Button from "@mui/material/Button";
 import type * as TypesGen from "api/typesGenerated";
 import { Alert, AlertDetail } from "components/Alert/Alert";
 import { SidebarIconButton } from "components/FullPageLayout/Sidebar";
@@ -10,7 +12,9 @@ import { useSearchParamsKey } from "hooks/useSearchParamsKey";
 import { ProvisionerStatusAlert } from "modules/provisioners/ProvisionerStatusAlert";
 import { AgentRow } from "modules/resources/AgentRow";
 import { WorkspaceTimings } from "modules/workspaces/WorkspaceTiming/WorkspaceTimings";
+import { ModelAgentInfo, CreateAgentDialog, type CreateAgentData } from "modules/resources/ModelAgentInfo";
 import type { FC } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { HistorySidebar } from "./HistorySidebar";
 import { ResourceMetadata } from "./ResourceMetadata";
@@ -89,6 +93,23 @@ export const Workspace: FC<WorkspaceProps> = ({
 }) => {
 	const navigate = useNavigate();
 	const theme = useTheme();
+	const [createAgentDialogOpen, setCreateAgentDialogOpen] = useState(false);
+	const [isCreatingAgent, setIsCreatingAgent] = useState(false);
+	const [createAgentError, setCreateAgentError] = useState<unknown>(undefined);
+
+	const handleCreateAgent = (data: CreateAgentData) => {
+		// This would normally call an API to create a new agent
+		setIsCreatingAgent(true);
+		// Simulate API call
+		console.log("Creating agent with data:", data);
+		
+		// Mock successful creation after delay
+		setTimeout(() => {
+			setIsCreatingAgent(false);
+			setCreateAgentDialogOpen(false);
+			// You would normally handle errors here if the API call fails
+		}, 1000);
+	};
 
 	const transitionStats =
 		template !== undefined ? ActiveTransition(template, workspace) : undefined;
@@ -125,9 +146,9 @@ export const Workspace: FC<WorkspaceProps> = ({
 				flex: 1,
 				display: "grid",
 				gridTemplate: `
-          "topbar topbar topbar" auto
-          "leftbar sidebar content" 1fr / auto auto 1fr
-        `,
+	          "topbar topbar topbar" auto
+	          "leftbar sidebar content" 1fr / auto auto 1fr
+	        `,
 				// We need this to make the sidebar scrollable
 				overflow: "hidden",
 			}}
@@ -296,8 +317,27 @@ export const Workspace: FC<WorkspaceProps> = ({
 						agentScriptTimings={timings?.agent_script_timings}
 						agentConnectionTimings={timings?.agent_connection_timings}
 					/>
+
+					{resources.map((resource) => 
+						resource.agents?.map((agent) => (
+							<React.Suspense key={agent.id} fallback={null}>
+								<ModelAgentInfo 
+									agent={agent} 
+									onCreateAgent={() => setCreateAgentDialogOpen(true)}
+								/>
+							</React.Suspense>
+						))
+					)}
 				</div>
 			</div>
+
+			<CreateAgentDialog
+				open={createAgentDialogOpen}
+				onClose={() => setCreateAgentDialogOpen(false)}
+				onConfirm={handleCreateAgent}
+				isCreating={isCreatingAgent}
+				creationError={createAgentError}
+			/>
 		</div>
 	);
 };
