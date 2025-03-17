@@ -50,12 +50,12 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
   creationError,
   ...dialogProps
 }) => {
-  const form = useFormik({
+  const form = useFormik<CreateAgentData>({
     initialValues: {
       taskName: "",
       model: "claude-3-5-sonnet",
       costLimit: 10,
-      communicationMethod: "Github Issue" as "Github Issue" | "Running Console",
+      communicationMethod: "Github Issue",
     },
     validationSchema: Yup.object({
       taskName: Yup.string().required("Task name is required"),
@@ -64,13 +64,13 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
         .required("Cost limit is required")
         .min(1, "Cost limit must be at least $1")
         .max(1000, "Cost limit cannot exceed $1000"),
-      communicationMethod: Yup.string().required("Communication method is required"),
+      communicationMethod: Yup.string().oneOf(
+        ["Github Issue", "Running Console"],
+        "Invalid communication method"
+      ).required("Communication method is required"),
     }),
     onSubmit: (values) => {
-      onConfirm({
-        ...values,
-        communicationMethod: values.communicationMethod as "Github Issue" | "Running Console",
-      });
+      onConfirm(values);
     },
   });
   
@@ -121,7 +121,10 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
                   }}
                   disabled={isCreating}
                 >
-                  <SelectTrigger id="model-select">
+                  <SelectTrigger 
+                    id="model-select" 
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <SelectValue placeholder="Select model" />
                   </SelectTrigger>
                   <SelectContent>
@@ -153,12 +156,15 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
                 </label>
                 <Select
                   value={form.values.communicationMethod}
-                  onValueChange={(value: "Github Issue" | "Running Console") => {
+                  onValueChange={(value) => {
                     form.setFieldValue("communicationMethod", value);
                   }}
                   disabled={isCreating}
                 >
-                  <SelectTrigger id="communication-select">
+                  <SelectTrigger 
+                    id="communication-select" 
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <SelectValue placeholder="Select communication method" />
                   </SelectTrigger>
                   <SelectContent>
