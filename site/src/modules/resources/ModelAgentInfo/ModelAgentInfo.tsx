@@ -13,10 +13,13 @@ import type { WorkspaceAgent } from "api/typesGenerated";
 import { Stack } from "components/Stack/Stack";
 import type { FC } from "react";
 import { useState } from "react";
+import { CreateAgentButton, type CreateAgentData } from "./CreateAgentDialog";
 
 export interface ModelAgentInfoProps {
   agent: WorkspaceAgent;
-  onCreateAgent?: () => void;
+  onCreateAgent?: (data: CreateAgentData) => void;
+  isCreating?: boolean;
+  creationError?: unknown;
 }
 
 type AgentStatus = "thinking" | "waiting" | "stopped" | "error";
@@ -39,7 +42,12 @@ interface AgentData {
  * 
  * Currently configured to always display mock data regardless of agent configuration.
  */
-export const ModelAgentInfo: FC<ModelAgentInfoProps> = ({ agent, onCreateAgent }) => {
+export const ModelAgentInfo: FC<ModelAgentInfoProps> = ({ 
+  agent, 
+  onCreateAgent,
+  isCreating = false,
+  creationError
+}) => {
   const theme = useTheme();
   const [isOpen, setIsOpen] = useState(false);
 
@@ -110,20 +118,13 @@ export const ModelAgentInfo: FC<ModelAgentInfoProps> = ({ agent, onCreateAgent }
             />
           </Tooltip>
         </div>
-        <Button
-          variant="text"
-          size="small"
-          endIcon={<KeyboardArrowDown />}
-          css={{ fontSize: 13, padding: "8px 12px" }}
-          onClick={(e) => { 
-            e.stopPropagation();
-            if (onCreateAgent) {
-              onCreateAgent();
-            }
-          }}
-        >
-          Create AI Agent
-        </Button>
+        {onCreateAgent && (
+          <CreateAgentButton
+            onCreateAgent={onCreateAgent}
+            isCreating={isCreating}
+            creationError={creationError}
+          />
+        )}
       </Button>
 
       <Collapse in={isOpen}>

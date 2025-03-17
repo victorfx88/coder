@@ -12,7 +12,7 @@ import { useSearchParamsKey } from "hooks/useSearchParamsKey";
 import { ProvisionerStatusAlert } from "modules/provisioners/ProvisionerStatusAlert";
 import { AgentRow } from "modules/resources/AgentRow";
 import { WorkspaceTimings } from "modules/workspaces/WorkspaceTiming/WorkspaceTimings";
-import { ModelAgentInfo, CreateAgentDialog, type CreateAgentData } from "modules/resources/ModelAgentInfo";
+import { ModelAgentInfo, type CreateAgentData } from "modules/resources/ModelAgentInfo";
 import type { FC } from "react";
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -93,7 +93,6 @@ export const Workspace: FC<WorkspaceProps> = ({
 }) => {
 	const navigate = useNavigate();
 	const theme = useTheme();
-	const [createAgentDialogOpen, setCreateAgentDialogOpen] = useState(false);
 	const [isCreatingAgent, setIsCreatingAgent] = useState(false);
 	const [createAgentError, setCreateAgentError] = useState<unknown>(undefined);
 
@@ -102,11 +101,10 @@ export const Workspace: FC<WorkspaceProps> = ({
 		setIsCreatingAgent(true);
 		// Simulate API call
 		console.log("Creating agent with data:", data);
-		
+
 		// Mock successful creation after delay
 		setTimeout(() => {
 			setIsCreatingAgent(false);
-			setCreateAgentDialogOpen(false);
 			// You would normally handle errors here if the API call fails
 		}, 1000);
 	};
@@ -317,14 +315,16 @@ export const Workspace: FC<WorkspaceProps> = ({
 						agentScriptTimings={timings?.agent_script_timings}
 						agentConnectionTimings={timings?.agent_connection_timings}
 					/>
-					
-					<div css={{ marginTop: -16 }}>
-						{resources.map((resource) => 
+
+					<div css={{ marginTop: -24 }}>
+						{resources.map((resource) =>
 							resource.agents?.map((agent) => (
 								<React.Suspense key={agent.id} fallback={null}>
-									<ModelAgentInfo 
-										agent={agent} 
-										onCreateAgent={() => setCreateAgentDialogOpen(true)}
+									<ModelAgentInfo
+										agent={agent}
+										onCreateAgent={handleCreateAgent}
+										isCreating={isCreatingAgent}
+										creationError={createAgentError}
 									/>
 								</React.Suspense>
 							))
@@ -332,14 +332,6 @@ export const Workspace: FC<WorkspaceProps> = ({
 					</div>
 				</div>
 			</div>
-
-			<CreateAgentDialog
-				open={createAgentDialogOpen}
-				onClose={() => setCreateAgentDialogOpen(false)}
-				onConfirm={handleCreateAgent}
-				isCreating={isCreatingAgent}
-				creationError={createAgentError}
-			/>
 		</div>
 	);
 };
