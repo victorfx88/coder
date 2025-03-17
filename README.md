@@ -33,7 +33,15 @@
 
 </div>
 
-[Coder](https://coder.com) enables organizations to set up development environments in their public or private cloud infrastructure. Cloud development environments are defined with Terraform, connected through a secure high-speed Wireguard® tunnel, and automatically shut down when not used to save on costs. Coder gives engineering teams the flexibility to use the cloud for workloads most beneficial to them.
+[Coder](https://coder.com) is a powerful platform that enables organizations to provision secure, consistent development environments in their public or private cloud infrastructure. 
+
+With Coder, development environments are:
+- Defined as code using Terraform
+- Connected through a secure high-speed Wireguard® tunnel
+- Automatically shut down when not in use to optimize costs
+- Accessible from anywhere with an internet connection
+
+Coder empowers engineering teams with the flexibility to use the cloud for workloads that best suit their needs, while maintaining security and consistency across the organization.
 
 - Define cloud development environments in Terraform
   - EC2 VMs, Kubernetes Pods, Docker Containers, etc.
