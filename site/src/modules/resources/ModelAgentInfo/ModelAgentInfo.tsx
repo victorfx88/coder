@@ -111,8 +111,10 @@ export const ModelAgentInfo: FC<ModelAgentInfoProps> = ({ agent, onCreateAgent }
           </Tooltip>
         </div>
         <Button
-          variant="outlined"
+          variant="text"
           size="small"
+          endIcon={<KeyboardArrowDown />}
+          css={{ fontSize: 13, padding: "8px 12px" }}
           onClick={(e) => { 
             e.stopPropagation();
             if (onCreateAgent) {
@@ -120,7 +122,7 @@ export const ModelAgentInfo: FC<ModelAgentInfoProps> = ({ agent, onCreateAgent }
             }
           }}
         >
-          Create Agent
+          Create AI Agent
         </Button>
       </Button>
 

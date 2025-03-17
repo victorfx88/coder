@@ -16,12 +16,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "components/Select/Select";
+import {
+  HelpTooltipText,
+  HelpTooltipLink,
+  HelpTooltipLinksGroup,
+} from "components/HelpTooltip/HelpTooltip";
+import { docs } from "utils/docs";
 
 export interface CreateAgentData {
   taskName: string;
   model: string;
   costLimit: number;
   communicationMethod: "Github Issue" | "Running Console";
+  prompt: string;
 }
 
 export type CreateAgentDialogProps = DialogProps & {
@@ -56,6 +63,7 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
       model: "claude-3-5-sonnet",
       costLimit: 10,
       communicationMethod: "Github Issue",
+      prompt: "",
     },
     validationSchema: Yup.object({
       taskName: Yup.string().required("Task name is required"),
@@ -68,6 +76,7 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
         ["Github Issue", "Running Console"],
         "Invalid communication method"
       ).required("Communication method is required"),
+      prompt: Yup.string().required("Prompt is required"),
     }),
     onSubmit: (values) => {
       onConfirm(values);
@@ -93,11 +102,14 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
       type="success"
       cancelText="Cancel"
       confirmText="Create Agent"
-      title="Create New AI Agent"
+      title="Create AI Agent"
       description={
         <form id="create-agent" onSubmit={form.handleSubmit}>
           <Stack spacing={3}>
-            <p>Configure a new AI agent for your workspace.</p>
+            <HelpTooltipText>
+              Configure a new AI agent for your workspace. AI agents can help with tasks like code analysis, testing, and documentation.
+            </HelpTooltipText>
+            
             <FormFields>
               <TextField
                 {...getFieldHelpers("taskName")}
@@ -176,7 +188,28 @@ export const CreateAgentDialog: FC<CreateAgentDialogProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+
+              <TextField
+                {...getFieldHelpers("prompt")}
+                label="Prompt"
+                placeholder="Describe the task for the AI agent"
+                multiline
+                rows={4}
+                disabled={isCreating}
+              />
             </FormFields>
+            
+            <HelpTooltipLinksGroup>
+              <HelpTooltipLink href={docs("/user-guides/workspace-access/ai-agents")}>
+                Learn more about AI Agents
+              </HelpTooltipLink>
+              <HelpTooltipLink href={docs("/user-guides/workspace-access/ai-agents/prompt-examples")}>
+                Prompt examples
+              </HelpTooltipLink>
+              <HelpTooltipLink href={docs("/user-guides/workspace-access/ai-agents/cost-management")}>
+                Cost management
+              </HelpTooltipLink>
+            </HelpTooltipLinksGroup>
           </Stack>
         </form>
       }

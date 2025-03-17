@@ -317,17 +317,19 @@ export const Workspace: FC<WorkspaceProps> = ({
 						agentScriptTimings={timings?.agent_script_timings}
 						agentConnectionTimings={timings?.agent_connection_timings}
 					/>
-
-					{resources.map((resource) => 
-						resource.agents?.map((agent) => (
-							<React.Suspense key={agent.id} fallback={null}>
-								<ModelAgentInfo 
-									agent={agent} 
-									onCreateAgent={() => setCreateAgentDialogOpen(true)}
-								/>
-							</React.Suspense>
-						))
-					)}
+					
+					<div css={{ marginTop: -16 }}>
+						{resources.map((resource) => 
+							resource.agents?.map((agent) => (
+								<React.Suspense key={agent.id} fallback={null}>
+									<ModelAgentInfo 
+										agent={agent} 
+										onCreateAgent={() => setCreateAgentDialogOpen(true)}
+									/>
+								</React.Suspense>
+							))
+						)}
+					</div>
 				</div>
 			</div>
 
