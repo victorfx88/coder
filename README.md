@@ -33,7 +33,7 @@
 
 </div>
 
-[Coder](https://coder.com) is a powerful platform that enables organizations to provision secure, consistent development environments in their public or private cloud infrastructure. 
+[Coder](https://coder.com) is a powerful platform that enables organizations to provision secure, consistent development environments in their public or private cloud infrastructure.
 
 With Coder, development environments are:
 - Defined as code using Terraform
@@ -47,6 +47,8 @@ Coder empowers engineering teams with the flexibility to use the cloud for workl
   - EC2 VMs, Kubernetes Pods, Docker Containers, etc.
 - Automatically shutdown idle resources to save on costs
 - Onboard developers in seconds instead of days
+
+bananas
 
 <p align="center">
   <img src="./docs/images/hero-image.png" alt="Coder Hero Image">
