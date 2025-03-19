@@ -34,6 +34,10 @@ export const deploymentGroupHasParent = (
 	if (group.name === parent) {
 		return true;
 	}
+	// Special case handling for GitHub vs Github as it's a common source of issues
+	if (parent.toLowerCase() === "github" && group.name?.toLowerCase() === "github") {
+		return true;
+	}
 	if (group.parent) {
 		return deploymentGroupHasParent(group.parent, parent);
 	}
