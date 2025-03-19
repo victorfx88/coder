@@ -26,6 +26,7 @@ func (r *RootCmd) open() *serpent.Command {
 		},
 		Children: []*serpent.Command{
 			r.openVSCode(),
+			r.openApp(),
 		},
 	}
 	return cmd
@@ -325,6 +326,127 @@ func resolveAgentAbsPath(workingDirectory, relOrAbsPath, agentOS string, local b
 	default:
 		return "", xerrors.Errorf("path %q not supported, use an absolute path instead", relOrAbsPath)
 	}
+}
+
+func (r *RootCmd) openApp() *serpent.Command {
+	var (
+		testOpenError    bool
+		appearanceConfig codersdk.AppearanceConfig
+	)
+
+	client := new(codersdk.Client)
+	cmd := &serpent.Command{
+		Annotations: workspaceCommand,
+		Use:         "app <workspace> <app-slug>",
+		Short:       "Open a workspace app in the browser",
+		Middleware: serpent.Chain(
+			serpent.RequireNArgs(2),
+			r.InitClient(client),
+			initAppearance(client, &appearanceConfig),
+		),
+		Handler: func(inv *serpent.Invocation) error {
+			ctx, cancel := context.WithCancel(inv.Context())
+			defer cancel()
+
+			// Check if we're inside a workspace
+			insideAWorkspace := inv.Environ.Get("CODER") == "true"
+			inWorkspaceName := inv.Environ.Get("CODER_WORKSPACE_NAME") + "." + inv.Environ.Get("CODER_WORKSPACE_AGENT_NAME")
+
+			// Get workspace and agent
+			workspaceQuery := inv.Args[0]
+			appSlug := inv.Args[1]
+			autostart := true
+			workspace, workspaceAgent, err := getWorkspaceAndAgent(ctx, inv, client, autostart, workspaceQuery)
+			if err != nil {
+				return xerrors.Errorf("get workspace and agent: %w", err)
+			}
+
+			workspaceName := workspace.Name + "." + workspaceAgent.Name
+			insideThisWorkspace := insideAWorkspace && inWorkspaceName == workspaceName
+
+			if !insideThisWorkspace {
+				// Wait for the agent to connect
+				err = cliui.Agent(ctx, inv.Stderr, workspaceAgent.ID, cliui.AgentOptions{
+					Fetch:     client.WorkspaceAgent,
+					FetchLogs: nil,
+					Wait:      false,
+					DocsURL:   appearanceConfig.DocsURL,
+				})
+				if err != nil {
+					if xerrors.Is(err, context.Canceled) {
+						return cliui.Canceled
+					}
+					return xerrors.Errorf("agent: %w", err)
+				}
+			}
+
+			// Fetch the latest agent data to get apps
+			workspaceAgent, err = client.WorkspaceAgent(ctx, workspaceAgent.ID)
+			if err != nil {
+				return xerrors.Errorf("get workspace agent: %w", err)
+			}
+
+			var matchedApp *codersdk.WorkspaceApp
+			for _, app := range workspaceAgent.Apps {
+				if app.Slug == appSlug {
+					matchedApp = &app
+					break
+				}
+			}
+
+			if matchedApp == nil {
+				return xerrors.Errorf("app %q not found for workspace %q", appSlug, workspaceName)
+			}
+
+			// External apps need to be opened directly, while internal apps require a URL for the Coder dashboard
+			var appURL string
+			if matchedApp.External {
+				appURL = matchedApp.URL
+			} else {
+				// Construct the URL similar to the frontend's createAppLinkHref
+				username := workspace.OwnerName
+				appURL = fmt.Sprintf("%s/@%s/%s.%s/apps/%s/", 
+					client.URL.String(), 
+					username, 
+					workspace.Name, 
+					workspaceAgent.Name, 
+					url.PathEscape(appSlug),
+				)
+			}
+
+			if insideAWorkspace {
+				_, _ = fmt.Fprintf(inv.Stderr, "Opening %s in %s is not supported inside a workspace, please open the following URL on your local machine instead:\n\n", workspaceName, matchedApp.DisplayName)
+				_, _ = fmt.Fprintf(inv.Stdout, "%s\n", appURL)
+				return nil
+			}
+			_, _ = fmt.Fprintf(inv.Stderr, "Opening %s in %s\n", workspaceName, matchedApp.DisplayName)
+
+			if !testOpenError {
+				err = open.Run(appURL)
+			} else {
+				err = xerrors.New("test.open-error")
+			}
+			if err != nil {
+				_, _ = fmt.Fprintf(inv.Stderr, "Could not automatically open %s in %s: %s\n", workspaceName, matchedApp.DisplayName, err)
+				_, _ = fmt.Fprintf(inv.Stderr, "Please open the following URL instead:\n\n")
+				_, _ = fmt.Fprintf(inv.Stdout, "%s\n", appURL)
+				return nil
+			}
+
+			return nil
+		},
+	}
+
+	cmd.Options = serpent.OptionSet{
+		{
+			Flag:        "test.open-error",
+			Description: "Don't run the open command.",
+			Value:       serpent.BoolOf(&testOpenError),
+			Hidden:      true, // This is for testing!
+		},
+	}
+
+	return cmd
 }
 
 func doAsync(f func()) (wait func()) {

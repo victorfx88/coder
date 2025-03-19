@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -282,4 +283,8 @@ func TestOpenVSCode_NoAgentDirectory(t *testing.T) {
 			w.RequireSuccess()
 		})
 	}
+}
+
+func TestOpenApp(t *testing.T) {
+	t.Skip("Incomplete test implementation")
 }
