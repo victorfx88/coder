@@ -20,7 +20,7 @@ locals {
       workspaces = {
         count_per_deployment = 100
         nodepool_size        = 3
-        machine_type         = "c2d-standard-32"
+        machine_type         = "c2d-standard-16"
         cpu_request          = "100m"
         mem_request          = "128Mi"
         cpu_limit            = "100m"
@@ -28,7 +28,7 @@ locals {
       }
       misc = {
         nodepool_size = 1
-        machine_type  = "c2d-standard-32"
+        machine_type  = "c2d-standard-16"
       }
       cloudsql = {
         tier            = "db-custom-2-7680"

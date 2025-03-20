@@ -1,7 +1,7 @@
 locals {
-  vpc_name    = "scaletest"
+  vpc_name    = "default"
   vpc_id      = "projects/${var.project_id}/global/networks/${local.vpc_name}"
-  subnet_name = "scaletest"
+  subnet_name = "default"
 }
 
 resource "google_compute_address" "coder" {
@@ -18,7 +18,7 @@ resource "google_compute_global_address" "sql_peering" {
   name          = "${var.name}-sql-peering"
   purpose       = "VPC_PEERING"
   address_type  = "INTERNAL"
-  prefix_length = 16
+  prefix_length = 20
   network       = local.vpc_name
 }
 
