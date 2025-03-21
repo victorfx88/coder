@@ -1,6 +1,7 @@
 package cliui
 
 import (
+	"context"
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -42,6 +43,8 @@ func AITasks(inv *serpent.Invocation) error {
 }
 
 type aiTasksModel struct {
+	ctx      context.Context
+	client   *codersdk.Client
 	canceled bool
 	tasks    []aiTask
 }
@@ -56,14 +59,63 @@ type aiTask struct {
 	workspace      codersdk.Workspace
 }
 
+func fetchTasks(ctx context.Context, client *codersdk.Client) ([]aiTask, error) {
+	workspaces, err := client.Workspaces(ctx, codersdk.WorkspaceFilter{Owner: "me"})
+	if err != nil {
+		// TODO: make return error cmd
+		return nil, xerrors.Errorf("could not fetch owned workspaces: %w", err)
+	}
+
+	tasks := []aiTask{}
+	for _, w := range workspaces.Workspaces {
+		for _, r := range w.LatestBuild.Resources {
+			for _, a := range r.Agents {
+				if len(a.Tasks) != 0 {
+					mostRecentTask := a.Tasks[0]
+					tasks = append(tasks, aiTask{
+						summary:        mostRecentTask.Summary,
+						waitingOnInput: a.TaskWaitingForUserInput,
+						workspace:      w,
+					})
+				}
+			}
+		}
+
+	}
+
+	return tasks, nil
+}
+
+type newTasksFetched struct {
+	tasks []aiTask
+}
+
 func (m aiTasksModel) Init() tea.Cmd {
-	return nil
+	return func() tea.Msg {
+		tasks, err := fetchTasks(m.ctx, m.client)
+		if err != nil {
+			return nil
+		}
+		return newTasksFetched{tasks: tasks}
+	}
 }
 
 func (m aiTasksModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	return m, nil
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case terminateMsg:
+		m.canceled = true
+		return m, tea.Quit
+
+	case newTasksFetched:
+		m.tasks = msg.tasks
+		return m, nil
+	}
+
+	return m, cmd
 }
 
 func (m aiTasksModel) View() string {
-	return "view"
+	return fmt.Sprintf("%v", m.tasks)
 }
