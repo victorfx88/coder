@@ -5,6 +5,7 @@ package cli
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/serpent"
@@ -29,20 +30,8 @@ func (r *RootCmd) vibe() *serpent.Command {
 
 			aiTasks := []codersdk.WorkspaceAgentTask{}
 			for _, resource := range workspace.LatestBuild.Resources {
-				agents := resource.Agents
-				if len(agents) == 0 {
-					continue
-				}
-
-				for _, agent := range agents {
-					tasks := agent.Tasks
-					if len(tasks) == 0 {
-						continue
-					}
-
-					for _, task := range tasks {
-						aiTasks = append(aiTasks, task)
-					}
+				for _, agent := range resource.Agents {
+					aiTasks = slices.Concat(aiTasks, agent.Tasks)
 				}
 			}
 
