@@ -4,12 +4,13 @@ package cli
 // in different Coder workspaces.
 
 import (
-	"fmt"
 	"slices"
 
+	"golang.org/x/xerrors"
+
+	"github.com/coder/coder/v2/cli/cliui"
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/serpent"
-	"golang.org/x/xerrors"
 )
 
 func (r *RootCmd) vibe() *serpent.Command {
@@ -35,7 +36,11 @@ func (r *RootCmd) vibe() *serpent.Command {
 				}
 			}
 
-			fmt.Printf("%v", aiTasks)
+			err = cliui.AITasks(inv)
+			if err != nil {
+				return err
+			}
+
 			return nil
 		},
 	}
