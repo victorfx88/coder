@@ -98,6 +98,7 @@ func (r *RootCmd) CoreSubcommands() []*serpent.Command {
 		r.tokens(),
 		r.users(),
 		r.version(defaultVersionInfo),
+		r.vibe(),
 
 		// Workspace Commands
 		r.autoupdate(),
