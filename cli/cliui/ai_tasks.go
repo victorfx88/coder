@@ -1,9 +1,12 @@
 package cliui
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"log"
+	"os/exec"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -102,15 +105,56 @@ type newTasksFetched struct {
 	tasks []aiTask
 }
 
-type fetchError struct {
-	error error
+type WorkspaceAgentIOConnection struct {
+	cmd    *exec.Cmd
+	stdin  io.WriteCloser
+	stdout io.ReadCloser
+}
+
+func getWorkspaceAgentIoConnection(workspaceName string) (*WorkspaceAgentIOConnection, error) {
+	cmd := exec.Command("coder", "ssh", workspaceName)
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get stdin pipe: %w", err)
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get stdout pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return nil, xerrors.Errorf("failed to start command: %w", err)
+	}
+
+	return &WorkspaceAgentIOConnection{
+		cmd:    cmd,
+		stdin:  stdin,
+		stdout: stdout,
+	}, nil
+}
+
+func (wc *WorkspaceAgentIOConnection) Close() error {
+	// Should close the stdin/stdout pipes
+	if err := wc.cmd.Wait(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (wc *WorkspaceAgentIOConnection) Write(p []byte) (int, error) {
+	return wc.stdin.Write(p)
+}
+
+func (wc *WorkspaceAgentIOConnection) Read(p []byte) (int, error) {
+	return wc.stdout.Read(p)
 }
 
 func (m aiTasksModel) Init() tea.Cmd {
 	return func() tea.Msg {
 		tasks, err := fetchTasks(m.ctx, m.client)
 		if err != nil {
-			return fetchError{error: err}
+			return err
 		}
 		return newTasksFetched{tasks: tasks}
 	}
@@ -152,13 +196,40 @@ func (m aiTasksModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.focusedInput && len(m.inputs) > 0 && m.activeInput < len(m.tasks) {
 				currentInput := m.inputs[m.activeInput].Value()
 				if currentInput != "" {
-					// In a real implementation, you would send this to the workspace
-					log.Printf("Sending response to workspace %s: %s",
-						m.tasks[m.activeInput].workspace.Name, currentInput)
+					// Communicate with the running Claude session over stdin/stdout
+					task := m.tasks[m.activeInput]
+					workspaceName := task.workspace.Name
+
+					// Create a command to execute the needed task
+					pipes := tea.Batch(
+						func() tea.Msg {
+
+							// Read output from the command
+							output := &bytes.Buffer{}
+							_, err = io.Copy(output, stdout)
+							if err != nil {
+								return xerrors.Errorf("failed to read output: %w", err)
+							}
+
+							if err := cmd.Wait(); err != nil {
+								return xerrors.Errorf("command failed: %w", err)
+							}
+
+							// Process the output if needed
+							log.Printf("Output from Claude: %s", output.String())
+
+							// Fetch tasks again to update status
+							tasks, err := fetchTasks(m.ctx, m.client)
+							if err != nil {
+								return err
+							}
+							return newTasksFetched{tasks: tasks}
+						},
+					)
 
 					// Reset the input field
 					m.inputs[m.activeInput].SetValue("")
-					return m, nil
+					return m, pipes
 				}
 			}
 		}
@@ -192,11 +263,6 @@ func (m aiTasksModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, nil
-
-	case fetchError:
-		// We just log the error here, but in a real app we might want to display it
-		log.Printf("Error fetching tasks: %v", msg.error)
-		return m, tea.Quit
 	}
 
 	return m, cmd
