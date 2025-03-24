@@ -16,11 +16,10 @@ func (r *RootCmd) vibe() *serpent.Command {
 		Short: "Display AI tasks running in different Coder Workspaces",
 		Long:  "Display AI tasks running in different Coder Workspaces",
 		Middleware: serpent.Chain(
-			serpent.RequireNArgs(1),
 			r.InitClient(client),
 		),
 		Handler: func(inv *serpent.Invocation) error {
-			return cliui.AITasks(inv)
+			return cliui.AITasks(inv, client)
 		},
 	}
 }

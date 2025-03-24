@@ -62,7 +62,7 @@ If you do not, the user will not be able to see your progress.
 		return fmt.Errorf("failed to configure claude: %w", err)
 	}
 
-	cmd := exec.CommandContext(ctx, claudePath, "--dangerously-skip-permissions", taskPrompt)
+	cmd := exec.CommandContext(ctx, claudePath, "--dangerously-skip-permissions", "--print", taskPrompt)
 	// Create a simple wrapper that starts monitoring only after first write
 	stdoutWriter := &delayedPauseWriter{
 		writer:      os.Stdout,
