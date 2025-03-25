@@ -5,8 +5,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os/exec"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
@@ -46,24 +46,46 @@ func AITasks(inv *serpent.Invocation, client *codersdk.Client) error {
 }
 
 type aiTasksModel struct {
-	ctx          context.Context
-	client       *codersdk.Client
-	canceled     bool
-	tasks        []aiTask
-	inputs       []textinput.Model
-	activeInput  int
-	focusedInput bool
+	ctx               context.Context
+	client            *codersdk.Client
+	canceled          bool
+	tasks             []aiTask
+	inputs            []textinput.Model
+	activeInput       int
+	focusedInput      bool
+	selectedTask      int
+	viewMode          viewMode
+	taskBeingReviewed *aiTask
+	aiResponse        string
+	aiInputActive     bool
 }
+
+func (m aiTasksModel) currentWorkspace() string {
+	return m.tasks[m.selectedTask].workspace.Name
+}
+
+// Define view modes for the UI
+type viewMode int
+
+const (
+	taskListMode viewMode = iota
+	conversationMode
+)
 
 func initialModel(client *codersdk.Client, ctx context.Context) aiTasksModel {
 	return aiTasksModel{
-		client:       client,
-		tasks:        []aiTask{},
-		canceled:     false,
-		ctx:          ctx,
-		inputs:       []textinput.Model{},
-		activeInput:  0,
-		focusedInput: false,
+		client:            client,
+		tasks:             []aiTask{},
+		canceled:          false,
+		ctx:               ctx,
+		inputs:            []textinput.Model{},
+		activeInput:       0,
+		focusedInput:      false,
+		selectedTask:      0,
+		viewMode:          taskListMode,
+		taskBeingReviewed: nil,
+		aiResponse:        "",
+		aiInputActive:     false,
 	}
 }
 
@@ -160,6 +182,10 @@ func (m aiTasksModel) Init() tea.Cmd {
 	}
 }
 
+type aiResponseMsg struct {
+	response string
+}
+
 func (m aiTasksModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
@@ -167,77 +193,103 @@ func (m aiTasksModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q", "esc":
+			if m.viewMode == conversationMode {
+				// Return to task list mode
+				m.viewMode = taskListMode
+				return m, nil
+			}
 			m.canceled = true
 			return m, tea.Quit
+
 		case "tab":
-			// Switch focus between inputs
-			if len(m.inputs) > 0 {
-				if m.focusedInput {
-					m.inputs[m.activeInput].Blur()
-					m.activeInput = (m.activeInput + 1) % len(m.inputs)
-					m.inputs[m.activeInput].Focus()
+			if m.viewMode == taskListMode {
+				// In task list mode, tab selects the next workspace
+				if len(m.tasks) > 0 {
+					m.selectedTask = (m.selectedTask + 1) % len(m.tasks)
 					return m, nil
-				} else {
-					m.focusedInput = true
-					m.inputs[m.activeInput].Focus()
+				}
+			} else if m.viewMode == conversationMode {
+				// In conversation mode, toggle focus between AI input
+				m.aiInputActive = !m.aiInputActive
+				if m.aiInputActive && len(m.inputs) > 0 {
+					m.inputs[0].Focus()
+				} else if len(m.inputs) > 0 {
+					m.inputs[0].Blur()
+				}
+				return m, nil
+			}
+
+		case "shift+tab":
+			if m.viewMode == taskListMode {
+				// In task list mode, shift+tab selects the previous workspace
+				if len(m.tasks) > 0 {
+					m.selectedTask = (m.selectedTask - 1 + len(m.tasks)) % len(m.tasks)
 					return m, nil
 				}
 			}
-		case "shift+tab":
-			// Switch focus between inputs in reverse
-			if len(m.inputs) > 0 && m.focusedInput {
-				m.inputs[m.activeInput].Blur()
-				m.activeInput = (m.activeInput - 1 + len(m.inputs)) % len(m.inputs)
-				m.inputs[m.activeInput].Focus()
-				return m, nil
-			}
+
 		case "enter":
-			// Process the input when Enter is pressed
-			if m.focusedInput && len(m.inputs) > 0 && m.activeInput < len(m.tasks) {
-				currentInput := m.inputs[m.activeInput].Value()
-				if currentInput != "" {
-					// Communicate with the running Claude session over stdin/stdout
-					task := m.tasks[m.activeInput]
-					workspaceName := task.workspace.Name
+			if m.viewMode == taskListMode {
+				// In task list mode, enter switches to conversation mode
+				if len(m.tasks) > 0 {
+					m.viewMode = conversationMode
 
-					// Create a command to execute the needed task
-					pipes := tea.Batch(
-						func() tea.Msg {
+					// Initialize AI input field if needed
+					if len(m.inputs) == 0 {
+						ti := textinput.New()
+						ti.Placeholder = "Type your message to AI..."
+						ti.CharLimit = 500
+						ti.Width = 50
+						ti.Prompt = "> "
+						m.inputs = append(m.inputs, ti)
+					}
 
-							// Read output from the command
-							output := &bytes.Buffer{}
-							_, err = io.Copy(output, stdout)
-							if err != nil {
-								return xerrors.Errorf("failed to read output: %w", err)
-							}
+					// Focus the AI input by default
+					m.aiInputActive = true
+					m.inputs[0].Focus()
 
-							if err := cmd.Wait(); err != nil {
-								return xerrors.Errorf("command failed: %w", err)
-							}
+					return m, nil
+				}
+			} else if m.viewMode == conversationMode {
+				// In conversation mode, enter sends the AI input
+				if m.aiInputActive && len(m.inputs) > 0 {
+					currentInput := m.inputs[0].Value()
+					if currentInput != "" {
+						// Send the message to the AI
+						return m, func() tea.Msg {
 
-							// Process the output if needed
-							log.Printf("Output from Claude: %s", output.String())
-
-							// Fetch tasks again to update status
-							tasks, err := fetchTasks(m.ctx, m.client)
+							// In a real implementation, you would connect to the workspace and send the message
+							// For example:
+							conn, err := getWorkspaceAgentIoConnection(m.currentWorkspace())
 							if err != nil {
 								return err
 							}
-							return newTasksFetched{tasks: tasks}
-						},
-					)
+							defer conn.Close()
 
-					// Reset the input field
-					m.inputs[m.activeInput].SetValue("")
-					return m, pipes
+							_, err = conn.Write([]byte(currentInput + "\n"))
+							if err != nil {
+								return err
+							}
+
+							buf := new(bytes.Buffer)
+							_, err = io.Copy(buf, conn)
+							if err != nil {
+								return err
+							}
+							response := buf.String()
+
+							// Clear the input field
+							m.inputs[0].SetValue("")
+							return aiResponseMsg{response: response}
+						}
+					}
 				}
 			}
 		}
 
-		// Handle input changes for the focused input
-		if m.focusedInput && len(m.inputs) > 0 {
-			var cmd tea.Cmd
-			m.inputs[m.activeInput], cmd = m.inputs[m.activeInput].Update(msg)
+		// Handle input for the AI conversation
+		if m.viewMode == conversationMode && m.aiInputActive && len(m.inputs) > 0 {
+			m.inputs[0], cmd = m.inputs[0].Update(msg)
 			return m, cmd
 		}
 
@@ -245,21 +297,28 @@ func (m aiTasksModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.canceled = true
 		return m, tea.Quit
 
+	case aiResponseMsg:
+		// Update the AI response text
+		m.aiResponse = msg.response
+		return m, nil
+
 	case newTasksFetched:
 		m.tasks = msg.tasks
 
-		// Initialize text inputs for each workspace
-		m.inputs = make([]textinput.Model, len(m.tasks))
-		for i, task := range m.tasks {
+		// If there are no tasks, clear any existing inputs
+		if len(m.tasks) == 0 {
+			m.inputs = []textinput.Model{}
+			return m, nil
+		}
+
+		// Initialize single AI input for conversation mode
+		if m.viewMode == conversationMode && len(m.inputs) == 0 {
 			ti := textinput.New()
-			ti.Placeholder = "Type your response here..."
+			ti.Placeholder = "Type your message to AI..."
 			ti.CharLimit = 500
 			ti.Width = 50
-			ti.Prompt = ""
-			if task.waitingOnInput {
-				ti.Prompt = "> "
-			}
-			m.inputs[i] = ti
+			ti.Prompt = "> "
+			m.inputs = append(m.inputs, ti)
 		}
 
 		return m, nil
@@ -273,6 +332,18 @@ func (m aiTasksModel) View() string {
 		return "No AI tasks found."
 	}
 
+	// Different views depending on the mode
+	switch m.viewMode {
+	case taskListMode:
+		return m.renderTaskListView()
+	case conversationMode:
+		return m.renderConversationView()
+	default:
+		return "Unknown view mode"
+	}
+}
+
+func (m aiTasksModel) renderTaskListView() string {
 	var output string
 
 	tableWriter := table.NewWriter()
@@ -280,15 +351,23 @@ func (m aiTasksModel) View() string {
 	tableWriter.Style().Options.SeparateColumns = false
 	tableWriter.AppendHeader(table.Row{"Workspace", "Task Summary", "Status", "Link"})
 
-	for _, task := range m.tasks {
+	for i, task := range m.tasks {
 		status := "Working"
 		if task.waitingOnInput {
 			status = pretty.Sprint(DefaultStyles.Warn, "Waiting for input")
 		}
 
+		// Highlight the currently selected row
+		workspaceName := task.workspace.Name
+		taskSummary := task.summary
+		if i == m.selectedTask {
+			workspaceName = pretty.Sprint(DefaultStyles.Keyword, "→ "+workspaceName)
+			taskSummary = pretty.Sprint(DefaultStyles.Keyword, taskSummary)
+		}
+
 		tableWriter.AppendRow(table.Row{
-			task.workspace.Name,
-			task.summary,
+			workspaceName,
+			taskSummary,
 			status,
 			pretty.Sprint(DefaultStyles.Code, "coder ssh "+task.workspace.Name),
 		})
@@ -297,20 +376,67 @@ func (m aiTasksModel) View() string {
 	output = tableWriter.Render()
 	output += "\n\n"
 
-	// Add text inputs only for workspaces waiting for input
-	for i, task := range m.tasks {
-		if len(m.inputs) > i && task.waitingOnInput {
-			workspaceLabel := task.workspace.Name
-			if i == m.activeInput && m.focusedInput {
-				workspaceLabel = pretty.Sprint(DefaultStyles.Keyword, workspaceLabel+" (focused)")
-			}
-
-			output += fmt.Sprintf("%s:\n%s\n\n", workspaceLabel, m.inputs[i].View())
-		}
-	}
-
-	output += "\nPress TAB to cycle between text boxes. Type your responses and press ENTER to send.\n"
+	output += "Press TAB to navigate between workspaces.\n"
+	output += "Press ENTER to open the conversation with the AI for the selected workspace.\n"
 	output += "Press ESC or q to quit."
+
+	return output
+}
+
+func (m aiTasksModel) renderConversationView() string {
+	var output string
+
+	// Show which workspace we're viewing
+	if m.selectedTask < len(m.tasks) {
+		selectedWorkspace := m.tasks[m.selectedTask].workspace.Name
+		output = pretty.Sprint(DefaultStyles.Keyword, "Conversation with AI in workspace: "+selectedWorkspace) + "\n\n"
+
+		// Show task summary
+		output += "Task: " + m.tasks[m.selectedTask].summary + "\n\n"
+
+		// Show AI response area with a border
+		output += "AI Response:\n"
+		output += "┌" + strings.Repeat("─", 60) + "┐\n"
+
+		// If there's an AI response, show it with wrapping
+		if m.aiResponse != "" {
+			// Simple wrapping for the response
+			maxWidth := 58
+			words := strings.Fields(m.aiResponse)
+			line := "│ "
+			for _, word := range words {
+				if len(line)+len(word) > maxWidth {
+					// Add padding to fill the box width
+					padding := strings.Repeat(" ", maxWidth-len(line)+2)
+					output += line + padding + "│\n"
+					line = "│ " + word + " "
+				} else {
+					line += word + " "
+				}
+			}
+			// Add final line with padding
+			padding := strings.Repeat(" ", maxWidth-len(line)+2)
+			output += line + padding + "│\n"
+		} else {
+			// Empty response
+			output += "│" + strings.Repeat(" ", 60) + "│\n"
+		}
+
+		output += "└" + strings.Repeat("─", 60) + "┘\n\n"
+
+		// Show input box
+		if len(m.inputs) > 0 {
+			output += "Your message to AI:\n"
+			output += m.inputs[0].View() + "\n\n"
+		}
+
+		// Show instructions
+		output += "Press TAB to focus on the input box.\n"
+		output += "Press ENTER to send your message to the AI.\n"
+		output += "Press ESC to return to the workspace list."
+	} else {
+		output = "No workspace selected."
+	}
 
 	return output
 }
