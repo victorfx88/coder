@@ -11,6 +11,7 @@ import (
 
 	"github.com/bgentry/speakeasy"
 	"github.com/mattn/go-isatty"
+	"golang.org/x/term"
 	"golang.org/x/xerrors"
 
 	"github.com/coder/pretty"
@@ -22,6 +23,9 @@ type PromptOptions struct {
 	Text      string
 	Default   string
 	Secret    bool
+	// Masked determines whether to show asterisks (*) for each character when Secret is true.
+	// If false, nothing is shown (completely hidden input).
+	Masked    bool
 	IsConfirm bool
 	Validate  func(string) error
 }
@@ -91,7 +95,81 @@ func Prompt(inv *serpent.Invocation, opts PromptOptions) (string, error) {
 		inFile, isInputFile := inv.Stdin.(*os.File)
 		if opts.Secret && isInputFile && isatty.IsTerminal(inFile.Fd()) {
 			// we don't install a signal handler here because speakeasy has its own
-			line, err = speakeasy.Ask("")
+			if opts.Masked {
+				// For masked input, we manually handle character input and echo asterisks
+				signal.Notify(interrupt, os.Interrupt)
+				defer signal.Stop(interrupt)
+				
+				// Get a file descriptor for terminal
+				fd := int(inFile.Fd())
+				
+				// Save the current terminal state so we can restore it
+				oldState, termErr := term.GetState(fd)
+				if termErr != nil {
+					err = termErr
+					return
+				}
+				
+				// Ensure terminal state is restored even if we panic
+				defer term.Restore(fd, oldState)
+				
+				// Put terminal in raw mode to read character by character
+				if _, termErr = term.MakeRaw(fd); termErr != nil {
+					err = termErr
+					return
+				}
+				
+				var password []byte
+				var erase, space, backspace byte = 8, 32, 127
+				buf := make([]byte, 1)
+				
+				for {
+					// Read a single byte
+					_, err = inFile.Read(buf)
+					if err != nil {
+						break
+					}
+					
+					// Check for Enter key (CR or LF)
+					if buf[0] == '\r' || buf[0] == '\n' {
+						// Restore terminal mode immediately
+						_ = term.Restore(fd, oldState)
+						
+						// Echo a newline
+						_, _ = fmt.Fprint(inv.Stdout, "\r\n")
+						break
+					}
+					
+					// Handle Ctrl+C, which should be caught by the interrupt handler
+					if buf[0] == 3 {
+						continue // Let the interrupt handler take care of it
+					}
+					
+					// Handle backspace
+					if buf[0] == erase || buf[0] == backspace {
+						if len(password) > 0 {
+							password = password[:len(password)-1]
+							// Erase the last asterisk: backspace, space, backspace
+							_, _ = fmt.Fprintf(inv.Stdout, "%c%c%c", erase, space, erase)
+						}
+						continue
+					}
+					
+					// Only accept printable characters
+					if buf[0] >= 32 {
+						password = append(password, buf[0])
+						// Echo an asterisk
+						_, _ = fmt.Fprint(inv.Stdout, "*")
+					}
+				}
+				
+				if err == nil {
+					line = string(password)
+				}
+			} else {
+				// Standard hidden input, no echoing
+				line, err = speakeasy.Ask("")
+			}
 		} else {
 			signal.Notify(interrupt, os.Interrupt)
 			defer signal.Stop(interrupt)

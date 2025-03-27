@@ -140,7 +140,10 @@ func (r *RootCmd) loginWithPassword(
 }
 
 func (r *RootCmd) login() *serpent.Command {
-	const firstUserTrialEnv = "CODER_FIRST_USER_TRIAL"
+	const (
+		firstUserTrialEnv = "CODER_FIRST_USER_TRIAL"
+		maskedPasteEnv    = "CODER_LOGIN_PASTE"
+	)
 
 	var (
 		email              string
@@ -149,6 +152,7 @@ func (r *RootCmd) login() *serpent.Command {
 		password           string
 		trial              bool
 		useTokenForSession bool
+		maskedPaste        bool
 	)
 	cmd := &serpent.Command{
 		Use:        "login [<url>]",
@@ -355,9 +359,18 @@ func (r *RootCmd) login() *serpent.Command {
 					_, _ = fmt.Fprintf(inv.Stdout, "Your browser has been opened to visit:\n\n\t%s\n\n", authURL.String())
 				}
 
+				// Check if we should use masked input
+				isMaskedPaste := maskedPaste
+				// If the flag wasn't explicitly set, check the env var
+				if !inv.ParsedFlags().Changed("masked") && inv.Environ.Get(maskedPasteEnv) != "" {
+					// Check if the env var is set to "masked" (case insensitive)
+					isMaskedPaste = strings.EqualFold(inv.Environ.Get(maskedPasteEnv), "masked")
+				}
+				
 				sessionToken, err = cliui.Prompt(inv, cliui.PromptOptions{
 					Text:   "Paste your token here:",
 					Secret: true,
+					Masked: isMaskedPaste,
 					Validate: func(token string) error {
 						client.SetSessionToken(token)
 						_, err := client.User(ctx, codersdk.Me)
@@ -444,6 +457,12 @@ func (r *RootCmd) login() *serpent.Command {
 			Flag:        "use-token-as-session",
 			Description: "By default, the CLI will generate a new session token when logging in. This flag will instead use the provided token as the session token.",
 			Value:       serpent.BoolOf(&useTokenForSession),
+		},
+		{
+			Flag:        "masked",
+			Env:         maskedPasteEnv,
+			Description: "Show asterisks (*) for each character when pasting a token.",
+			Value:       serpent.BoolOf(&maskedPaste),
 		},
 	}
 	return cmd
