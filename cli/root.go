@@ -108,6 +108,7 @@ func (r *RootCmd) CoreSubcommands() []*serpent.Command {
 		r.list(),
 		r.open(),
 		r.ping(),
+		r.mcp(),
 		r.rename(),
 		r.restart(),
 		r.schedules(),
