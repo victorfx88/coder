@@ -18,6 +18,7 @@ import { WorkspacesPageView } from "./WorkspacesPageView";
 import { useBatchActions } from "./batchActions";
 import { useWorkspaceUpdate, useWorkspacesData } from "./data";
 import { useStatusFilterMenu, useTemplateFilterMenu } from "./filter/menus";
+import { useTheme } from "@emotion/react";
 
 function useSafeSearchParams() {
 	// Have to wrap setSearchParams because React Router doesn't make sure that
@@ -70,7 +71,8 @@ const WorkspacesPage: FC = () => {
 			setCheckedWorkspaces([]);
 		},
 	});
-
+	const [activeAppURL, setActiveAppURL] = useState<string | undefined>(undefined);
+	const theme = useTheme();
 	// We want to uncheck the selected workspaces always when the url changes
 	// because of filtering or pagination
 	// biome-ignore lint/correctness/useExhaustiveDependencies: consider refactoring
@@ -84,30 +86,60 @@ const WorkspacesPage: FC = () => {
 				<title>{pageTitle("Workspaces")}</title>
 			</Helmet>
 
-			<WorkspacesPageView
-				canCreateTemplate={permissions.createTemplates}
-				canChangeVersions={permissions.updateTemplates}
-				checkedWorkspaces={checkedWorkspaces}
-				onCheckChange={setCheckedWorkspaces}
-				canCheckWorkspaces={canCheckWorkspaces}
-				templates={templatesQuery.data}
-				templatesFetchStatus={templatesQuery.status}
-				workspaces={data?.workspaces}
-				error={error}
-				count={data?.count}
-				page={pagination.page}
-				limit={pagination.limit}
-				onPageChange={pagination.goToPage}
-				filterProps={filterProps}
-				onUpdateWorkspace={(workspace) => {
-					updateWorkspace.mutate(workspace);
-				}}
-				isRunningBatchAction={batchActions.isLoading}
-				onDeleteAll={() => setConfirmingBatchAction("delete")}
-				onUpdateAll={() => setConfirmingBatchAction("update")}
-				onStartAll={() => batchActions.startAll(checkedWorkspaces)}
-				onStopAll={() => batchActions.stopAll(checkedWorkspaces)}
-			/>
+			<div css={{ display: "flex", flexDirection: "row", gap: 24 }}>
+				<WorkspacesPageView
+					canCreateTemplate={permissions.createTemplates}
+					canChangeVersions={permissions.updateTemplates}
+					checkedWorkspaces={checkedWorkspaces}
+					onCheckChange={setCheckedWorkspaces}
+					canCheckWorkspaces={canCheckWorkspaces}
+					templates={templatesQuery.data}
+					templatesFetchStatus={templatesQuery.status}
+					workspaces={data?.workspaces}
+					error={error}
+					count={data?.count}
+					page={pagination.page}
+					limit={pagination.limit}
+					onPageChange={pagination.goToPage}
+					filterProps={filterProps}
+					onUpdateWorkspace={(workspace) => {
+						updateWorkspace.mutate(workspace);
+					}}
+					onActiveAppURLChange={setActiveAppURL}
+					isRunningBatchAction={batchActions.isLoading}
+					onDeleteAll={() => setConfirmingBatchAction("delete")}
+					onUpdateAll={() => setConfirmingBatchAction("update")}
+					onStartAll={() => batchActions.startAll(checkedWorkspaces)}
+					onStopAll={() => batchActions.stopAll(checkedWorkspaces)}
+				/>
+
+				{activeAppURL && (
+					<div css={{
+						display: "flex",
+						minWidth: "35%",
+					}}>
+						<div css={{
+							position: "absolute",
+							right: 0,
+							bottom: 0,
+							width: "35%",
+							top: 72,
+							borderLeft: `1px solid ${theme.palette.divider}`,
+						}}>
+							<iframe src={activeAppURL} css={{
+								width: "100%",
+								border: "none",
+								position: "sticky",
+								bottom: 0,
+								right: 0,
+								height: "calc(100vh - 110px)",
+							}} />
+						</div>
+
+					</div>
+
+				)}
+			</div>
 
 			<BatchDeleteConfirmation
 				isLoading={batchActions.isLoading}

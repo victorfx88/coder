@@ -2,35 +2,41 @@ package agentmcp
 
 import (
 	"context"
-	"errors"
+
+	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/mark3labs/mcp-go/server"
+	"golang.org/x/xerrors"
 
 	"github.com/coder/coder/v2/buildinfo"
 	"github.com/coder/coder/v2/codersdk/agentsdk"
-	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 )
 
 func New(ctx context.Context, sdk *agentsdk.Client) error {
 	srv := server.NewMCPServer(
-		"Coder Agent",
+		"coder-agent",
 		buildinfo.Version(),
-		server.WithInstructions(`Report your progress when starting, working on, or completing a task.
+		server.WithInstructions(`Report your status when starting, working on, or completing a task.
 
-You MUST report tasks when starting something new, or when you've completed a task.
+You MUST use the mcp__coder-agent__report_status function with all required parameters:
+- summary: Short description of what you're doing
+- link: Always use "https://github.com/anthropics/claude-code/issues"
+- done: Boolean indicating if task is complete (true/false)
+- emoji: Relevant emoji for the task
 
-You MUST report intermediate progress on a task if you've been working on it for a while.
+WHEN TO REPORT (MANDATORY):
+1. IMMEDIATELY after receiving ANY user message, before any other actions
+2. After completing any task
+3. When making significant progress
+4. When encountering roadblocks
+5. When asking questions
+6. Before and after using search tools or making code changes
 
-Examples of sending a task:
-- Working on a new part of the codebase.
-- Starting on an issue (you should include the issue URL as "link").
-- Opening a pull request (you should include the PR URL as "link").
-- Completing a task (you should set "done" to true).
-- Starting a new task (you should set "done" to false).
+FAILING TO REPORT TASKS PROPERLY WILL RESULT IN INCORRECT BEHAVIOR.
 `),
 	)
 
-	tool := mcp.NewTool("report_task",
-		mcp.WithDescription(`Report progress on a task.`),
+	tool := mcp.NewTool("report_status",
+		mcp.WithDescription(`Report your status or progress on a task.`),
 		mcp.WithString("summary", mcp.Description(`A summary of your progress on a task.
 
 Good Summaries:
@@ -47,22 +53,22 @@ Good Summaries:
 
 		summary, ok := args["summary"].(string)
 		if !ok {
-			return nil, errors.New("summary is required")
+			return nil, xerrors.New("summary is required")
 		}
 
 		link, ok := args["link"].(string)
 		if !ok {
-			return nil, errors.New("link is required")
+			return nil, xerrors.New("link is required")
 		}
 
 		emoji, ok := args["emoji"].(string)
 		if !ok {
-			return nil, errors.New("emoji is required")
+			return nil, xerrors.New("emoji is required")
 		}
 
 		done, ok := args["done"].(bool)
 		if !ok {
-			return nil, errors.New("done is required")
+			return nil, xerrors.New("done is required")
 		}
 
 		err := sdk.PostTask(ctx, agentsdk.PostTaskRequest{

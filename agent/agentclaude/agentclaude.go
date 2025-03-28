@@ -3,7 +3,6 @@ package agentclaude
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -13,34 +12,42 @@ import (
 	"time"
 
 	"github.com/spf13/afero"
+	"golang.org/x/xerrors"
 )
 
-func New(ctx context.Context, apiKey, systemPrompt, taskPrompt string, onPause func()) error {
+func New(ctx context.Context, apiKey, systemPrompt, taskPrompt string, onWaiting func(waiting bool)) error {
 	claudePath, err := exec.LookPath("claude")
 	if err != nil {
-		return fmt.Errorf("claude not found: %w", err)
+		return xerrors.Errorf("claude not found: %w", err)
 	}
 	fs := afero.NewOsFs()
-	err = injectClaudeMD(fs, `You are an AI agent in a Coder Workspace.
+	err = injectClaudeMD(fs, `YOU MUST REPORT YOUR STATUS IMMEDIATELY AFTER EACH USER MESSAGE.
 
-The user is running this task entirely autonomously.
+INTERRUPT READING FILES OR ANY OTHER TOOL CALL IF YOU HAVE NOT REPORTED A STATUS YET.
 
-Use the coder-agent MCP server to report your progress. You must report when you:
-- Start a new task.
-- Complete a task (e.g. push a commit, open a PR, etc.)
-- Make progress on a task.
+You MUST use the mcp__coder-agent__report_status function with all required parameters:
+- summary: Short description of what you're doing
+- link: A relevant link for the status
+- done: Boolean indicating if the task is complete (true/false)
+- emoji: Relevant emoji for the status
 
-You should report your progress frequently. Try to report as much as possible.
+WHEN TO REPORT (MANDATORY):
+1. IMMEDIATELY after receiving ANY user message, before any other actions
+2. After completing any task
+3. When making significant progress
+4. When encountering roadblocks
+5. When asking questions
+6. Before and after using search tools or making code changes
 
-If you do not, the user will not be able to see your progress.
+FAILING TO REPORT STATUS PROPERLY WILL RESULT IN INCORRECT BEHAVIOR.
 `, systemPrompt, "")
 	if err != nil {
-		return fmt.Errorf("failed to inject claude md: %w", err)
+		return xerrors.Errorf("failed to inject claude md: %w", err)
 	}
 
 	wd, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get working directory: %w", err)
+		return xerrors.Errorf("failed to get working directory: %w", err)
 	}
 
 	err = configureClaude(fs, ClaudeConfig{
@@ -59,7 +66,7 @@ If you do not, the user will not be able to see your progress.
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to configure claude: %w", err)
+		return xerrors.Errorf("failed to configure claude: %w", err)
 	}
 
 	cmd := exec.CommandContext(ctx, claudePath, "--dangerously-skip-permissions", taskPrompt)
@@ -67,12 +74,14 @@ If you do not, the user will not be able to see your progress.
 	stdoutWriter := &delayedPauseWriter{
 		writer:      os.Stdout,
 		pauseWindow: 2 * time.Second,
-		onPause:     onPause,
+		onWaiting:   onWaiting,
+		cooldown:    15 * time.Second,
 	}
 	stderrWriter := &delayedPauseWriter{
 		writer:      os.Stderr,
 		pauseWindow: 2 * time.Second,
-		onPause:     onPause,
+		onWaiting:   onWaiting,
+		cooldown:    15 * time.Second,
 	}
 
 	cmd.Stdout = stdoutWriter
@@ -86,11 +95,13 @@ If you do not, the user will not be able to see your progress.
 type delayedPauseWriter struct {
 	writer        io.Writer
 	pauseWindow   time.Duration
-	onPause       func()
+	cooldown      time.Duration
+	onWaiting     func(waiting bool)
 	lastWrite     time.Time
 	mu            sync.Mutex
 	started       bool
-	pauseNotified bool
+	waitingState  bool
+	cooldownUntil time.Time
 }
 
 // Write implements io.Writer and starts monitoring on first write
@@ -100,8 +111,12 @@ func (w *delayedPauseWriter) Write(p []byte) (n int, err error) {
 	w.started = true
 	w.lastWrite = time.Now()
 
-	// Reset pause notification state when new output appears
-	w.pauseNotified = false
+	// If we were in waiting state, we're now resumed
+	if w.waitingState {
+		w.waitingState = false
+		w.cooldownUntil = time.Now().Add(w.cooldown)
+		w.onWaiting(false) // Signal resume
+	}
 
 	w.mu.Unlock()
 
@@ -113,26 +128,32 @@ func (w *delayedPauseWriter) Write(p []byte) (n int, err error) {
 	return w.writer.Write(p)
 }
 
-// monitorPauses checks for pauses in writing and calls onPause when detected
+// monitorPauses checks for pauses in writing and calls onWaiting when detected
 func (w *delayedPauseWriter) monitorPauses() {
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 
 	for range ticker.C {
 		w.mu.Lock()
-		elapsed := time.Since(w.lastWrite)
-		alreadyNotified := w.pauseNotified
 
-		// If we detect a pause and haven't notified yet, mark as notified
-		if elapsed >= w.pauseWindow && !alreadyNotified {
-			w.pauseNotified = true
+		// Check if we're in a cooldown period
+		inCooldown := time.Now().Before(w.cooldownUntil)
+		elapsed := time.Since(w.lastWrite)
+		shouldWait := elapsed >= w.pauseWindow && !inCooldown
+		currentState := w.waitingState
+		shouldNotify := false
+
+		// Only update state if it changed
+		if shouldWait != currentState {
+			w.waitingState = shouldWait
+			shouldNotify = true
 		}
 
 		w.mu.Unlock()
 
-		// Only notify once per pause period
-		if elapsed >= w.pauseWindow && !alreadyNotified {
-			w.onPause()
+		// Notify outside of the lock to avoid deadlocks
+		if shouldNotify {
+			w.onWaiting(shouldWait)
 		}
 	}
 }
@@ -144,14 +165,14 @@ func injectClaudeMD(fs afero.Fs, coderPrompt, systemPrompt string, configPath st
 	_, err := fs.Stat(configPath)
 	if err != nil {
 		if !os.IsNotExist(err) {
-			return fmt.Errorf("failed to stat claude config: %w", err)
+			return xerrors.Errorf("failed to stat claude config: %w", err)
 		}
 	}
 	content := ""
 	if err == nil {
 		contentBytes, err := afero.ReadFile(fs, configPath)
 		if err != nil {
-			return fmt.Errorf("failed to read claude config: %w", err)
+			return xerrors.Errorf("failed to read claude config: %w", err)
 		}
 		content = string(contentBytes)
 	}
@@ -202,13 +223,13 @@ func injectClaudeMD(fs afero.Fs, coderPrompt, systemPrompt string, configPath st
 
 	err = fs.MkdirAll(filepath.Dir(configPath), 0755)
 	if err != nil {
-		return fmt.Errorf("failed to create claude config directory: %w", err)
+		return xerrors.Errorf("failed to create claude config directory: %w", err)
 	}
 
 	// Write the updated content back to the file
 	err = afero.WriteFile(fs, configPath, []byte(newContent), 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write claude config: %w", err)
+		return xerrors.Errorf("failed to write claude config: %w", err)
 	}
 
 	return nil
@@ -249,17 +270,17 @@ func configureClaude(fs afero.Fs, cfg ClaudeConfig) error {
 		if os.IsNotExist(err) {
 			config = make(map[string]any)
 		} else {
-			return fmt.Errorf("failed to stat claude config: %w", err)
+			return xerrors.Errorf("failed to stat claude config: %w", err)
 		}
 	}
 	if err == nil {
 		jsonBytes, err := afero.ReadFile(fs, cfg.ConfigPath)
 		if err != nil {
-			return fmt.Errorf("failed to read claude config: %w", err)
+			return xerrors.Errorf("failed to read claude config: %w", err)
 		}
 		err = json.Unmarshal(jsonBytes, &config)
 		if err != nil {
-			return fmt.Errorf("failed to unmarshal claude config: %w", err)
+			return xerrors.Errorf("failed to unmarshal claude config: %w", err)
 		}
 	}
 
@@ -312,16 +333,32 @@ func configureClaude(fs afero.Fs, cfg ClaudeConfig) error {
 	project["mcpServers"] = mcpServers
 	// Prevents Claude from asking the user to complete the project onboarding.
 	project["hasCompletedProjectOnboarding"] = true
+
+	history, ok := project["history"].([]string)
+	injectedHistoryLine := "make sure to read claude.md and report tasks properly"
+
+	if !ok || len(history) == 0 {
+		// History doesn't exist or is empty, create it with our injected line
+		history = []string{injectedHistoryLine}
+	} else {
+		// Check if our line is already the first item
+		if history[0] != injectedHistoryLine {
+			// Prepend our line to the existing history
+			history = append([]string{injectedHistoryLine}, history...)
+		}
+	}
+	project["history"] = history
+
 	projects[cfg.ProjectDirectory] = project
 	config["projects"] = projects
 
 	jsonBytes, err := json.MarshalIndent(config, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal claude config: %w", err)
+		return xerrors.Errorf("failed to marshal claude config: %w", err)
 	}
 	err = afero.WriteFile(fs, cfg.ConfigPath, jsonBytes, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to write claude config: %w", err)
+		return xerrors.Errorf("failed to write claude config: %w", err)
 	}
 	return nil
 }

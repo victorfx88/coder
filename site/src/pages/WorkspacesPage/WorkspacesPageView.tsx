@@ -23,7 +23,7 @@ import { PaginationWidgetBase } from "components/PaginationWidget/PaginationWidg
 import { Stack } from "components/Stack/Stack";
 import { TableToolbar } from "components/TableToolbar/TableToolbar";
 import { WorkspacesTable } from "pages/WorkspacesPage/WorkspacesTable";
-import type { FC } from "react";
+import { useState, type FC } from "react";
 import type { UseQueryResult } from "react-query";
 import { mustUpdateWorkspace } from "utils/workspace";
 import { WorkspaceHelpTooltip } from "./WorkspaceHelpTooltip";
@@ -54,6 +54,7 @@ export interface WorkspacesPageViewProps {
 	limit: number;
 	onPageChange: (page: number) => void;
 	onUpdateWorkspace: (workspace: Workspace) => void;
+	onActiveAppURLChange: (appURL: string) => void;
 	onCheckChange: (checkedWorkspaces: readonly Workspace[]) => void;
 	isRunningBatchAction: boolean;
 	onDeleteAll: () => void;
@@ -82,6 +83,7 @@ export const WorkspacesPageView: FC<WorkspacesPageViewProps> = ({
 	onUpdateAll,
 	onStopAll,
 	onStartAll,
+	onActiveAppURLChange,
 	isRunningBatchAction,
 	canCheckWorkspaces,
 	templates,
@@ -217,6 +219,7 @@ export const WorkspacesPageView: FC<WorkspacesPageViewProps> = ({
 					workspaces={workspaces}
 					isUsingFilter={filterProps.filter.used}
 					onUpdateWorkspace={onUpdateWorkspace}
+					onActiveAppURLChange={onActiveAppURLChange}
 					checkedWorkspaces={checkedWorkspaces}
 					onCheckChange={onCheckChange}
 					canCheckWorkspaces={canCheckWorkspaces}

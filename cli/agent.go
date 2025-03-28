@@ -441,9 +441,9 @@ func (r *RootCmd) workspaceAgent() *serpent.Command {
 						Completion: false,
 					})
 
-					return agentclaude.New(inv.Context(), claudeAPIKey, claudeSystemPrompt, claudeTaskPrompt, func() {
+					return agentclaude.New(inv.Context(), claudeAPIKey, claudeSystemPrompt, claudeTaskPrompt, func(waiting bool) {
 						_ = client.PatchTasks(inv.Context(), agentsdk.PatchTasksRequest{
-							WaitingForUserInput: true,
+							WaitingForUserInput: waiting,
 						})
 					})
 				},

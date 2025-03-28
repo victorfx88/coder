@@ -1,6 +1,7 @@
 import { useTheme } from "@emotion/react";
 import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 import Star from "@mui/icons-material/Star";
+import Button from "@mui/material/Button";
 import Checkbox from "@mui/material/Checkbox";
 import Skeleton from "@mui/material/Skeleton";
 import Table from "@mui/material/Table";
@@ -10,7 +11,7 @@ import TableContainer from "@mui/material/TableContainer";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import { visuallyHidden } from "@mui/utils";
-import type { Template, Workspace } from "api/typesGenerated";
+import type { Template, Workspace, WorkspaceAgentTask } from "api/typesGenerated";
 import { Avatar } from "components/Avatar/Avatar";
 import { AvatarData } from "components/Avatar/AvatarData";
 import { AvatarDataSkeleton } from "components/Avatar/AvatarDataSkeleton";
@@ -20,14 +21,16 @@ import {
 	TableLoaderSkeleton,
 	TableRowSkeleton,
 } from "components/TableLoader/TableLoader";
+import { useProxy } from "contexts/ProxyContext";
 import { useClickableTableRow } from "hooks/useClickableTableRow";
 import { useDashboard } from "modules/dashboard/useDashboard";
 import { WorkspaceDormantBadge } from "modules/workspaces/WorkspaceDormantBadge/WorkspaceDormantBadge";
 import { WorkspaceOutdatedTooltip } from "modules/workspaces/WorkspaceOutdatedTooltip/WorkspaceOutdatedTooltip";
 import { WorkspaceStatusBadge } from "modules/workspaces/WorkspaceStatusBadge/WorkspaceStatusBadge";
 import { LastUsed } from "pages/WorkspacesPage/LastUsed";
-import type { FC, ReactNode } from "react";
+import { useMemo, type FC, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
+import { createAppLinkHref } from "utils/apps";
 import { getDisplayWorkspaceTemplateName } from "utils/workspace";
 import { WorkspacesEmpty } from "./WorkspacesEmpty";
 
@@ -38,6 +41,7 @@ export interface WorkspacesTableProps {
 	isUsingFilter: boolean;
 	onUpdateWorkspace: (workspace: Workspace) => void;
 	onCheckChange: (checkedWorkspaces: readonly Workspace[]) => void;
+	onActiveAppURLChange: (appURL: string) => void;
 	canCheckWorkspaces: boolean;
 	templates?: Template[];
 	canCreateTemplate: boolean;
@@ -49,19 +53,76 @@ export const WorkspacesTable: FC<WorkspacesTableProps> = ({
 	isUsingFilter,
 	onUpdateWorkspace,
 	onCheckChange,
+	onActiveAppURLChange,
 	canCheckWorkspaces,
 	templates,
 	canCreateTemplate,
 }) => {
 	const theme = useTheme();
 	const dashboard = useDashboard();
+	const { proxy } = useProxy();
+
+	// Create a map of workspace IDs to their tasks
+	const tasksByWorkspace: Record<string, {
+		latestTask: WorkspaceAgentTask,
+		waitingForUserInput: boolean,
+		claudeCodeAppURL?: string
+		claudeCodeAppIcon?: string
+	}> = useMemo(() => workspaces?.reduce((acc, workspace) => {
+		const agents = workspace.latest_build.resources
+			?.flatMap(resource => resource.agents || [])
+		// Get all tasks from all agents across all resources for this workspace
+		const workspaceTasks = agents
+			.filter(agent => agent && agent.tasks?.length > 0)
+			.flatMap(agent => agent.tasks || []);
+		const waitingForUserInput = agents.filter(agent => agent.task_waiting_for_user_input).length > 0
+		const claudeCodeApp = agents.flatMap(agent => agent.apps.filter(app => app.display_name === "Claude Code"))
+
+		// Only add to the map if there are tasks
+		if (workspaceTasks && workspaceTasks.length > 0) {
+
+			let claudeCodeAppURL = undefined;
+			if (claudeCodeApp[0]) {
+				claudeCodeAppURL = createAppLinkHref(
+					window.location.protocol,
+					proxy.preferredPathAppURL,
+					proxy.preferredWildcardHostname,
+					claudeCodeApp[0].slug,
+					workspace.owner_name,
+					workspace,
+					agents[0],
+					claudeCodeApp[0]
+				)
+				if (claudeCodeAppURL.startsWith("/")) {
+					claudeCodeAppURL = `${window.location.origin}${claudeCodeAppURL}`
+				}
+			}
+
+			acc[workspace.id] = {
+				latestTask: workspaceTasks[0],
+				waitingForUserInput,
+				claudeCodeAppURL,
+				claudeCodeAppIcon: claudeCodeApp[0] ? claudeCodeApp[0].icon : undefined
+			};
+		}
+
+		return acc;
+	}, {} as Record<string, {
+		latestTask: WorkspaceAgentTask,
+		waitingForUserInput: boolean,
+		claudeCodeAppURL?: string,
+		claudeCodeAppIcon?: string
+	}>) || {},
+		[workspaces],
+	);
+	const hasTasks = useMemo(() => Object.values(tasksByWorkspace).some(tasks => tasks.latestTask !== undefined), [tasksByWorkspace]);
 
 	return (
 		<TableContainer>
 			<Table>
 				<TableHead>
 					<TableRow>
-						<TableCell width="40%">
+						<TableCell width="25%">
 							<div css={{ display: "flex", alignItems: "center", gap: 8 }}>
 								{canCheckWorkspaces && (
 									<Checkbox
@@ -94,8 +155,11 @@ export const WorkspacesTable: FC<WorkspacesTableProps> = ({
 								Name
 							</div>
 						</TableCell>
-						<TableCell width="25%">Template</TableCell>
-						<TableCell width="20%">Last used</TableCell>
+						{hasTasks && (
+							<TableCell width="30%">Task</TableCell>
+						)}
+						<TableCell width="10%">Template</TableCell>
+						<TableCell width="10%">Last used</TableCell>
 						<TableCell width="15%">Status</TableCell>
 						<TableCell width="1%" />
 					</TableRow>
@@ -118,6 +182,7 @@ export const WorkspacesTable: FC<WorkspacesTableProps> = ({
 						const activeOrg = dashboard.organizations.find(
 							(o) => o.id === workspace.organization_id,
 						);
+						const task = tasksByWorkspace[workspace.id];
 
 						return (
 							<WorkspacesRow
@@ -195,6 +260,83 @@ export const WorkspacesTable: FC<WorkspacesTableProps> = ({
 										/>
 									</div>
 								</TableCell>
+
+								{hasTasks && (
+									<TableCell>
+										{task?.latestTask ? (
+											<div css={{
+												display: "flex",
+												alignItems: "center",
+												justifyContent: "space-between"
+											}}>
+												<div css={{
+													display: "flex",
+													alignItems: "center",
+													gap: 8,
+												}}>
+													{/* Task status indicators */}
+													{task.waitingForUserInput ? (
+														<span css={{
+															display: "inline-flex",
+															alignItems: "center",
+															justifyContent: "center",
+															color: theme.palette.info.main,
+															marginRight: 8
+														}}>
+															<span role="img" aria-label="Input needed">
+															🙋
+															</span>
+														</span>
+													) : (
+														<span css={{
+															display: "inline-block",
+															width: 16,
+															
+															height: 16,
+															marginRight: 8,
+															borderRadius: "50%",
+															border: `2px solid ${theme.palette.divider}`,
+															borderTopColor: theme.palette.primary.main,
+															animation: "spin 1.5s linear infinite",
+															"@keyframes spin": {
+																to: { transform: "rotate(360deg)" }
+															}
+														}} />
+													)}
+													
+													{/* Task summary with icon */}
+													<div css={{ color: theme.palette.text.secondary }}>
+														{task.latestTask.summary}
+													</div>
+												</div>
+												
+												{/* Claude Code button aligned to the right */}
+												{task?.claudeCodeAppURL && (
+													<Button
+														variant="outlined"
+														size="small"
+														onClick={(e) => {
+															e.stopPropagation();
+															onActiveAppURLChange(task.claudeCodeAppURL!);
+														}}
+														css={{
+															fontSize: 12,
+															minWidth: "auto",
+															padding: "4px 8px",
+															marginRight: 64,
+														}}
+													>
+														<img width={16} height={16} src={task.claudeCodeAppIcon} alt="Claude Code" />
+													</Button>
+												)}
+											</div>
+										) : (
+											<div css={{ color: theme.palette.text.secondary }}>
+												No active tasks
+											</div>
+										)}
+									</TableCell>
+								)}
 
 								<TableCell>
 									<div>{getDisplayWorkspaceTemplateName(workspace)}</div>

@@ -88,7 +88,6 @@ func CSPHeaders(telemetry bool, websocketHosts func() []string, staticAdditions 
 				CSPDirectiveMediaSrc:   {"'self'"},
 				// Report all violations back to the server to log
 				CSPDirectiveReportURI: {"/api/v2/csp/reports"},
-				CSPFrameAncestors:     {"'none'"},
 
 				// Only scripts can manipulate the dom. This prevents someone from
 				// naming themselves something like '<svg onload="alert(/cross-site-scripting/)" />'.
