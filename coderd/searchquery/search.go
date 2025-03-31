@@ -97,10 +97,8 @@ func Workspaces(ctx context.Context, db database.Store, query string, page coder
 	filter := database.GetWorkspacesParams{
 		AgentInactiveDisconnectTimeoutSeconds: int64(agentInactiveDisconnectTimeout.Seconds()),
 
-		// #nosec G115 - Safe conversion for pagination offset which is expected to be within int32 range
 		Offset: int32(page.Offset),
-		// #nosec G115 - Safe conversion for pagination limit which is expected to be within int32 range
-		Limit: int32(page.Limit),
+		Limit:  int32(page.Limit),
 	}
 
 	if query == "" {

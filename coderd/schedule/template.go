@@ -77,7 +77,6 @@ func (r TemplateAutostopRequirement) DaysMap() map[time.Weekday]bool {
 func daysMap(daysOfWeek uint8) map[time.Weekday]bool {
 	days := make(map[time.Weekday]bool)
 	for i, day := range DaysOfWeek {
-		// #nosec G115 - Safe conversion, i ranges from 0-6 for days of the week
 		days[day] = daysOfWeek&(1<<uint(i)) != 0
 	}
 	return days
@@ -89,7 +88,6 @@ func VerifyTemplateAutostopRequirement(days uint8, weeks int64) error {
 	if days&0b10000000 != 0 {
 		return xerrors.New("invalid autostop requirement days, last bit is set")
 	}
-	//nolint:staticcheck
 	if days > 0b11111111 {
 		return xerrors.New("invalid autostop requirement days, too large")
 	}
@@ -108,7 +106,6 @@ func VerifyTemplateAutostartRequirement(days uint8) error {
 	if days&0b10000000 != 0 {
 		return xerrors.New("invalid autostart requirement days, last bit is set")
 	}
-	//nolint:staticcheck
 	if days > 0b11111111 {
 		return xerrors.New("invalid autostart requirement days, too large")
 	}

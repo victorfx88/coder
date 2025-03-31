@@ -7619,121 +7619,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/{user}/webpush/subscription": {
-            "post": {
-                "security": [
-                    {
-                        "CoderSessionToken": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Notifications"
-                ],
-                "summary": "Create user webpush subscription",
-                "operationId": "create-user-webpush-subscription",
-                "parameters": [
-                    {
-                        "description": "Webpush subscription",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/codersdk.WebpushSubscription"
-                        }
-                    },
-                    {
-                        "type": "string",
-                        "description": "User ID, name, or me",
-                        "name": "user",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                },
-                "x-apidocgen": {
-                    "skip": true
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "CoderSessionToken": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Notifications"
-                ],
-                "summary": "Delete user webpush subscription",
-                "operationId": "delete-user-webpush-subscription",
-                "parameters": [
-                    {
-                        "description": "Webpush subscription",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/codersdk.DeleteWebpushSubscription"
-                        }
-                    },
-                    {
-                        "type": "string",
-                        "description": "User ID, name, or me",
-                        "name": "user",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                },
-                "x-apidocgen": {
-                    "skip": true
-                }
-            }
-        },
-        "/users/{user}/webpush/test": {
-            "post": {
-                "security": [
-                    {
-                        "CoderSessionToken": []
-                    }
-                ],
-                "tags": [
-                    "Notifications"
-                ],
-                "summary": "Send a test push notification",
-                "operationId": "send-a-test-push-notification",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "User ID, name, or me",
-                        "name": "user",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                },
-                "x-apidocgen": {
-                    "skip": true
-                }
-            }
-        },
         "/users/{user}/workspace/{workspacename}": {
             "get": {
                 "security": [
@@ -8618,7 +8503,6 @@ const docTemplate = `{
                 ],
                 "summary": "Watch for workspace agent metadata updates",
                 "operationId": "watch-for-workspace-agent-metadata-updates",
-                "deprecated": true,
                 "parameters": [
                     {
                         "type": "string",
@@ -8632,44 +8516,6 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "Success"
-                    }
-                },
-                "x-apidocgen": {
-                    "skip": true
-                }
-            }
-        },
-        "/workspaceagents/{workspaceagent}/watch-metadata-ws": {
-            "get": {
-                "security": [
-                    {
-                        "CoderSessionToken": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Agents"
-                ],
-                "summary": "Watch for workspace agent metadata updates via WebSockets",
-                "operationId": "watch-for-workspace-agent-metadata-updates-via-websockets",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Workspace agent ID",
-                        "name": "workspaceagent",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/codersdk.ServerSentEvent"
-                        }
                     }
                 },
                 "x-apidocgen": {
@@ -10088,7 +9934,6 @@ const docTemplate = `{
                 ],
                 "summary": "Watch workspace by ID",
                 "operationId": "watch-workspace-by-id",
-                "deprecated": true,
                 "parameters": [
                     {
                         "type": "string",
@@ -10104,41 +9949,6 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/codersdk.Response"
-                        }
-                    }
-                }
-            }
-        },
-        "/workspaces/{workspace}/watch-ws": {
-            "get": {
-                "security": [
-                    {
-                        "CoderSessionToken": []
-                    }
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Workspaces"
-                ],
-                "summary": "Watch workspace by ID via WebSockets",
-                "operationId": "watch-workspace-by-id-via-websockets",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "format": "uuid",
-                        "description": "Workspace ID",
-                        "name": "workspace",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/codersdk.ServerSentEvent"
                         }
                     }
                 }
@@ -10909,10 +10719,6 @@ const docTemplate = `{
                 },
                 "version": {
                     "description": "Version returns the semantic version of the build.",
-                    "type": "string"
-                },
-                "webpush_public_key": {
-                    "description": "WebPushPublicKey is the public key for push notifications via Web Push.",
                     "type": "string"
                 },
                 "workspace_proxy": {
@@ -11691,14 +11497,6 @@ const docTemplate = `{
                 }
             }
         },
-        "codersdk.DeleteWebpushSubscription": {
-            "type": "object",
-            "properties": {
-                "endpoint": {
-                    "type": "string"
-                }
-            }
-        },
         "codersdk.DeleteWorkspaceAgentPortShareRequest": {
             "type": "object",
             "properties": {
@@ -11763,7 +11561,7 @@ const docTemplate = `{
                     }
                 },
                 "address": {
-                    "description": "Deprecated: Use HTTPAddress or TLS.Address instead.",
+                    "description": "DEPRECATED: Use HTTPAddress or TLS.Address instead.",
                     "allOf": [
                         {
                             "$ref": "#/definitions/serpent.HostPort"
@@ -12034,22 +11832,19 @@ const docTemplate = `{
                 "example",
                 "auto-fill-parameters",
                 "notifications",
-                "workspace-usage",
-                "web-push"
+                "workspace-usage"
             ],
             "x-enum-comments": {
                 "ExperimentAutoFillParameters": "This should not be taken out of experiments until we have redesigned the feature.",
                 "ExperimentExample": "This isn't used for anything.",
                 "ExperimentNotifications": "Sends notifications via SMTP and webhooks following certain events.",
-                "ExperimentWebPush": "Enables web push notifications through the browser.",
                 "ExperimentWorkspaceUsage": "Enables the new workspace usage tracking."
             },
             "x-enum-varnames": [
                 "ExperimentExample",
                 "ExperimentAutoFillParameters",
                 "ExperimentNotifications",
-                "ExperimentWorkspaceUsage",
-                "ExperimentWebPush"
+                "ExperimentWorkspaceUsage"
             ]
         },
         "codersdk.ExternalAuth": {
@@ -14316,7 +14111,6 @@ const docTemplate = `{
                 "tailnet_coordinator",
                 "template",
                 "user",
-                "webpush_subscription",
                 "workspace",
                 "workspace_agent_devcontainers",
                 "workspace_agent_resource_monitor",
@@ -14354,7 +14148,6 @@ const docTemplate = `{
                 "ResourceTailnetCoordinator",
                 "ResourceTemplate",
                 "ResourceUser",
-                "ResourceWebpushSubscription",
                 "ResourceWorkspace",
                 "ResourceWorkspaceAgentDevcontainers",
                 "ResourceWorkspaceAgentResourceMonitor",
@@ -14695,28 +14488,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "codersdk.ServerSentEvent": {
-            "type": "object",
-            "properties": {
-                "data": {},
-                "type": {
-                    "$ref": "#/definitions/codersdk.ServerSentEventType"
-                }
-            }
-        },
-        "codersdk.ServerSentEventType": {
-            "type": "string",
-            "enum": [
-                "ping",
-                "data",
-                "error"
-            ],
-            "x-enum-varnames": [
-                "ServerSentEventTypePing",
-                "ServerSentEventTypeData",
-                "ServerSentEventTypeError"
-            ]
         },
         "codersdk.SessionCountDeploymentStats": {
             "type": "object",
@@ -16202,20 +15973,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "codersdk.WebpushSubscription": {
-            "type": "object",
-            "properties": {
-                "auth_key": {
-                    "type": "string"
-                },
-                "endpoint": {
-                    "type": "string"
-                },
-                "p256dh_key": {
                     "type": "string"
                 }
             }

@@ -113,11 +113,9 @@ func (c *committer) CommitQuota(
 	}
 
 	return &proto.CommitQuotaResponse{
-		Ok: permit,
-		// #nosec G115 - Safe conversion as quota credits consumed value is expected to be within int32 range
+		Ok:              permit,
 		CreditsConsumed: int32(consumed),
-		// #nosec G115 - Safe conversion as quota budget value is expected to be within int32 range
-		Budget: int32(budget),
+		Budget:          int32(budget),
 	}, nil
 }
 

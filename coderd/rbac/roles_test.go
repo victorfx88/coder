@@ -713,16 +713,6 @@ func TestRolePermissions(t *testing.T) {
 				},
 			},
 		},
-		// All users can create, read, and delete their own webpush notification subscriptions.
-		{
-			Name:     "WebpushSubscription",
-			Actions:  []policy.Action{policy.ActionCreate, policy.ActionRead, policy.ActionDelete},
-			Resource: rbac.ResourceWebpushSubscription.WithOwner(currentUser.String()),
-			AuthorizeMap: map[bool][]hasAuthSubjects{
-				true:  {owner, memberMe, orgMemberMe},
-				false: {otherOrgMember, orgAdmin, otherOrgAdmin, orgAuditor, otherOrgAuditor, templateAdmin, orgTemplateAdmin, otherOrgTemplateAdmin, userAdmin, orgUserAdmin, otherOrgUserAdmin},
-			},
-		},
 		// AnyOrganization tests
 		{
 			Name:     "CreateOrgMember",

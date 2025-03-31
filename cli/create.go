@@ -104,8 +104,7 @@ func (r *RootCmd) create() *serpent.Command {
 
 			var template codersdk.Template
 			var templateVersionID uuid.UUID
-			switch {
-			case templateName == "":
+			if templateName == "" {
 				_, _ = fmt.Fprintln(inv.Stdout, pretty.Sprint(cliui.DefaultStyles.Wrap, "Select a template below to preview the provisioned infrastructure:"))
 
 				templates, err := client.Templates(inv.Context(), codersdk.TemplateFilter{})
@@ -162,13 +161,13 @@ func (r *RootCmd) create() *serpent.Command {
 
 				template = templateByName[option]
 				templateVersionID = template.ActiveVersionID
-			case sourceWorkspace.LatestBuild.TemplateVersionID != uuid.Nil:
+			} else if sourceWorkspace.LatestBuild.TemplateVersionID != uuid.Nil {
 				template, err = client.Template(inv.Context(), sourceWorkspace.TemplateID)
 				if err != nil {
 					return xerrors.Errorf("get template by name: %w", err)
 				}
 				templateVersionID = sourceWorkspace.LatestBuild.TemplateVersionID
-			default:
+			} else {
 				templates, err := client.Templates(inv.Context(), codersdk.TemplateFilter{
 					ExactName: templateName,
 				})

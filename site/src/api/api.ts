@@ -22,10 +22,9 @@
 import globalAxios, { type AxiosInstance, isAxiosError } from "axios";
 import type dayjs from "dayjs";
 import userAgentParser from "ua-parser-js";
-import { OneWayWebSocket } from "utils/OneWayWebSocket";
 import { delay } from "../utils/delay";
-import type { PostWorkspaceUsageRequest } from "./typesGenerated";
 import * as TypesGen from "./typesGenerated";
+import type { PostWorkspaceUsageRequest } from "./typesGenerated";
 
 const getMissingParameters = (
 	oldBuildParameters: TypesGen.WorkspaceBuildParameter[],
@@ -102,40 +101,61 @@ const getMissingParameters = (
 };
 
 /**
+ *
  * @param agentId
- * @returns {OneWayWebSocket} A OneWayWebSocket that emits Server-Sent Events.
+ * @returns An EventSource that emits agent metadata event objects
+ * (ServerSentEvent)
  */
-export const watchAgentMetadata = (
-	agentId: string,
-): OneWayWebSocket<TypesGen.ServerSentEvent> => {
-	return new OneWayWebSocket({
-		apiRoute: `/api/v2/workspaceagents/${agentId}/watch-metadata-ws`,
-	});
+export const watchAgentMetadata = (agentId: string): EventSource => {
+	return new EventSource(
+		`${location.protocol}//${location.host}/api/v2/workspaceagents/${agentId}/watch-metadata`,
+		{ withCredentials: true },
+	);
 };
 
 /**
- * @returns {OneWayWebSocket} A OneWayWebSocket that emits Server-Sent Events.
+ * @returns {EventSource} An EventSource that emits workspace event objects
+ * (ServerSentEvent)
  */
-export const watchWorkspace = (
-	workspaceId: string,
-): OneWayWebSocket<TypesGen.ServerSentEvent> => {
-	return new OneWayWebSocket({
-		apiRoute: `/api/v2/workspaces/${workspaceId}/watch-ws`,
-	});
+export const watchWorkspace = (workspaceId: string): EventSource => {
+	return new EventSource(
+		`${location.protocol}//${location.host}/api/v2/workspaces/${workspaceId}/watch`,
+		{ withCredentials: true },
+	);
 };
 
-type WatchInboxNotificationsParams = Readonly<{
+type WatchInboxNotificationsParams = {
 	read_status?: "read" | "unread" | "all";
-}>;
+};
 
-export function watchInboxNotifications(
+export const watchInboxNotifications = (
+	onNewNotification: (res: TypesGen.GetInboxNotificationResponse) => void,
 	params?: WatchInboxNotificationsParams,
-): OneWayWebSocket<TypesGen.GetInboxNotificationResponse> {
-	return new OneWayWebSocket({
-		apiRoute: "/api/v2/notifications/inbox/watch",
-		searchParams: params,
+) => {
+	const searchParams = new URLSearchParams(params);
+	const socket = createWebSocket(
+		"/api/v2/notifications/inbox/watch",
+		searchParams,
+	);
+
+	socket.addEventListener("message", (event) => {
+		try {
+			const res = JSON.parse(
+				event.data,
+			) as TypesGen.GetInboxNotificationResponse;
+			onNewNotification(res);
+		} catch (error) {
+			console.warn("Error parsing inbox notification: ", error);
+		}
 	});
-}
+
+	socket.addEventListener("error", (event) => {
+		console.warn("Watch inbox notifications error: ", event);
+		socket.close();
+	});
+
+	return socket;
+};
 
 export const getURLWithSearchParams = (
 	basePath: string,
@@ -1105,7 +1125,7 @@ class ApiMethods {
 	};
 
 	getWorkspaceByOwnerAndName = async (
-		username: string,
+		username = "me",
 		workspaceName: string,
 		params?: TypesGen.WorkspaceOptions,
 	): Promise<TypesGen.Workspace> => {
@@ -1118,7 +1138,7 @@ class ApiMethods {
 	};
 
 	getWorkspaceBuildByNumber = async (
-		username: string,
+		username = "me",
 		workspaceName: string,
 		buildNumber: number,
 	): Promise<TypesGen.WorkspaceBuild> => {
@@ -1304,7 +1324,7 @@ class ApiMethods {
 	};
 
 	createWorkspace = async (
-		userId: string,
+		userId = "me",
 		workspace: TypesGen.CreateWorkspaceRequest,
 	): Promise<TypesGen.Workspace> => {
 		const response = await this.axios.post<TypesGen.Workspace>(
@@ -2351,28 +2371,6 @@ class ApiMethods {
 		await this.axios.post<void>("/api/v2/notifications/test");
 	};
 
-	createWebPushSubscription = async (
-		userId: string,
-		req: TypesGen.WebpushSubscription,
-	) => {
-		await this.axios.post<void>(
-			`/api/v2/users/${userId}/webpush/subscription`,
-			req,
-		);
-	};
-
-	deleteWebPushSubscription = async (
-		userId: string,
-		req: TypesGen.DeleteWebpushSubscription,
-	) => {
-		await this.axios.delete<void>(
-			`/api/v2/users/${userId}/webpush/subscription`,
-			{
-				data: req,
-			},
-		);
-	};
-
 	requestOneTimePassword = async (
 		req: TypesGen.RequestOneTimePasscodeRequest,
 	) => {
@@ -2522,7 +2520,7 @@ function createWebSocket(
 ) {
 	const protocol = location.protocol === "https:" ? "wss:" : "ws:";
 	const socket = new WebSocket(
-		`${protocol}//${location.host}${path}?${params}`,
+		`${protocol}//${location.host}${path}?${params.toString()}`,
 	);
 	socket.binaryType = "blob";
 	return socket;

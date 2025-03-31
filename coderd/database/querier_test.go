@@ -2119,11 +2119,10 @@ func createTemplateVersion(t testing.TB, db database.Store, tpl database.Templat
 			dbgen.WorkspaceBuild(t, db, database.WorkspaceBuild{
 				WorkspaceID:       wrk.ID,
 				TemplateVersionID: version.ID,
-				// #nosec G115 - Safe conversion as build number is expected to be within int32 range
-				BuildNumber: int32(i) + 2,
-				Transition:  trans,
-				InitiatorID: tpl.CreatedBy,
-				JobID:       latestJob.ID,
+				BuildNumber:       int32(i) + 2,
+				Transition:        trans,
+				InitiatorID:       tpl.CreatedBy,
+				JobID:             latestJob.ID,
 			})
 		}
 
@@ -3183,22 +3182,21 @@ func TestGetUserStatusCounts(t *testing.T) {
 								row.Date.In(location).String(),
 								i,
 							)
-							switch {
-							case row.Date.Before(createdAt):
+							if row.Date.Before(createdAt) {
 								require.Equal(t, int64(0), row.Count)
-							case row.Date.Before(firstTransitionTime):
+							} else if row.Date.Before(firstTransitionTime) {
 								if row.Status == tc.initialStatus {
 									require.Equal(t, int64(1), row.Count)
 								} else if row.Status == tc.targetStatus {
 									require.Equal(t, int64(0), row.Count)
 								}
-							case !row.Date.After(today):
+							} else if !row.Date.After(today) {
 								if row.Status == tc.initialStatus {
 									require.Equal(t, int64(0), row.Count)
 								} else if row.Status == tc.targetStatus {
 									require.Equal(t, int64(1), row.Count)
 								}
-							default:
+							} else {
 								t.Errorf("date %q beyond expected range end %q", row.Date, today)
 							}
 						}
@@ -3339,19 +3337,18 @@ func TestGetUserStatusCounts(t *testing.T) {
 							expectedCounts[d][tc.user2Transition.to] = 0
 
 							// Counted Values
-							switch {
-							case d.Before(createdAt):
+							if d.Before(createdAt) {
 								continue
-							case d.Before(firstTransitionTime):
+							} else if d.Before(firstTransitionTime) {
 								expectedCounts[d][tc.user1Transition.from]++
 								expectedCounts[d][tc.user2Transition.from]++
-							case d.Before(secondTransitionTime):
+							} else if d.Before(secondTransitionTime) {
 								expectedCounts[d][tc.user1Transition.to]++
 								expectedCounts[d][tc.user2Transition.from]++
-							case d.Before(today):
+							} else if d.Before(today) {
 								expectedCounts[d][tc.user1Transition.to]++
 								expectedCounts[d][tc.user2Transition.to]++
-							default:
+							} else {
 								t.Fatalf("date %q beyond expected range end %q", d, today)
 							}
 						}
@@ -3444,12 +3441,11 @@ func TestGetUserStatusCounts(t *testing.T) {
 						i,
 					)
 					require.Equal(t, database.UserStatusActive, row.Status)
-					switch {
-					case row.Date.Before(createdAt):
+					if row.Date.Before(createdAt) {
 						require.Equal(t, int64(0), row.Count)
-					case i == len(userStatusChanges)-1:
+					} else if i == len(userStatusChanges)-1 {
 						require.Equal(t, int64(0), row.Count)
-					default:
+					} else {
 						require.Equal(t, int64(1), row.Count)
 					}
 				}

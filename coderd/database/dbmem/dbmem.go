@@ -246,7 +246,6 @@ type data struct {
 	templates                            []database.TemplateTable
 	templateUsageStats                   []database.TemplateUsageStat
 	userConfigs                          []database.UserConfig
-	webpushSubscriptions                 []database.WebpushSubscription
 	workspaceAgents                      []database.WorkspaceAgent
 	workspaceAgentMetadata               []database.WorkspaceAgentMetadatum
 	workspaceAgentLogs                   []database.WorkspaceAgentLog
@@ -290,8 +289,6 @@ type data struct {
 	lastLicenseID                    int32
 	defaultProxyDisplayName          string
 	defaultProxyIconURL              string
-	webpushVAPIDPublicKey            string
-	webpushVAPIDPrivateKey           string
 	userStatusChanges                []database.UserStatusChange
 	telemetryItems                   []database.TelemetryItem
 	presets                          []database.TemplateVersionPreset
@@ -1856,14 +1853,6 @@ func (*FakeQuerier) DeleteAllTailnetTunnels(_ context.Context, arg database.Dele
 	return ErrUnimplemented
 }
 
-func (q *FakeQuerier) DeleteAllWebpushSubscriptions(_ context.Context) error {
-	q.mutex.Lock()
-	defer q.mutex.Unlock()
-
-	q.webpushSubscriptions = make([]database.WebpushSubscription, 0)
-	return nil
-}
-
 func (q *FakeQuerier) DeleteApplicationConnectAPIKeysByUserID(_ context.Context, userID uuid.UUID) error {
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
@@ -2431,38 +2420,6 @@ func (*FakeQuerier) DeleteTailnetTunnel(_ context.Context, arg database.DeleteTa
 	}
 
 	return database.DeleteTailnetTunnelRow{}, ErrUnimplemented
-}
-
-func (q *FakeQuerier) DeleteWebpushSubscriptionByUserIDAndEndpoint(_ context.Context, arg database.DeleteWebpushSubscriptionByUserIDAndEndpointParams) error {
-	err := validateDatabaseType(arg)
-	if err != nil {
-		return err
-	}
-
-	q.mutex.Lock()
-	defer q.mutex.Unlock()
-
-	for i, subscription := range q.webpushSubscriptions {
-		if subscription.UserID == arg.UserID && subscription.Endpoint == arg.Endpoint {
-			q.webpushSubscriptions[i] = q.webpushSubscriptions[len(q.webpushSubscriptions)-1]
-			q.webpushSubscriptions = q.webpushSubscriptions[:len(q.webpushSubscriptions)-1]
-			return nil
-		}
-	}
-	return sql.ErrNoRows
-}
-
-func (q *FakeQuerier) DeleteWebpushSubscriptions(_ context.Context, ids []uuid.UUID) error {
-	q.mutex.Lock()
-	defer q.mutex.Unlock()
-	for i, subscription := range q.webpushSubscriptions {
-		if slices.Contains(ids, subscription.ID) {
-			q.webpushSubscriptions[i] = q.webpushSubscriptions[len(q.webpushSubscriptions)-1]
-			q.webpushSubscriptions = q.webpushSubscriptions[:len(q.webpushSubscriptions)-1]
-			return nil
-		}
-	}
-	return sql.ErrNoRows
 }
 
 func (q *FakeQuerier) DeleteWorkspaceAgentPortShare(_ context.Context, arg database.DeleteWorkspaceAgentPortShareParams) error {
@@ -6100,7 +6057,6 @@ func (q *FakeQuerier) GetTemplateVersionsByTemplateID(_ context.Context, arg dat
 
 	if arg.LimitOpt > 0 {
 		if int(arg.LimitOpt) > len(version) {
-			// #nosec G115 - Safe conversion as version slice length is expected to be within int32 range
 			arg.LimitOpt = int32(len(version))
 		}
 		version = version[:arg.LimitOpt]
@@ -6735,7 +6691,6 @@ func (q *FakeQuerier) GetUsers(_ context.Context, params database.GetUsersParams
 
 	if params.LimitOpt > 0 {
 		if int(params.LimitOpt) > len(users) {
-			// #nosec G115 - Safe conversion as users slice length is expected to be within int32 range
 			params.LimitOpt = int32(len(users))
 		}
 		users = users[:params.LimitOpt]
@@ -6758,34 +6713,6 @@ func (q *FakeQuerier) GetUsersByIDs(_ context.Context, ids []uuid.UUID) ([]datab
 		}
 	}
 	return users, nil
-}
-
-func (q *FakeQuerier) GetWebpushSubscriptionsByUserID(_ context.Context, userID uuid.UUID) ([]database.WebpushSubscription, error) {
-	q.mutex.RLock()
-	defer q.mutex.RUnlock()
-
-	out := make([]database.WebpushSubscription, 0)
-	for _, subscription := range q.webpushSubscriptions {
-		if subscription.UserID == userID {
-			out = append(out, subscription)
-		}
-	}
-
-	return out, nil
-}
-
-func (q *FakeQuerier) GetWebpushVAPIDKeys(_ context.Context) (database.GetWebpushVAPIDKeysRow, error) {
-	q.mutex.RLock()
-	defer q.mutex.RUnlock()
-
-	if q.webpushVAPIDPublicKey == "" && q.webpushVAPIDPrivateKey == "" {
-		return database.GetWebpushVAPIDKeysRow{}, sql.ErrNoRows
-	}
-
-	return database.GetWebpushVAPIDKeysRow{
-		VapidPublicKey:  q.webpushVAPIDPublicKey,
-		VapidPrivateKey: q.webpushVAPIDPrivateKey,
-	}, nil
 }
 
 func (q *FakeQuerier) GetWorkspaceAgentAndLatestBuildByAuthToken(_ context.Context, authToken uuid.UUID) (database.GetWorkspaceAgentAndLatestBuildByAuthTokenRow, error) {
@@ -7691,7 +7618,6 @@ func (q *FakeQuerier) GetWorkspaceBuildsByWorkspaceID(_ context.Context,
 
 	if params.LimitOpt > 0 {
 		if int(params.LimitOpt) > len(history) {
-			// #nosec G115 - Safe conversion as history slice length is expected to be within int32 range
 			params.LimitOpt = int32(len(history))
 		}
 		history = history[:params.LimitOpt]
@@ -9215,27 +9141,6 @@ func (q *FakeQuerier) InsertVolumeResourceMonitor(_ context.Context, arg databas
 	return monitor, nil
 }
 
-func (q *FakeQuerier) InsertWebpushSubscription(_ context.Context, arg database.InsertWebpushSubscriptionParams) (database.WebpushSubscription, error) {
-	err := validateDatabaseType(arg)
-	if err != nil {
-		return database.WebpushSubscription{}, err
-	}
-
-	q.mutex.Lock()
-	defer q.mutex.Unlock()
-
-	newSub := database.WebpushSubscription{
-		ID:                uuid.New(),
-		UserID:            arg.UserID,
-		CreatedAt:         arg.CreatedAt,
-		Endpoint:          arg.Endpoint,
-		EndpointP256dhKey: arg.EndpointP256dhKey,
-		EndpointAuthKey:   arg.EndpointAuthKey,
-	}
-	q.webpushSubscriptions = append(q.webpushSubscriptions, newSub)
-	return newSub, nil
-}
-
 func (q *FakeQuerier) InsertWorkspace(_ context.Context, arg database.InsertWorkspaceParams) (database.WorkspaceTable, error) {
 	if err := validateDatabaseType(arg); err != nil {
 		return database.WorkspaceTable{}, err
@@ -9375,7 +9280,6 @@ func (q *FakeQuerier) InsertWorkspaceAgentLogs(_ context.Context, arg database.I
 			LogSourceID: arg.LogSourceID,
 			Output:      output,
 		})
-		// #nosec G115 - Safe conversion as log output length is expected to be within int32 range
 		outputLength += int32(len(output))
 	}
 	for index, agent := range q.workspaceAgents {
@@ -12511,23 +12415,17 @@ TemplateUsageStatsInsertLoop:
 
 		// SELECT
 		tus := database.TemplateUsageStat{
-			StartTime:  stat.TimeBucket,
-			EndTime:    stat.TimeBucket.Add(30 * time.Minute),
-			TemplateID: stat.TemplateID,
-			UserID:     stat.UserID,
-			// #nosec G115 - Safe conversion for usage minutes which are expected to be within int16 range
-			UsageMins:       int16(stat.UsageMins),
-			MedianLatencyMs: sql.NullFloat64{Float64: latency.MedianLatencyMS, Valid: latencyOk},
-			// #nosec G115 - Safe conversion for SSH minutes which are expected to be within int16 range
-			SshMins: int16(stat.SSHMins),
-			// #nosec G115 - Safe conversion for SFTP minutes which are expected to be within int16 range
-			SftpMins: int16(stat.SFTPMins),
-			// #nosec G115 - Safe conversion for ReconnectingPTY minutes which are expected to be within int16 range
+			StartTime:           stat.TimeBucket,
+			EndTime:             stat.TimeBucket.Add(30 * time.Minute),
+			TemplateID:          stat.TemplateID,
+			UserID:              stat.UserID,
+			UsageMins:           int16(stat.UsageMins),
+			MedianLatencyMs:     sql.NullFloat64{Float64: latency.MedianLatencyMS, Valid: latencyOk},
+			SshMins:             int16(stat.SSHMins),
+			SftpMins:            int16(stat.SFTPMins),
 			ReconnectingPtyMins: int16(stat.ReconnectingPTYMins),
-			// #nosec G115 - Safe conversion for VSCode minutes which are expected to be within int16 range
-			VscodeMins: int16(stat.VSCodeMins),
-			// #nosec G115 - Safe conversion for JetBrains minutes which are expected to be within int16 range
-			JetbrainsMins: int16(stat.JetBrainsMins),
+			VscodeMins:          int16(stat.VSCodeMins),
+			JetbrainsMins:       int16(stat.JetBrainsMins),
 		}
 		if len(stat.AppUsageMinutes) > 0 {
 			tus.AppUsageMins = make(map[string]int64, len(stat.AppUsageMinutes))
@@ -12547,20 +12445,6 @@ TemplateUsageStatsInsertLoop:
 		q.templateUsageStats = append(q.templateUsageStats, tus)
 	}
 
-	return nil
-}
-
-func (q *FakeQuerier) UpsertWebpushVAPIDKeys(_ context.Context, arg database.UpsertWebpushVAPIDKeysParams) error {
-	err := validateDatabaseType(arg)
-	if err != nil {
-		return err
-	}
-
-	q.mutex.Lock()
-	defer q.mutex.Unlock()
-
-	q.webpushVAPIDPublicKey = arg.VapidPublicKey
-	q.webpushVAPIDPrivateKey = arg.VapidPrivateKey
 	return nil
 }
 

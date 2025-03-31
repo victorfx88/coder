@@ -161,11 +161,9 @@ func (api *API) workspaceBuilds(rw http.ResponseWriter, r *http.Request) {
 		req := database.GetWorkspaceBuildsByWorkspaceIDParams{
 			WorkspaceID: workspace.ID,
 			AfterID:     paginationParams.AfterID,
-			// #nosec G115 - Pagination offsets are small and fit in int32
-			OffsetOpt: int32(paginationParams.Offset),
-			// #nosec G115 - Pagination limits are small and fit in int32
-			LimitOpt: int32(paginationParams.Limit),
-			Since:    dbtime.Time(since),
+			OffsetOpt:   int32(paginationParams.Offset),
+			LimitOpt:    int32(paginationParams.Limit),
+			Since:       dbtime.Time(since),
 		}
 		workspaceBuilds, err = store.GetWorkspaceBuildsByWorkspaceID(ctx, req)
 		if xerrors.Is(err, sql.ErrNoRows) {

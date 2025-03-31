@@ -196,12 +196,11 @@ func verifyCollectedMetrics(t *testing.T, expected []*agentproto.Stats_Metric, a
 		err := actual[i].Write(&d)
 		require.NoError(t, err)
 
-		switch e.Type {
-		case agentproto.Stats_Metric_COUNTER:
+		if e.Type == agentproto.Stats_Metric_COUNTER {
 			require.Equal(t, e.Value, d.Counter.GetValue())
-		case agentproto.Stats_Metric_GAUGE:
+		} else if e.Type == agentproto.Stats_Metric_GAUGE {
 			require.Equal(t, e.Value, d.Gauge.GetValue())
-		default:
+		} else {
 			require.Failf(t, "unsupported type: %s", string(e.Type))
 		}
 
