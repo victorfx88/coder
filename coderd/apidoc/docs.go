@@ -7619,121 +7619,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/{user}/webpush/subscription": {
-            "post": {
-                "security": [
-                    {
-                        "CoderSessionToken": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Notifications"
-                ],
-                "summary": "Create user webpush subscription",
-                "operationId": "create-user-webpush-subscription",
-                "parameters": [
-                    {
-                        "description": "Webpush subscription",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/codersdk.WebpushSubscription"
-                        }
-                    },
-                    {
-                        "type": "string",
-                        "description": "User ID, name, or me",
-                        "name": "user",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                },
-                "x-apidocgen": {
-                    "skip": true
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "CoderSessionToken": []
-                    }
-                ],
-                "consumes": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Notifications"
-                ],
-                "summary": "Delete user webpush subscription",
-                "operationId": "delete-user-webpush-subscription",
-                "parameters": [
-                    {
-                        "description": "Webpush subscription",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/codersdk.DeleteWebpushSubscription"
-                        }
-                    },
-                    {
-                        "type": "string",
-                        "description": "User ID, name, or me",
-                        "name": "user",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                },
-                "x-apidocgen": {
-                    "skip": true
-                }
-            }
-        },
-        "/users/{user}/webpush/test": {
-            "post": {
-                "security": [
-                    {
-                        "CoderSessionToken": []
-                    }
-                ],
-                "tags": [
-                    "Notifications"
-                ],
-                "summary": "Send a test push notification",
-                "operationId": "send-a-test-push-notification",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "User ID, name, or me",
-                        "name": "user",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content"
-                    }
-                },
-                "x-apidocgen": {
-                    "skip": true
-                }
-            }
-        },
         "/users/{user}/workspace/{workspacename}": {
             "get": {
                 "security": [
@@ -10836,10 +10721,6 @@ const docTemplate = `{
                     "description": "Version returns the semantic version of the build.",
                     "type": "string"
                 },
-                "webpush_public_key": {
-                    "description": "WebPushPublicKey is the public key for push notifications via Web Push.",
-                    "type": "string"
-                },
                 "workspace_proxy": {
                     "type": "boolean"
                 }
@@ -11616,14 +11497,6 @@ const docTemplate = `{
                 }
             }
         },
-        "codersdk.DeleteWebpushSubscription": {
-            "type": "object",
-            "properties": {
-                "endpoint": {
-                    "type": "string"
-                }
-            }
-        },
         "codersdk.DeleteWorkspaceAgentPortShareRequest": {
             "type": "object",
             "properties": {
@@ -11959,22 +11832,19 @@ const docTemplate = `{
                 "example",
                 "auto-fill-parameters",
                 "notifications",
-                "workspace-usage",
-                "web-push"
+                "workspace-usage"
             ],
             "x-enum-comments": {
                 "ExperimentAutoFillParameters": "This should not be taken out of experiments until we have redesigned the feature.",
                 "ExperimentExample": "This isn't used for anything.",
                 "ExperimentNotifications": "Sends notifications via SMTP and webhooks following certain events.",
-                "ExperimentWebPush": "Enables web push notifications through the browser.",
                 "ExperimentWorkspaceUsage": "Enables the new workspace usage tracking."
             },
             "x-enum-varnames": [
                 "ExperimentExample",
                 "ExperimentAutoFillParameters",
                 "ExperimentNotifications",
-                "ExperimentWorkspaceUsage",
-                "ExperimentWebPush"
+                "ExperimentWorkspaceUsage"
             ]
         },
         "codersdk.ExternalAuth": {
@@ -14241,7 +14111,6 @@ const docTemplate = `{
                 "tailnet_coordinator",
                 "template",
                 "user",
-                "webpush_subscription",
                 "workspace",
                 "workspace_agent_devcontainers",
                 "workspace_agent_resource_monitor",
@@ -14279,7 +14148,6 @@ const docTemplate = `{
                 "ResourceTailnetCoordinator",
                 "ResourceTemplate",
                 "ResourceUser",
-                "ResourceWebpushSubscription",
                 "ResourceWorkspace",
                 "ResourceWorkspaceAgentDevcontainers",
                 "ResourceWorkspaceAgentResourceMonitor",
@@ -16105,20 +15973,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "value": {
-                    "type": "string"
-                }
-            }
-        },
-        "codersdk.WebpushSubscription": {
-            "type": "object",
-            "properties": {
-                "auth_key": {
-                    "type": "string"
-                },
-                "endpoint": {
-                    "type": "string"
-                },
-                "p256dh_key": {
                     "type": "string"
                 }
             }
