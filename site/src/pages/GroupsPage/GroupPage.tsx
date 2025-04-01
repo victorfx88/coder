@@ -32,11 +32,7 @@ import {
 	MoreMenuTrigger,
 	ThreeDotsButton,
 } from "components/MoreMenu/MoreMenu";
-import {
-	SettingsHeader,
-	SettingsHeaderDescription,
-	SettingsHeaderTitle,
-} from "components/SettingsHeader/SettingsHeader";
+import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import { Stack } from "components/Stack/Stack";
 import {
 	Table,
@@ -110,15 +106,10 @@ export const GroupPage: FC = () => {
 				direction="row"
 				justifyContent="space-between"
 			>
-				<SettingsHeader>
-					<SettingsHeaderTitle>
-						{groupData?.display_name || groupData?.name || "Unknown Group"}
-					</SettingsHeaderTitle>
-					<SettingsHeaderDescription>
-						Manage members for this group.
-					</SettingsHeaderDescription>
-				</SettingsHeader>
-
+				<SettingsHeader
+					title={groupData?.display_name || groupData?.name}
+					description="Manage members for this group."
+				/>
 				{canUpdateGroup && (
 					<Stack direction="row" spacing={2}>
 						<Button

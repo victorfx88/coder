@@ -27,7 +27,7 @@ module.exports = {
 					},
 				],
 			},
-			testEnvironment: "jest-fixed-jsdom",
+			testEnvironment: "jsdom",
 			testEnvironmentOptions: {
 				customExportConditions: [""],
 			},

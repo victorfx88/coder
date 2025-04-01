@@ -9,7 +9,7 @@ RUN cargo install typos-cli watchexec-cli && \
 FROM ubuntu:jammy@sha256:0e5e4a57c2499249aafc3b40fcd541e9a456aab7296681a3994d631587203f97 AS go
 
 # Install Go manually, so that we can control the version
-ARG GO_VERSION=1.24.1
+ARG GO_VERSION=1.22.12
 
 # Boring Go is needed to build FIPS-compliant binaries.
 RUN apt-get update && \
@@ -34,7 +34,7 @@ RUN apt-get update && \
 	# go-swagger tool to generate the go coder api client
 	go install github.com/go-swagger/go-swagger/cmd/swagger@v0.28.0 && \
 	# goimports for updating imports
-	go install golang.org/x/tools/cmd/goimports@v0.31.0 && \
+	go install golang.org/x/tools/cmd/goimports@v0.1.7 && \
 	# protoc-gen-go is needed to build sysbox from source
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.30 && \
 	# drpc support for v2
@@ -45,7 +45,7 @@ RUN apt-get update && \
 	go install github.com/goreleaser/goreleaser@v1.6.1 && \
 	# Install the latest version of gopls for editors that support
 	# the language server protocol
-	go install golang.org/x/tools/gopls@v0.18.1 && \
+	go install golang.org/x/tools/gopls@latest && \
 	# gotestsum makes test output more readable
 	go install gotest.tools/gotestsum@v1.9.0 && \
 	# goveralls collects code coverage metrics from tests
@@ -84,8 +84,7 @@ RUN apt-get update && \
 	rm -rf /tmp/go/pkg && \
 	rm -rf /tmp/go/src
 
-# alpine:3.18
-FROM gcr.io/coder-dev-1/alpine@sha256:25fad2a32ad1f6f510e528448ae1ec69a28ef81916a004d3629874104f8a7f70 AS proto 
+FROM gcr.io/coder-dev-1/alpine:3.18 as proto
 WORKDIR /tmp
 RUN apk add curl unzip
 RUN curl -L -o protoc.zip https://github.com/protocolbuffers/protobuf/releases/download/v23.4/protoc-23.4-linux-x86_64.zip && \
@@ -163,7 +162,6 @@ RUN apt-get update --quiet && apt-get install --yes \
 	libgbm-dev \
 	libssl-dev \
 	lsb-release \
-	lsof \
 	man \
 	meld \
 	ncdu \
@@ -233,22 +231,18 @@ RUN DOCTL_VERSION=$(curl -s "https://api.github.com/repos/digitalocean/doctl/rel
 	tar xf doctl.tar.gz -C /usr/local/bin doctl && \
 	rm doctl.tar.gz
 
-ARG NVM_INSTALL_SHA=bdea8c52186c4dd12657e77e7515509cda5bf9fa5a2f0046bce749e62645076d
 # Install frontend utilities
 ENV NVM_DIR=/usr/local/nvm
 ENV NODE_VERSION=20.16.0
 RUN mkdir -p $NVM_DIR
-RUN curl -o nvm_install.sh https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh && \
-	echo "${NVM_INSTALL_SHA}  nvm_install.sh" | sha256sum -c && \
-	bash nvm_install.sh && \
-	rm nvm_install.sh
+RUN curl https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.0/install.sh | bash
 RUN source $NVM_DIR/nvm.sh && \
 	nvm install $NODE_VERSION && \
 	nvm use $NODE_VERSION
 ENV PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin:$PATH
 # Allow patch updates for npm and pnpm
-RUN npm install -g npm@10.8.1
-RUN npm install -g pnpm@9.15.1
+RUN npm install -g npm@^10.8
+RUN npm install -g pnpm@^9.6
 
 RUN pnpx playwright@1.47.0 install --with-deps chromium
 
