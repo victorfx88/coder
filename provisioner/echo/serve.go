@@ -254,7 +254,7 @@ func TarWithOptions(ctx context.Context, logger slog.Logger, responses *Response
 			continue
 		}
 
-		if plan.Error == "" && len(plan.Plan) == 0 {
+		if len(plan.Plan) == 0 {
 			plan.Plan = []byte("{}")
 		}
 	}
@@ -316,7 +316,7 @@ func TarWithOptions(ctx context.Context, logger slog.Logger, responses *Response
 		for i, resp := range m {
 			plan := resp.GetPlan()
 			if plan != nil {
-				if plan.Error == "" && len(plan.Plan) == 0 {
+				if len(plan.Plan) == 0 {
 					plan.Plan = []byte("{}")
 				}
 			}
