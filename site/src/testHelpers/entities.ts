@@ -227,7 +227,6 @@ export const MockBuildInfo: TypesGen.BuildInfoResponse = {
 	workspace_proxy: false,
 	upgrade_message: "My custom upgrade message",
 	deployment_id: "510d407f-e521-4180-b559-eab4a6d802b8",
-	webpush_public_key: "fake-public-key",
 	telemetry: true,
 };
 
@@ -913,7 +912,6 @@ export const MockWorkspaceApp: TypesGen.WorkspaceApp = {
 	},
 	hidden: false,
 	open_in: "slim-window",
-	statuses: [],
 };
 
 export const MockWorkspaceAgentLogSource: TypesGen.WorkspaceAgentLogSource = {
@@ -975,19 +973,6 @@ export const MockWorkspaceAgent: TypesGen.WorkspaceAgent = {
 		"vscode_insiders",
 		"web_terminal",
 	],
-};
-
-export const MockWorkspaceAppStatus: TypesGen.WorkspaceAppStatus = {
-	id: "test-app-status",
-	created_at: "2022-05-17T17:39:01.382927298Z",
-	agent_id: "test-workspace-agent",
-	workspace_id: "test-workspace",
-	app_id: MockWorkspaceApp.id,
-	needs_user_attention: false,
-	icon: "/emojis/1f957.png",
-	uri: "https://github.com/coder/coder/pull/1234",
-	message: "Your competitors page is completed!",
-	state: "complete",
 };
 
 export const MockWorkspaceAgentDisconnected: TypesGen.WorkspaceAgent = {
@@ -1385,7 +1370,6 @@ export const MockWorkspace: TypesGen.Workspace = {
 		healthy: true,
 		failing_agents: [],
 	},
-	latest_app_status: null,
 	automatic_updates: "never",
 	allow_renames: true,
 	favorite: false,
@@ -4276,7 +4260,7 @@ export const MockNotification: TypesGen.InboxNotification = {
 	template_id: MockTemplate.id,
 	targets: [],
 	title: "User account created",
-	icon: "DEFAULT_ICON_ACCOUNT",
+	icon: "user",
 };
 
 export const MockNotifications: TypesGen.InboxNotification[] = [

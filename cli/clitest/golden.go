@@ -11,9 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/coder/coder/v2/cli/config"
@@ -119,7 +117,11 @@ func TestGoldenFile(t *testing.T, fileName string, actual []byte, replacements m
 	require.NoError(t, err, "read golden file, run \"make gen/golden-files\" and commit the changes")
 
 	expected = normalizeGoldenFile(t, expected)
-	assert.Empty(t, cmp.Diff(string(expected), string(actual)), "golden file mismatch (-want +got): %s, run \"make gen/golden-files\", verify and commit the changes", goldenPath)
+	require.Equal(
+		t, string(expected), string(actual),
+		"golden file mismatch: %s, run \"make gen/golden-files\", verify and commit the changes",
+		goldenPath,
+	)
 }
 
 // normalizeGoldenFile replaces any strings that are system or timing dependent

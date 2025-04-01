@@ -1,38 +1,46 @@
 import { watchBuildLogsByTemplateVersionId } from "api/api";
 import type { ProvisionerJobLog, TemplateVersion } from "api/typesGenerated";
-import { useEffectEvent } from "hooks/hookPolyfills";
 import { useEffect, useState } from "react";
 
 export const useWatchVersionLogs = (
 	templateVersion: TemplateVersion | undefined,
 	options?: { onDone: () => Promise<unknown> },
 ) => {
-	const [logs, setLogs] = useState<ProvisionerJobLog[]>();
+	const [logs, setLogs] = useState<ProvisionerJobLog[] | undefined>();
 	const templateVersionId = templateVersion?.id;
-	const [cachedVersionId, setCachedVersionId] = useState(templateVersionId);
-	if (cachedVersionId !== templateVersionId) {
-		setCachedVersionId(templateVersionId);
-		setLogs([]);
-	}
+	const templateVersionStatus = templateVersion?.job.status;
 
-	const stableOnDone = useEffectEvent(() => options?.onDone());
-	const status = templateVersion?.job.status;
-	const canWatch = status === "running" || status === "pending";
+	// biome-ignore lint/correctness/useExhaustiveDependencies: consider refactoring
 	useEffect(() => {
-		if (!templateVersionId || !canWatch) {
+		setLogs(undefined);
+	}, [templateVersionId]);
+
+	useEffect(() => {
+		if (!templateVersionId || !templateVersionStatus) {
+			return;
+		}
+
+		if (
+			templateVersionStatus !== "running" &&
+			templateVersionStatus !== "pending"
+		) {
 			return;
 		}
 
 		const socket = watchBuildLogsByTemplateVersionId(templateVersionId, {
-			onError: (error) => console.error(error),
-			onDone: stableOnDone,
-			onMessage: (newLog) => {
-				setLogs((current) => [...(current ?? []), newLog]);
+			onMessage: (log) => {
+				setLogs((logs) => (logs ? [...logs, log] : [log]));
+			},
+			onDone: options?.onDone,
+			onError: (error) => {
+				console.error(error);
 			},
 		});
 
-		return () => socket.close();
-	}, [stableOnDone, canWatch, templateVersionId]);
+		return () => {
+			socket.close();
+		};
+	}, [options?.onDone, templateVersionId, templateVersionStatus]);
 
 	return logs;
 };

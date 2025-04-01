@@ -1,7 +1,6 @@
 import { Button, type ButtonProps } from "components/Button/Button";
 import { BellIcon } from "lucide-react";
 import { forwardRef } from "react";
-import { cn } from "utils/cn";
 import { UnreadBadge } from "./UnreadBadge";
 
 type InboxButtonProps = {
@@ -22,11 +21,7 @@ export const InboxButton = forwardRef<HTMLButtonElement, InboxButtonProps>(
 				{unreadCount > 0 && (
 					<UnreadBadge
 						count={unreadCount}
-						className={cn([
-							"[--offset:calc(var(--unread-badge-size)/2)]",
-							"absolute top-0 right-0 -mr-[--offset] -mt-[--offset]",
-							"animate-in fade-in zoom-in duration-200",
-						])}
+						className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2"
 					/>
 				)}
 			</Button>

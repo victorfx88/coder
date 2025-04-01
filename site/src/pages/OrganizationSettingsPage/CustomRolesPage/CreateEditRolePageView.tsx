@@ -24,11 +24,7 @@ import type {
 import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { Button } from "components/Button/Button";
 import { FormFields, FormFooter, VerticalForm } from "components/Form/Form";
-import {
-	SettingsHeader,
-	SettingsHeaderDescription,
-	SettingsHeaderTitle,
-} from "components/SettingsHeader/SettingsHeader";
+import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import { Spinner } from "components/Spinner/Spinner";
 import { Stack } from "components/Stack/Stack";
 import { useFormik } from "formik";
@@ -82,15 +78,10 @@ export const CreateEditRolePageView: FC<CreateEditRolePageViewProps> = ({
 				direction="row"
 				justifyContent="space-between"
 			>
-				<SettingsHeader>
-					<SettingsHeaderTitle>
-						{role ? "Edit" : "Create"} Custom Role
-					</SettingsHeaderTitle>
-					<SettingsHeaderDescription>
-						Set a name and permissions for this role.
-					</SettingsHeaderDescription>
-				</SettingsHeader>
-
+				<SettingsHeader
+					title={`${role ? "Edit" : "Create"} Custom Role`}
+					description="Set a name and permissions for this role."
+				/>
 				<div className="flex space-x-2 items-center">
 					<Button
 						variant="outline"

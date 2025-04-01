@@ -121,7 +121,7 @@ func New(opts Options) *API {
 		Clock:                 opts.Clock,
 		Database:              opts.Database,
 		NotificationsEnqueuer: opts.NotificationsEnqueuer,
-		Debounce:              30 * time.Minute,
+		Debounce:              5 * time.Minute,
 
 		Config: resourcesmonitor.Config{
 			NumDatapoints:      20,
