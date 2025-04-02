@@ -1187,29 +1187,7 @@ func convertScripts(dbScripts []database.WorkspaceAgentScript) []codersdk.Worksp
 // @Param workspaceagent path string true "Workspace agent ID" format(uuid)
 // @Router /workspaceagents/{workspaceagent}/watch-metadata [get]
 // @x-apidocgen {"skip": true}
-// @Deprecated Use /workspaceagents/{workspaceagent}/watch-metadata-ws instead
-func (api *API) watchWorkspaceAgentMetadataSSE(rw http.ResponseWriter, r *http.Request) {
-	api.watchWorkspaceAgentMetadata(rw, r, httpapi.ServerSentEventSender)
-}
-
-// @Summary Watch for workspace agent metadata updates via WebSockets
-// @ID watch-for-workspace-agent-metadata-updates-via-websockets
-// @Security CoderSessionToken
-// @Produce json
-// @Tags Agents
-// @Success 200 {object} codersdk.ServerSentEvent
-// @Param workspaceagent path string true "Workspace agent ID" format(uuid)
-// @Router /workspaceagents/{workspaceagent}/watch-metadata-ws [get]
-// @x-apidocgen {"skip": true}
-func (api *API) watchWorkspaceAgentMetadataWS(rw http.ResponseWriter, r *http.Request) {
-	api.watchWorkspaceAgentMetadata(rw, r, httpapi.OneWayWebSocketEventSender)
-}
-
-func (api *API) watchWorkspaceAgentMetadata(
-	rw http.ResponseWriter,
-	r *http.Request,
-	connect httpapi.EventSender,
-) {
+func (api *API) watchWorkspaceAgentMetadata(rw http.ResponseWriter, r *http.Request) {
 	// Allow us to interrupt watch via cancel.
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
@@ -1274,7 +1252,7 @@ func (api *API) watchWorkspaceAgentMetadata(
 	//nolint:ineffassign // Release memory.
 	initialMD = nil
 
-	sendEvent, senderClosed, err := connect(rw, r)
+	sseSendEvent, sseSenderClosed, err := httpapi.ServerSentEventSender(rw, r)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
 			Message: "Internal error setting up server-sent events.",
@@ -1285,14 +1263,14 @@ func (api *API) watchWorkspaceAgentMetadata(
 	// Prevent handler from returning until the sender is closed.
 	defer func() {
 		cancel()
-		<-senderClosed
+		<-sseSenderClosed
 	}()
 	// Synchronize cancellation from SSE -> context, this lets us simplify the
 	// cancellation logic.
 	go func() {
 		select {
 		case <-ctx.Done():
-		case <-senderClosed:
+		case <-sseSenderClosed:
 			cancel()
 		}
 	}()
@@ -1304,7 +1282,7 @@ func (api *API) watchWorkspaceAgentMetadata(
 
 		log.Debug(ctx, "sending metadata", "num", len(values))
 
-		_ = sendEvent(codersdk.ServerSentEvent{
+		_ = sseSendEvent(ctx, codersdk.ServerSentEvent{
 			Type: codersdk.ServerSentEventTypeData,
 			Data: convertWorkspaceAgentMetadata(values),
 		})
@@ -1336,7 +1314,7 @@ func (api *API) watchWorkspaceAgentMetadata(
 				if err != nil {
 					if !database.IsQueryCanceledError(err) {
 						log.Error(ctx, "failed to get metadata", slog.Error(err))
-						_ = sendEvent(codersdk.ServerSentEvent{
+						_ = sseSendEvent(ctx, codersdk.ServerSentEvent{
 							Type: codersdk.ServerSentEventTypeError,
 							Data: codersdk.Response{
 								Message: "Failed to get metadata.",

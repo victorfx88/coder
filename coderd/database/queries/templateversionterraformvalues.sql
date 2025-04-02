@@ -1,11 +1,3 @@
--- name: GetTemplateVersionTerraformValues :one
-SELECT
-	template_version_terraform_values.*
-FROM
-	template_version_terraform_values
-WHERE
-	template_version_terraform_values.template_version_id = @template_version_id;
-
 -- name: InsertTemplateVersionTerraformValuesByJobID :exec
 INSERT INTO
 	template_version_terraform_values (

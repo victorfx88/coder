@@ -16,6 +16,11 @@
 					"title": "Screenshots",
 					"description": "View screenshots of the Coder platform",
 					"path": "./start/screenshots.md"
+				},
+				{
+					"title": "Feature stages",
+					"description": "Information about pre-GA stages.",
+					"path": "./about/feature-stages.md"
 				}
 			]
 		},
@@ -105,15 +110,8 @@
 				{
 					"title": "Releases",
 					"description": "Learn about the Coder release channels and schedule",
-					"path": "./install/releases/index.md",
-					"icon_path": "./images/icons/star.svg",
-					"children": [
-						{
-							"title": "Feature stages",
-							"description": "Information about pre-GA stages.",
-							"path": "./install/releases/feature-stages.md"
-						}
-					]
+					"path": "./install/releases.md",
+					"icon_path": "./images/icons/star.svg"
 				}
 			]
 		},
@@ -168,16 +166,6 @@
 							"title": "Zed",
 							"description": "Access your workspace with Zed",
 							"path": "./user-guides/workspace-access/zed.md"
-						},
-						{
-							"title": "Cursor",
-							"description": "Access your workspace with Cursor",
-							"path": "./user-guides/workspace-access/cursor.md"
-						},
-						{
-							"title": "Windsurf",
-							"description": "Access your workspace with Windsurf",
-							"path": "./user-guides/workspace-access/windsurf.md"
 						}
 					]
 				},
@@ -202,7 +190,7 @@
 				},
 				{
 					"title": "Workspace Lifecycle",
-					"description": "A guide to the workspace lifecycle, from creation and status through stopping and deletion.",
+					"description": "Cost control with workspace schedules",
 					"path": "./user-guides/workspace-lifecycle.md",
 					"icon_path": "./images/icons/circle-dot.svg"
 				},

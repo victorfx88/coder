@@ -5,12 +5,7 @@ import type {
 	SerpentOption,
 } from "api/typesGenerated";
 import { Link } from "components/Link/Link";
-import {
-	SettingsHeader,
-	SettingsHeaderDescription,
-	SettingsHeaderDocsLink,
-	SettingsHeaderTitle,
-} from "components/SettingsHeader/SettingsHeader";
+import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import { Stack } from "components/Stack/Stack";
 import type { FC } from "react";
 import { useDeploymentOptions } from "utils/deployOptions";
@@ -35,14 +30,10 @@ export const OverviewPageView: FC<OverviewPageViewProps> = ({
 	return (
 		<>
 			<SettingsHeader
-				actions={<SettingsHeaderDocsLink href={docs("/admin/setup")} />}
-			>
-				<SettingsHeaderTitle>General</SettingsHeaderTitle>
-				<SettingsHeaderDescription>
-					Information about your Coder deployment.
-				</SettingsHeaderDescription>
-			</SettingsHeader>
-
+				title="General"
+				description="Information about your Coder deployment."
+				docsHref={docs("/admin/setup")}
+			/>
 			<Stack spacing={4}>
 				<UserEngagementChart
 					data={dailyActiveUsers?.entries.map((i) => ({
