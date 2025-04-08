@@ -3,6 +3,7 @@ package cliui_test
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"os"
 	"os/exec"
@@ -18,6 +19,68 @@ import (
 	"github.com/coder/coder/v2/testutil"
 	"github.com/coder/serpent"
 )
+
+func TestMaskedPrompt(t *testing.T) {
+	t.Run("SecretInput", func(t *testing.T) {
+		t.Parallel()
+		// For non-terminal testing we'll get the default behavior
+		// since we can't properly test the raw terminal mode
+		value, err := newMaskedPrompt(t, "secret-token-value\n", cliui.PromptOptions{
+			Text:   "Enter token:",
+			Secret: true,
+		})
+		require.NoError(t, err)
+		require.Equal(t, "secret-token-value", value)
+	})
+
+	t.Run("ValidateSecret", func(t *testing.T) {
+		t.Parallel()
+		called := 0
+		value, err := newMaskedPrompt(t, "invalid-token\nvalid-token\n", cliui.PromptOptions{
+			Text:   "Enter token:",
+			Secret: true,
+			Validate: func(value string) error {
+				called++
+				if value == "invalid-token" {
+					return fmt.Errorf("invalid token format")
+				}
+				return nil
+			},
+		})
+		require.NoError(t, err)
+		require.Equal(t, "valid-token", value)
+		require.Equal(t, 2, called)
+	})
+
+	t.Run("NotSecretFallback", func(t *testing.T) {
+		t.Parallel()
+		// Should use regular Prompt for non-secret inputs
+		value, err := newMaskedPrompt(t, "regular-input\n", cliui.PromptOptions{
+			Text:   "Enter something:",
+			Secret: false,
+		})
+		require.NoError(t, err)
+		require.Equal(t, "regular-input", value)
+	})
+}
+
+// newMaskedPrompt creates a simulated input for testing masked prompt
+func newMaskedPrompt(t *testing.T, input string, opts cliui.PromptOptions) (string, error) {
+	value := ""
+	cmd := &serpent.Command{
+		Handler: func(inv *serpent.Invocation) error {
+			var err error
+			value, err = cliui.MaskedPrompt(inv, opts)
+			return err
+		},
+	}
+	ctx := context.Background()
+	inv := cmd.Invoke().WithContext(ctx)
+	inv.Stdin = bytes.NewBufferString(input)
+	inv.Stdout = &bytes.Buffer{}
+	inv.Stderr = &bytes.Buffer{}
+	return value, inv.Run()
+}
 
 func TestPrompt(t *testing.T) {
 	t.Parallel()

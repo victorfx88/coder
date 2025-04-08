@@ -11,6 +11,7 @@ import (
 
 	"github.com/bgentry/speakeasy"
 	"github.com/mattn/go-isatty"
+	"golang.org/x/term"
 	"golang.org/x/xerrors"
 
 	"github.com/coder/pretty"
@@ -201,6 +202,132 @@ func readUntil(r io.Reader, delim byte) (string, error) {
 		}
 		if err != nil {
 			return string(have), err
+		}
+	}
+}
+
+// MaskedPrompt is similar to Prompt but provides better handling for secret token input.
+// When a token is pasted, it displays asterisks instead of showing the token or nothing.
+// This improves security and user experience when pasting tokens.
+func MaskedPrompt(inv *serpent.Invocation, opts PromptOptions) (string, error) {
+	// If not requesting a secret, just use the normal Prompt function
+	if !opts.Secret {
+		return Prompt(inv, opts)
+	}
+
+	// Print the prompt text
+	pretty.Fprintf(inv.Stdout, DefaultStyles.FocusedPrompt, "")
+	pretty.Fprintf(inv.Stdout, pretty.Nop, "%s ", opts.Text)
+	if opts.Default != "" {
+		_, _ = fmt.Fprintf(inv.Stdout, "(%s) ", pretty.Sprint(DefaultStyles.Placeholder, opts.Default))
+	}
+
+	// Create channels for communication
+	interrupt := make(chan os.Signal, 1)
+	errCh := make(chan error, 1)
+	lineCh := make(chan string)
+
+	go func() {
+		var line string
+		var err error
+
+		inFile, isInputFile := inv.Stdin.(*os.File)
+		if isInputFile && isatty.IsTerminal(inFile.Fd()) {
+			// Using raw input to capture pasted content and echo asterisks
+			signal.Notify(interrupt, os.Interrupt)
+			defer signal.Stop(interrupt)
+
+			// Read input byte by byte to detect pasted content
+			// (which comes in all at once vs typed characters one at a time)
+			line, err = readMaskedInput(inv.Stdin, inv.Stdout)
+		} else {
+			// For non-terminal input, use standard method
+			signal.Notify(interrupt, os.Interrupt)
+			defer signal.Stop(interrupt)
+			line, err = readUntil(inv.Stdin, '\n')
+		}
+
+		if err != nil {
+			errCh <- err
+			return
+		}
+		line = strings.TrimRight(line, "\r\n")
+		if line == "" {
+			line = opts.Default
+		}
+		select {
+		case <-inv.Context().Done():
+		case lineCh <- line:
+		}
+	}()
+
+	select {
+	case err := <-errCh:
+		return "", err
+	case line := <-lineCh:
+		if opts.Validate != nil {
+			err := opts.Validate(line)
+			if err != nil {
+				_, _ = fmt.Fprintln(inv.Stdout, pretty.Sprint(DefaultStyles.Error, err.Error()))
+				return MaskedPrompt(inv, opts)
+			}
+		}
+		return line, nil
+	case <-inv.Context().Done():
+		return "", inv.Context().Err()
+	case <-interrupt:
+		// Print a newline so that any further output starts properly on a new line.
+		_, _ = fmt.Fprintln(inv.Stdout)
+		return "", ErrCanceled
+	}
+}
+
+// readMaskedInput reads input from a terminal with special handling for pasted content.
+// It displays asterisks for each character read, providing better visual feedback.
+func readMaskedInput(r io.Reader, w io.Writer) (string, error) {
+	// We need to capture raw terminal input
+	var (
+		input []byte
+		b     = make([]byte, 128) // Buffer size increased to detect pastes
+	)
+
+	// Turn off terminal echo to avoid double printing
+	fd := int(os.Stdin.Fd())
+	state, err := term.MakeRaw(fd)
+	if err != nil {
+		return "", err
+	}
+	defer term.Restore(fd, state)
+
+	for {
+		n, err := r.Read(b)
+		if err != nil {
+			return string(input), err
+		}
+
+		// Process each byte read
+		for i := 0; i < n; i++ {
+			c := b[i]
+			
+			// Check for Enter/Return key
+			if c == '\r' || c == '\n' {
+				_, _ = fmt.Fprintln(w) // Print newline
+				return string(input), nil
+			}
+			
+			// Check for backspace/delete
+			if c == 127 || c == 8 {
+				if len(input) > 0 {
+					input = input[:len(input)-1]
+					// Backspace, space, backspace to clear the * 
+					_, _ = fmt.Fprint(w, "\b \b")
+				}
+				continue
+			}
+			
+			// Regular character
+			input = append(input, c)
+			_, _ = fmt.Fprint(w, "*") // Show asterisk for each character
 		}
 	}
 }

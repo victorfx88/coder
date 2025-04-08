@@ -353,7 +353,7 @@ func (r *RootCmd) login() *serpent.Command {
 					_, _ = fmt.Fprintf(inv.Stdout, "Your browser has been opened to visit:\n\n\t%s\n\n", authURL.String())
 				}
 
-				sessionToken, err = cliui.Prompt(inv, cliui.PromptOptions{
+				sessionToken, err = cliui.MaskedPrompt(inv, cliui.PromptOptions{
 					Text:   "Paste your token here:",
 					Secret: true,
 					Validate: func(token string) error {
