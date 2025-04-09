@@ -6,6 +6,18 @@ export interface ACLAvailable {
 	readonly groups: readonly Group[];
 }
 
+// From codersdk/deployment.go
+export interface AIConfig {
+	readonly providers: readonly AIProviderConfig[];
+}
+
+// From codersdk/deployment.go
+export interface AIProviderConfig {
+	readonly type: string;
+	readonly models: readonly string[];
+	readonly base_url: string;
+}
+
 // From codersdk/apikey.go
 export interface APIKey {
 	readonly id: string;
@@ -289,6 +301,14 @@ export interface ChangePasswordWithOneTimePasscodeRequest {
 	readonly email: string;
 	readonly password: string;
 	readonly one_time_passcode: string;
+}
+
+// From codersdk/chat.go
+export interface Chat {
+	readonly id: string;
+	readonly created_at: string;
+	readonly updated_at: string;
+	readonly title: string;
 }
 
 // From codersdk/client.go
@@ -671,6 +691,7 @@ export interface DeploymentValues {
 	readonly disable_password_auth?: boolean;
 	readonly support?: SupportConfig;
 	readonly external_auth?: SerpentStruct<ExternalAuthConfig[]>;
+	readonly ai?: SerpentStruct<AIConfig>;
 	readonly config_ssh?: SSHConfig;
 	readonly wgtunnel_host?: string;
 	readonly disable_owner_workspace_exec?: boolean;
@@ -1975,6 +1996,7 @@ export type RBACResource =
 	| "assign_org_role"
 	| "assign_role"
 	| "audit_log"
+	| "chat"
 	| "crypto_key"
 	| "debug_info"
 	| "deployment_config"
@@ -2013,6 +2035,7 @@ export const RBACResources: RBACResource[] = [
 	"assign_org_role",
 	"assign_role",
 	"audit_log",
+	"chat",
 	"crypto_key",
 	"debug_info",
 	"deployment_config",

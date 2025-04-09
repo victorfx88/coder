@@ -9256,6 +9256,37 @@
 				}
 			}
 		},
+		"codersdk.AIConfig": {
+			"type": "object",
+			"properties": {
+				"providers": {
+					"type": "array",
+					"items": {
+						"$ref": "#/definitions/codersdk.AIProviderConfig"
+					}
+				}
+			}
+		},
+		"codersdk.AIProviderConfig": {
+			"type": "object",
+			"properties": {
+				"base_url": {
+					"description": "BaseURL is the base URL to use for the API provider.",
+					"type": "string"
+				},
+				"models": {
+					"description": "Models is the list of models to use for the API provider.",
+					"type": "array",
+					"items": {
+						"type": "string"
+					}
+				},
+				"type": {
+					"description": "Type is the type of the API provider.",
+					"type": "string"
+				}
+			}
+		},
 		"codersdk.APIKey": {
 			"type": "object",
 			"required": [
@@ -10574,6 +10605,9 @@
 				},
 				"agent_stat_refresh_interval": {
 					"type": "integer"
+				},
+				"ai": {
+					"$ref": "#/definitions/serpent.Struct-codersdk_AIConfig"
 				},
 				"allow_workspace_renames": {
 					"type": "boolean"
@@ -13007,6 +13041,7 @@
 				"assign_org_role",
 				"assign_role",
 				"audit_log",
+				"chat",
 				"crypto_key",
 				"debug_info",
 				"deployment_config",
@@ -13045,6 +13080,7 @@
 				"ResourceAssignOrgRole",
 				"ResourceAssignRole",
 				"ResourceAuditLog",
+				"ResourceChat",
 				"ResourceCryptoKey",
 				"ResourceDebugInfo",
 				"ResourceDeploymentConfig",
@@ -16774,6 +16810,14 @@
 					"items": {
 						"$ref": "#/definitions/codersdk.LinkConfig"
 					}
+				}
+			}
+		},
+		"serpent.Struct-codersdk_AIConfig": {
+			"type": "object",
+			"properties": {
+				"value": {
+					"$ref": "#/definitions/codersdk.AIConfig"
 				}
 			}
 		},
