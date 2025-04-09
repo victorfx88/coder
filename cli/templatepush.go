@@ -40,6 +40,7 @@ func (r *RootCmd) templatePush() *serpent.Command {
 	cmd := &serpent.Command{
 		Use:   "push [template]",
 		Short: "Create or update a template from the current directory or as specified by flag",
+		Tool:  "coder_push_template",
 		Middleware: serpent.Chain(
 			serpent.RequireRangeArgs(0, 1),
 			r.InitClient(client),

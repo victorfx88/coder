@@ -101,6 +101,7 @@ func (r *RootCmd) list() *serpent.Command {
 		Annotations: workspaceCommand,
 		Use:         "list",
 		Short:       "List workspaces",
+		Tool:        "coder_list_workspaces",
 		Aliases:     []string{"ls"},
 		Middleware: serpent.Chain(
 			serpent.RequireNArgs(0),

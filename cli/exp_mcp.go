@@ -328,7 +328,13 @@ func (r *RootCmd) mcpServer() *serpent.Command {
 	return &serpent.Command{
 		Use: "server",
 		Handler: func(inv *serpent.Invocation) error {
-			return mcpServerHandler(inv, client, instructions, allowedTools, appStatusSlug)
+			// return mcpServerHandler(inv, client, instructions, allowedTools, appStatusSlug)
+			rootCmd := inv.Command
+			for rootCmd.Parent != nil {
+				rootCmd = rootCmd.Parent
+			}
+			server := serpent.NewMCPServer(rootCmd, inv.Stdin, inv.Stdout, inv.Stderr)
+			return server.Run(inv.Context())
 		},
 		Short: "Start the Coder MCP server.",
 		Middleware: serpent.Chain(

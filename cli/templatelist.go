@@ -19,6 +19,7 @@ func (r *RootCmd) templateList() *serpent.Command {
 	client := new(codersdk.Client)
 	cmd := &serpent.Command{
 		Use:     "list",
+		Tool:    "coder_list_templates",
 		Short:   "List all the templates available for the organization",
 		Aliases: []string{"ls"},
 		Middleware: serpent.Chain(

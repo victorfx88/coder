@@ -41,6 +41,8 @@ func (r *RootCmd) create() *serpent.Command {
 		Annotations: workspaceCommand,
 		Use:         "create [workspace]",
 		Short:       "Create a workspace",
+		Tool:        "coder_create_workspace",
+		ToolFlags:   []string{"--yes"},
 		Long: FormatExamples(
 			Example{
 				Description: "Create a workspace for another user (if you have permission)",

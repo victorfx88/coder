@@ -57,7 +57,8 @@ func (r *RootCmd) templateVersionsList() *serpent.Command {
 	var includeArchived serpent.Bool
 
 	cmd := &serpent.Command{
-		Use: "list <template>",
+		Use:  "list <template>",
+		Tool: "coder_list_template_versions",
 		Middleware: serpent.Chain(
 			serpent.RequireNArgs(1),
 			r.InitClient(client),
