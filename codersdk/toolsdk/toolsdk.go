@@ -46,6 +46,7 @@ var (
 		DeleteTemplate.Generic(),
 		GetWorkspaceAgentLogs.Generic(),
 		GetWorkspaceBuildLogs.Generic(),
+		GetWorkspace.Generic(),
 	}
 
 	ReportTask = Tool[string]{
