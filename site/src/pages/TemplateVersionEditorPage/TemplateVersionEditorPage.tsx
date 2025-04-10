@@ -25,6 +25,7 @@ import { pageTitle } from "utils/page";
 import { TarReader, TarWriter } from "utils/tar";
 import { createTemplateVersionFileTree } from "utils/templateVersion";
 import { TemplateVersionEditor } from "./TemplateVersionEditor";
+import { PreviewProvider, usePreview } from "contexts/PreviewContext/PreviewContext";
 
 export const TemplateVersionEditorPage: FC = () => {
 	const getLink = useLinks();
@@ -123,6 +124,8 @@ export const TemplateVersionEditorPage: FC = () => {
 		}
 	}, [activeTemplateVersion?.job.tags]);
 
+	const { isWasmLoaded, preview } = usePreview();
+
 	return (
 		<>
 			<Helmet>
@@ -139,6 +142,8 @@ export const TemplateVersionEditorPage: FC = () => {
 					templateVersion={activeTemplateVersion}
 					defaultFileTree={fileTree}
 					onPreview={async (newFileTree) => {
+						console.log(preview!(newFileTree))
+						
 						if (!tarFile) {
 							return;
 						}
@@ -402,4 +407,10 @@ export const getActivePath = (
 	return findEntrypointFile(fileTree);
 };
 
-export default TemplateVersionEditorPage;
+export const TemplateVersionEditorPageWrapped: FC = () => {
+	return <PreviewProvider>
+		<TemplateVersionEditorPage />
+	</PreviewProvider>;
+}
+
+export default TemplateVersionEditorPageWrapped;

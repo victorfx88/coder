@@ -69,7 +69,7 @@ func CSPHeaders(telemetry bool, websocketHosts func() []string, staticAdditions 
 				CSPDirectiveConnectSrc: {"'self'"},
 				CSPDirectiveChildSrc:   {"'self'"},
 				// https://github.com/suren-atoyan/monaco-react/issues/168
-				CSPDirectiveScriptSrc: {"'self'"},
+				CSPDirectiveScriptSrc: {"unsafe-eval", "'self'"},
 				CSPDirectiveStyleSrc:  {"'self' 'unsafe-inline'"},
 				// data: is used by monaco editor on FE for Syntax Highlight
 				CSPDirectiveFontSrc:   {"'self' data:"},
