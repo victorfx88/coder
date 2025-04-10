@@ -481,7 +481,7 @@ require (
 )
 
 require (
-	github.com/kylecarbs/aisdk-go v0.0.3
+	github.com/kylecarbs/aisdk-go v0.0.5
 	github.com/mark3labs/mcp-go v0.17.0
 )
 

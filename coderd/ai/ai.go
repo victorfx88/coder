@@ -19,10 +19,11 @@ type LanguageModel struct {
 }
 
 type StreamOptions struct {
-	Model    string
-	Messages []aisdk.Message
-	Thinking bool
-	Tools    []aisdk.Tool
+	SystemPrompt string
+	Model        string
+	Messages     []aisdk.Message
+	Thinking     bool
+	Tools        []aisdk.Tool
 }
 
 type StreamFunc func(ctx context.Context, options StreamOptions) (aisdk.DataStream, error)
@@ -45,6 +46,12 @@ func ModelsFromConfig(ctx context.Context, configs []codersdk.AIProviderConfig) 
 					return nil, err
 				}
 				tools := aisdk.ToolsToOpenAI(options.Tools)
+				if options.SystemPrompt != "" {
+					openaiMessages = append([]openai.ChatCompletionMessageParamUnion{
+						openai.SystemMessage(options.SystemPrompt),
+					}, openaiMessages...)
+				}
+
 				return aisdk.OpenAIToDataStream(client.Chat.Completions.NewStreaming(ctx, openai.ChatCompletionNewParams{
 					Messages:  openaiMessages,
 					Model:     options.Model,
@@ -69,6 +76,11 @@ func ModelsFromConfig(ctx context.Context, configs []codersdk.AIProviderConfig) 
 				anthropicMessages, systemMessage, err := aisdk.MessagesToAnthropic(options.Messages)
 				if err != nil {
 					return nil, err
+				}
+				if options.SystemPrompt != "" {
+					systemMessage = []anthropic.TextBlockParam{
+						*anthropic.NewTextBlock(options.SystemPrompt).OfRequestTextBlock,
+					}
 				}
 				return aisdk.AnthropicToDataStream(client.Messages.NewStreaming(ctx, anthropic.MessageNewParams{
 					Messages:  anthropicMessages,
@@ -106,8 +118,18 @@ func ModelsFromConfig(ctx context.Context, configs []codersdk.AIProviderConfig) 
 				if err != nil {
 					return nil, err
 				}
+				var systemInstruction *genai.Content
+				if options.SystemPrompt != "" {
+					systemInstruction = &genai.Content{
+						Parts: []*genai.Part{
+							genai.NewPartFromText(options.SystemPrompt),
+						},
+						Role: "model",
+					}
+				}
 				return aisdk.GoogleToDataStream(client.Models.GenerateContentStream(ctx, options.Model, googleMessages, &genai.GenerateContentConfig{
-					Tools: tools,
+					SystemInstruction: systemInstruction,
+					Tools:             tools,
 				})), nil
 			}
 			if config.Models == nil {
