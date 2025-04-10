@@ -142,8 +142,9 @@ export const TemplateVersionEditorPage: FC = () => {
 					templateVersion={activeTemplateVersion}
 					defaultFileTree={fileTree}
 					onPreview={async (newFileTree) => {
-						console.log(preview!(newFileTree))
-						
+						var out = await preview!(newFileTree)
+						console.log(JSON.parse(out))
+
 						if (!tarFile) {
 							return;
 						}
