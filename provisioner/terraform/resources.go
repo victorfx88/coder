@@ -3,7 +3,6 @@ package terraform
 import (
 	"context"
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/awalterschulze/gographviz"
@@ -13,7 +12,7 @@ import (
 
 	"cdr.dev/slog"
 
-	"github.com/coder/terraform-provider-coder/v2/provider"
+	"github.com/coder/terraform-provider-coder/provider"
 
 	tfaddr "github.com/hashicorp/go-terraform-address"
 
@@ -43,7 +42,7 @@ type agentAttributes struct {
 	ID              string            `mapstructure:"id"`
 	Token           string            `mapstructure:"token"`
 	Env             map[string]string `mapstructure:"env"`
-	// Deprecated: but remains here for backwards compatibility.
+	// Deprecated, but remains here for backwards compatibility.
 	StartupScript                string `mapstructure:"startup_script"`
 	StartupScriptBehavior        string `mapstructure:"startup_script_behavior"`
 	StartupScriptTimeoutSeconds  int32  `mapstructure:"startup_script_timeout"`
@@ -57,29 +56,6 @@ type agentAttributes struct {
 	Metadata                 []agentMetadata              `mapstructure:"metadata"`
 	DisplayApps              []agentDisplayAppsAttributes `mapstructure:"display_apps"`
 	Order                    int64                        `mapstructure:"order"`
-	ResourcesMonitoring      []agentResourcesMonitoring   `mapstructure:"resources_monitoring"`
-}
-
-type agentDevcontainerAttributes struct {
-	AgentID         string `mapstructure:"agent_id"`
-	WorkspaceFolder string `mapstructure:"workspace_folder"`
-	ConfigPath      string `mapstructure:"config_path"`
-}
-
-type agentResourcesMonitoring struct {
-	Memory  []agentMemoryResourceMonitor `mapstructure:"memory"`
-	Volumes []agentVolumeResourceMonitor `mapstructure:"volume"`
-}
-
-type agentMemoryResourceMonitor struct {
-	Enabled   bool  `mapstructure:"enabled"`
-	Threshold int32 `mapstructure:"threshold"`
-}
-
-type agentVolumeResourceMonitor struct {
-	Path      string `mapstructure:"path"`
-	Enabled   bool   `mapstructure:"enabled"`
-	Threshold int32  `mapstructure:"threshold"`
 }
 
 type agentDisplayAppsAttributes struct {
@@ -156,7 +132,6 @@ type resourceMetadataItem struct {
 type State struct {
 	Resources             []*proto.Resource
 	Parameters            []*proto.RichParameter
-	Presets               []*proto.Preset
 	ExternalAuthProviders []*proto.ExternalAuthProviderResource
 }
 
@@ -184,7 +159,7 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 
 	// Extra array to preserve the order of rich parameters.
 	tfResourcesRichParameters := make([]*tfjson.StateResource, 0)
-	tfResourcesPresets := make([]*tfjson.StateResource, 0)
+
 	var findTerraformResources func(mod *tfjson.StateModule)
 	findTerraformResources = func(mod *tfjson.StateModule) {
 		for _, module := range mod.ChildModules {
@@ -193,9 +168,6 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 		for _, resource := range mod.Resources {
 			if resource.Type == "coder_parameter" {
 				tfResourcesRichParameters = append(tfResourcesRichParameters, resource)
-			}
-			if resource.Type == "coder_workspace_preset" {
-				tfResourcesPresets = append(tfResourcesPresets, resource)
 			}
 
 			label := convertAddressToLabel(resource.Address)
@@ -222,25 +194,10 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 				return nil, xerrors.Errorf("decode agent attributes: %w", err)
 			}
 
-			// Similar logic is duplicated in terraform/resources.go.
-			if tfResource.Name == "" {
-				return nil, xerrors.Errorf("agent name cannot be empty")
-			}
-			// In 2025-02 we removed support for underscores in agent names. To
-			// provide a nicer error message, we check the regex first and check
-			// for underscores if it fails.
-			if !provisioner.AgentNameRegex.MatchString(tfResource.Name) {
-				if strings.Contains(tfResource.Name, "_") {
-					return nil, xerrors.Errorf("agent name %q contains underscores which are no longer supported, please use hyphens instead (regex: %q)", tfResource.Name, provisioner.AgentNameRegex.String())
-				}
-				return nil, xerrors.Errorf("agent name %q does not match regex %q", tfResource.Name, provisioner.AgentNameRegex.String())
-			}
-			// Agent names must be case-insensitive-unique, to be unambiguous in
-			// `coder_app`s and CoderVPN DNS names.
-			if _, ok := agentNames[strings.ToLower(tfResource.Name)]; ok {
+			if _, ok := agentNames[tfResource.Name]; ok {
 				return nil, xerrors.Errorf("duplicate agent name: %s", tfResource.Name)
 			}
-			agentNames[strings.ToLower(tfResource.Name)] = struct{}{}
+			agentNames[tfResource.Name] = struct{}{}
 
 			// Handling for deprecated attributes. login_before_ready was replaced
 			// by startup_script_behavior, but we still need to support it for
@@ -282,29 +239,6 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 				}
 			}
 
-			resourcesMonitoring := &proto.ResourcesMonitoring{
-				Volumes: make([]*proto.VolumeResourceMonitor, 0),
-			}
-
-			for _, resource := range attrs.ResourcesMonitoring {
-				for _, memoryResource := range resource.Memory {
-					resourcesMonitoring.Memory = &proto.MemoryResourceMonitor{
-						Enabled:   memoryResource.Enabled,
-						Threshold: memoryResource.Threshold,
-					}
-				}
-			}
-
-			for _, resource := range attrs.ResourcesMonitoring {
-				for _, volume := range resource.Volumes {
-					resourcesMonitoring.Volumes = append(resourcesMonitoring.Volumes, &proto.VolumeResourceMonitor{
-						Path:      volume.Path,
-						Enabled:   volume.Enabled,
-						Threshold: volume.Threshold,
-					})
-				}
-			}
-
 			agent := &proto.Agent{
 				Name:                     tfResource.Name,
 				Id:                       attrs.ID,
@@ -315,7 +249,6 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 				ConnectionTimeoutSeconds: attrs.ConnectionTimeoutSeconds,
 				TroubleshootingUrl:       attrs.TroubleshootingURL,
 				MotdFile:                 attrs.MOTDFile,
-				ResourcesMonitoring:      resourcesMonitoring,
 				Metadata:                 metadata,
 				DisplayApps:              displayApps,
 				Order:                    attrs.Order,
@@ -463,7 +396,6 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 			if attrs.Slug == "" {
 				attrs.Slug = resource.Name
 			}
-			// Similar logic is duplicated in terraform/resources.go.
 			if attrs.DisplayName == "" {
 				if attrs.Name != "" {
 					// Name is deprecated but still accepted.
@@ -473,10 +405,8 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 				}
 			}
 
-			// Contrary to agent names above, app slugs were never permitted to
-			// contain uppercase letters or underscores.
 			if !provisioner.AppSlugRegex.MatchString(attrs.Slug) {
-				return nil, xerrors.Errorf("app slug %q does not match regex %q", attrs.Slug, provisioner.AppSlugRegex.String())
+				return nil, xerrors.Errorf("invalid app slug %q, please update your coder/coder provider to the latest version and specify the slug property on each coder_app", attrs.Slug)
 			}
 
 			if _, exists := appSlugs[attrs.Slug]; exists {
@@ -591,33 +521,6 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 						RunOnStart:       attrs.RunOnStart,
 						RunOnStop:        attrs.RunOnStop,
 						TimeoutSeconds:   attrs.TimeoutSeconds,
-					})
-				}
-			}
-		}
-	}
-
-	// Associate Dev Containers with agents.
-	for _, resources := range tfResourcesByLabel {
-		for _, resource := range resources {
-			if resource.Type != "coder_devcontainer" {
-				continue
-			}
-			var attrs agentDevcontainerAttributes
-			err = mapstructure.Decode(resource.AttributeValues, &attrs)
-			if err != nil {
-				return nil, xerrors.Errorf("decode script attributes: %w", err)
-			}
-			for _, agents := range resourceAgents {
-				for _, agent := range agents {
-					// Find agents with the matching ID and associate them!
-					if !dependsOnAgent(graph, agent, attrs.AgentID, resource) {
-						continue
-					}
-					agent.Devcontainers = append(agent.Devcontainers, &proto.Devcontainer{
-						Name:            resource.Name,
-						WorkspaceFolder: attrs.WorkspaceFolder,
-						ConfigPath:      attrs.ConfigPath,
 					})
 				}
 			}
@@ -758,9 +661,8 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 			DefaultValue: param.Default,
 			Icon:         param.Icon,
 			Required:     !param.Optional,
-			// #nosec G115 - Safe conversion as parameter order value is expected to be within int32 range
-			Order:     int32(param.Order),
-			Ephemeral: param.Ephemeral,
+			Order:        int32(param.Order),
+			Ephemeral:    param.Ephemeral,
 		}
 		if len(param.Validation) == 1 {
 			protoParam.ValidationRegex = param.Validation[0].Regex
@@ -832,92 +734,6 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 		)
 	}
 
-	var duplicatedPresetNames []string
-	presets := make([]*proto.Preset, 0)
-	for _, resource := range tfResourcesPresets {
-		var preset provider.WorkspacePreset
-		err = mapstructure.Decode(resource.AttributeValues, &preset)
-		if err != nil {
-			return nil, xerrors.Errorf("decode preset attributes: %w", err)
-		}
-
-		var duplicatedPresetParameterNames []string
-		var nonExistentParameters []string
-		var presetParameters []*proto.PresetParameter
-		for name, value := range preset.Parameters {
-			presetParameter := &proto.PresetParameter{
-				Name:  name,
-				Value: value,
-			}
-
-			formattedName := fmt.Sprintf("%q", name)
-			if !slice.Contains(duplicatedPresetParameterNames, formattedName) &&
-				slice.ContainsCompare(presetParameters, presetParameter, func(a, b *proto.PresetParameter) bool {
-					return a.Name == b.Name
-				}) {
-				duplicatedPresetParameterNames = append(duplicatedPresetParameterNames, formattedName)
-			}
-			if !slice.ContainsCompare(parameters, &proto.RichParameter{Name: name}, func(a, b *proto.RichParameter) bool {
-				return a.Name == b.Name
-			}) {
-				nonExistentParameters = append(nonExistentParameters, name)
-			}
-
-			presetParameters = append(presetParameters, presetParameter)
-		}
-
-		if len(duplicatedPresetParameterNames) > 0 {
-			s := ""
-			if len(duplicatedPresetParameterNames) == 1 {
-				s = "s"
-			}
-			return nil, xerrors.Errorf(
-				"coder_workspace_preset parameters must be unique but %s appear%s multiple times", stringutil.JoinWithConjunction(duplicatedPresetParameterNames), s,
-			)
-		}
-
-		if len(nonExistentParameters) > 0 {
-			logger.Warn(
-				ctx,
-				"coder_workspace_preset defines preset values for at least one parameter that is not defined by the template",
-				slog.F("parameters", stringutil.JoinWithConjunction(nonExistentParameters)),
-			)
-		}
-
-		if len(preset.Prebuilds) != 1 {
-			logger.Warn(
-				ctx,
-				"coder_workspace_preset must have exactly one prebuild block",
-			)
-		}
-		var prebuildInstances int32
-		if len(preset.Prebuilds) > 0 {
-			prebuildInstances = int32(math.Min(math.MaxInt32, float64(preset.Prebuilds[0].Instances)))
-		}
-		protoPreset := &proto.Preset{
-			Name:       preset.Name,
-			Parameters: presetParameters,
-			Prebuild: &proto.Prebuild{
-				Instances: prebuildInstances,
-			},
-		}
-
-		if slice.Contains(duplicatedPresetNames, preset.Name) {
-			duplicatedPresetNames = append(duplicatedPresetNames, preset.Name)
-		}
-		presets = append(presets, protoPreset)
-	}
-	if len(duplicatedPresetNames) > 0 {
-		s := ""
-		if len(duplicatedPresetNames) == 1 {
-			s = "s"
-		}
-		return nil, xerrors.Errorf(
-			"coder_workspace_preset names must be unique but %s appear%s multiple times",
-			stringutil.JoinWithConjunction(duplicatedPresetNames), s,
-		)
-	}
-
 	// A map is used to ensure we don't have duplicates!
 	externalAuthProvidersMap := map[string]*proto.ExternalAuthProviderResource{}
 	for _, tfResources := range tfResourcesByLabel {
@@ -951,13 +767,11 @@ func ConvertState(ctx context.Context, modules []*tfjson.StateModule, rawGraph s
 	return &State{
 		Resources:             resources,
 		Parameters:            parameters,
-		Presets:               presets,
 		ExternalAuthProviders: externalAuthProviders,
 	}, nil
 }
 
 func PtrInt32(number int) *int32 {
-	// #nosec G115 - Safe conversion as the number is expected to be within int32 range
 	n := int32(number)
 	return &n
 }

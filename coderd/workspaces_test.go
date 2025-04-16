@@ -129,7 +129,7 @@ func TestWorkspace(t *testing.T) {
 			want = want[:32-5] + "-test"
 		}
 		// Sometimes truncated names result in `--test` which is not an allowed name.
-		want = strings.ReplaceAll(want, "--", "-")
+		want = strings.Replace(want, "--", "-", -1)
 		err := client.UpdateWorkspace(ctx, ws1.ID, codersdk.UpdateWorkspaceRequest{
 			Name: want,
 		})
@@ -219,7 +219,6 @@ func TestWorkspace(t *testing.T) {
 								Type: "example",
 								Agents: []*proto.Agent{{
 									Id:   uuid.NewString(),
-									Name: "dev",
 									Auth: &proto.Agent_Token{},
 								}},
 							}},
@@ -260,7 +259,6 @@ func TestWorkspace(t *testing.T) {
 								Type: "example",
 								Agents: []*proto.Agent{{
 									Id:                       uuid.NewString(),
-									Name:                     "dev",
 									Auth:                     &proto.Agent_Token{},
 									ConnectionTimeoutSeconds: 1,
 								}},
@@ -374,99 +372,6 @@ func TestWorkspace(t *testing.T) {
 		})
 		require.Error(t, err, "create workspace with archived version")
 		require.ErrorContains(t, err, "Archived template versions cannot")
-	})
-
-	t.Run("WorkspaceBan", func(t *testing.T) {
-		t.Parallel()
-		owner, _, _ := coderdtest.NewWithAPI(t, &coderdtest.Options{IncludeProvisionerDaemon: true})
-		first := coderdtest.CreateFirstUser(t, owner)
-
-		version := coderdtest.CreateTemplateVersion(t, owner, first.OrganizationID, nil)
-		coderdtest.AwaitTemplateVersionJobCompleted(t, owner, version.ID)
-		template := coderdtest.CreateTemplate(t, owner, first.OrganizationID, version.ID)
-
-		goodClient, _ := coderdtest.CreateAnotherUser(t, owner, first.OrganizationID)
-
-		// When a user with workspace-creation-ban
-		client, user := coderdtest.CreateAnotherUser(t, owner, first.OrganizationID, rbac.ScopedRoleOrgWorkspaceCreationBan(first.OrganizationID))
-
-		// Ensure a similar user can create a workspace
-		coderdtest.CreateWorkspace(t, goodClient, template.ID)
-
-		ctx := testutil.Context(t, testutil.WaitLong)
-		// Then: Cannot create a workspace
-		_, err := client.CreateUserWorkspace(ctx, codersdk.Me, codersdk.CreateWorkspaceRequest{
-			TemplateID:        template.ID,
-			TemplateVersionID: uuid.UUID{},
-			Name:              "random",
-		})
-		require.Error(t, err)
-		var apiError *codersdk.Error
-		require.ErrorAs(t, err, &apiError)
-		require.Equal(t, http.StatusForbidden, apiError.StatusCode())
-
-		// When: workspace-ban use has a workspace
-		wrk, err := owner.CreateUserWorkspace(ctx, user.ID.String(), codersdk.CreateWorkspaceRequest{
-			TemplateID:        template.ID,
-			TemplateVersionID: uuid.UUID{},
-			Name:              "random",
-		})
-		require.NoError(t, err)
-		coderdtest.AwaitWorkspaceBuildJobCompleted(t, client, wrk.LatestBuild.ID)
-
-		// Then: They cannot delete said workspace
-		_, err = client.CreateWorkspaceBuild(ctx, wrk.ID, codersdk.CreateWorkspaceBuildRequest{
-			Transition:       codersdk.WorkspaceTransitionDelete,
-			ProvisionerState: []byte{},
-		})
-		require.Error(t, err)
-		require.ErrorAs(t, err, &apiError)
-		require.Equal(t, http.StatusForbidden, apiError.StatusCode())
-	})
-
-	t.Run("TemplateVersionPreset", func(t *testing.T) {
-		t.Parallel()
-		client, _, api := coderdtest.NewWithAPI(t, &coderdtest.Options{IncludeProvisionerDaemon: true})
-		user := coderdtest.CreateFirstUser(t, client)
-		authz := coderdtest.AssertRBAC(t, api, client)
-		version := coderdtest.CreateTemplateVersion(t, client, user.OrganizationID, &echo.Responses{
-			Parse: echo.ParseComplete,
-			ProvisionPlan: []*proto.Response{{
-				Type: &proto.Response_Plan{
-					Plan: &proto.PlanComplete{
-						Presets: []*proto.Preset{{
-							Name: "test",
-						}},
-					},
-				},
-			}},
-			ProvisionApply: echo.ApplyComplete,
-		})
-		coderdtest.AwaitTemplateVersionJobCompleted(t, client, version.ID)
-		template := coderdtest.CreateTemplate(t, client, user.OrganizationID, version.ID)
-
-		ctx := testutil.Context(t, testutil.WaitLong)
-
-		presets, err := client.TemplateVersionPresets(ctx, version.ID)
-		require.NoError(t, err)
-		require.Equal(t, 1, len(presets))
-		require.Equal(t, "test", presets[0].Name)
-
-		workspace := coderdtest.CreateWorkspace(t, client, template.ID, func(request *codersdk.CreateWorkspaceRequest) {
-			request.TemplateVersionPresetID = presets[0].ID
-		})
-
-		authz.Reset() // Reset all previous checks done in setup.
-		ws, err := client.Workspace(ctx, workspace.ID)
-		authz.AssertChecked(t, policy.ActionRead, ws)
-		require.NoError(t, err)
-		require.Equal(t, user.UserID, ws.LatestBuild.InitiatorID)
-		require.Equal(t, codersdk.BuildReasonInitiator, ws.LatestBuild.Reason)
-		require.Equal(t, presets[0].ID, *ws.LatestBuild.TemplateVersionPresetID)
-
-		org, err := client.Organization(ctx, ws.OrganizationID)
-		require.NoError(t, err)
-		require.Equal(t, ws.OrganizationName, org.Name)
 	})
 }
 
@@ -1817,8 +1722,7 @@ func TestWorkspaceFilterManual(t *testing.T) {
 							Name: "example",
 							Type: "aws_instance",
 							Agents: []*proto.Agent{{
-								Id:   uuid.NewString(),
-								Name: "dev",
+								Id: uuid.NewString(),
 								Auth: &proto.Agent_Token{
 									Token: authToken,
 								},
@@ -2825,8 +2729,7 @@ func TestWorkspaceWatcher(t *testing.T) {
 						Name: "example",
 						Type: "aws_instance",
 						Agents: []*proto.Agent{{
-							Id:   uuid.NewString(),
-							Name: "dev",
+							Id: uuid.NewString(),
 							Auth: &proto.Agent_Token{
 								Token: authToken,
 							},
@@ -3048,7 +2951,6 @@ func TestWorkspaceResource(t *testing.T) {
 							Type: "example",
 							Agents: []*proto.Agent{{
 								Id:   "something",
-								Name: "dev",
 								Auth: &proto.Agent_Token{},
 								Apps: apps,
 							}},
@@ -3123,7 +3025,6 @@ func TestWorkspaceResource(t *testing.T) {
 							Type: "example",
 							Agents: []*proto.Agent{{
 								Id:   "something",
-								Name: "dev",
 								Auth: &proto.Agent_Token{},
 								Apps: apps,
 							}},
@@ -3167,7 +3068,6 @@ func TestWorkspaceResource(t *testing.T) {
 							Type: "example",
 							Agents: []*proto.Agent{{
 								Id:   "something",
-								Name: "dev",
 								Auth: &proto.Agent_Token{},
 							}},
 							Metadata: []*proto.Resource_Metadata{{

@@ -2,13 +2,11 @@ package terraform
 
 import (
 	"context"
-	"errors"
 	"path/filepath"
 	"sync"
 	"time"
 
 	"github.com/cli/safeexec"
-	"github.com/hashicorp/go-version"
 	semconv "go.opentelemetry.io/otel/semconv/v1.14.0"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/xerrors"
@@ -43,15 +41,10 @@ type ServeOptions struct {
 	ExitTimeout time.Duration
 }
 
-type systemBinaryDetails struct {
-	absolutePath string
-	version      *version.Version
-}
-
-func systemBinary(ctx context.Context) (*systemBinaryDetails, error) {
+func absoluteBinaryPath(ctx context.Context, logger slog.Logger) (string, error) {
 	binaryPath, err := safeexec.LookPath("terraform")
 	if err != nil {
-		return nil, xerrors.Errorf("Terraform binary not found: %w", err)
+		return "", xerrors.Errorf("Terraform binary not found: %w", err)
 	}
 
 	// If the "coder" binary is in the same directory as
@@ -61,68 +54,59 @@ func systemBinary(ctx context.Context) (*systemBinaryDetails, error) {
 	// to execute this properly!
 	absoluteBinary, err := filepath.Abs(binaryPath)
 	if err != nil {
-		return nil, xerrors.Errorf("Terraform binary absolute path not found: %w", err)
+		return "", xerrors.Errorf("Terraform binary absolute path not found: %w", err)
 	}
 
 	// Checking the installed version of Terraform.
 	installedVersion, err := versionFromBinaryPath(ctx, absoluteBinary)
 	if err != nil {
-		return nil, xerrors.Errorf("Terraform binary get version failed: %w", err)
+		return "", xerrors.Errorf("Terraform binary get version failed: %w", err)
 	}
 
-	details := &systemBinaryDetails{
-		absolutePath: absoluteBinary,
-		version:      installedVersion,
-	}
+	logger.Info(ctx, "detected terraform version",
+		slog.F("installed_version", installedVersion.String()),
+		slog.F("min_version", minTerraformVersion.String()),
+		slog.F("max_version", maxTerraformVersion.String()))
 
 	if installedVersion.LessThan(minTerraformVersion) {
-		return details, errTerraformMinorVersionMismatch
+		logger.Warn(ctx, "installed terraform version too old, will download known good version to cache")
+		return "", terraformMinorVersionMismatch
 	}
 
-	return details, nil
+	// Warn if the installed version is newer than what we've decided is the max.
+	// We used to ignore it and download our own version but this makes it easier
+	// to test out newer versions of Terraform.
+	if installedVersion.GreaterThanOrEqual(maxTerraformVersion) {
+		logger.Warn(ctx, "installed terraform version newer than expected, you may experience bugs",
+			slog.F("installed_version", installedVersion.String()),
+			slog.F("max_version", maxTerraformVersion.String()))
+	}
+
+	return absoluteBinary, nil
 }
 
 // Serve starts a dRPC server on the provided transport speaking Terraform provisioner.
 func Serve(ctx context.Context, options *ServeOptions) error {
 	if options.BinaryPath == "" {
-		binaryDetails, err := systemBinary(ctx)
+		absoluteBinary, err := absoluteBinaryPath(ctx, options.Logger)
 		if err != nil {
 			// This is an early exit to prevent extra execution in case the context is canceled.
 			// It generally happens in unit tests since this method is asynchronous and
 			// the unit test kills the app before this is complete.
-			if errors.Is(err, context.Canceled) {
-				return xerrors.Errorf("system binary context canceled: %w", err)
+			if xerrors.Is(err, context.Canceled) {
+				return xerrors.Errorf("absolute binary context canceled: %w", err)
 			}
 
-			if errors.Is(err, errTerraformMinorVersionMismatch) {
-				options.Logger.Warn(ctx, "installed terraform version too old, will download known good version to cache, or use a previously cached version",
-					slog.F("installed_version", binaryDetails.version.String()),
-					slog.F("min_version", minTerraformVersion.String()))
-			}
-
-			binPath, err := Install(ctx, options.Logger, options.ExternalProvisioner, options.CachePath, TerraformVersion)
+			options.Logger.Warn(ctx, "no usable terraform binary found, downloading to cache dir",
+				slog.F("terraform_version", TerraformVersion.String()),
+				slog.F("cache_dir", options.CachePath))
+			binPath, err := Install(ctx, options.Logger, options.CachePath, TerraformVersion)
 			if err != nil {
 				return xerrors.Errorf("install terraform: %w", err)
 			}
 			options.BinaryPath = binPath
 		} else {
-			logVersion := options.Logger.Debug
-			if options.ExternalProvisioner {
-				logVersion = options.Logger.Info
-			}
-			logVersion(ctx, "detected terraform version",
-				slog.F("installed_version", binaryDetails.version.String()),
-				slog.F("min_version", minTerraformVersion.String()),
-				slog.F("max_version", maxTerraformVersion.String()))
-			// Warn if the installed version is newer than what we've decided is the max.
-			// We used to ignore it and download our own version but this makes it easier
-			// to test out newer versions of Terraform.
-			if binaryDetails.version.GreaterThanOrEqual(maxTerraformVersion) {
-				options.Logger.Warn(ctx, "installed terraform version newer than expected, you may experience bugs",
-					slog.F("installed_version", binaryDetails.version.String()),
-					slog.F("max_version", maxTerraformVersion.String()))
-			}
-			options.BinaryPath = binaryDetails.absolutePath
+			options.BinaryPath = absoluteBinary
 		}
 	}
 	if options.Tracer == nil {

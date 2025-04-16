@@ -10,7 +10,6 @@ import {
 import type { UpdateUserProfileRequest, User } from "api/typesGenerated";
 import { displaySuccess } from "components/GlobalSnackbar/utils";
 import { useEmbeddedMetadata } from "hooks/useEmbeddedMetadata";
-import { type Permissions, permissionChecks } from "modules/permissions";
 import {
 	type FC,
 	type PropsWithChildren,
@@ -19,6 +18,7 @@ import {
 	useContext,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "react-query";
+import { type Permissions, permissionsToCheck } from "./permissions";
 
 export type AuthContextValue = {
 	isLoading: boolean;
@@ -50,13 +50,13 @@ export const AuthProvider: FC<PropsWithChildren> = ({ children }) => {
 	const hasFirstUserQuery = useQuery(hasFirstUser(userMetadataState));
 
 	const permissionsQuery = useQuery({
-		...checkAuthorization({ checks: permissionChecks }),
+		...checkAuthorization({ checks: permissionsToCheck }),
 		enabled: userQuery.data !== undefined,
 	});
 
 	const queryClient = useQueryClient();
 	const loginMutation = useMutation(
-		login({ checks: permissionChecks }, queryClient),
+		login({ checks: permissionsToCheck }, queryClient),
 	);
 
 	const logoutMutation = useMutation(logout(queryClient));

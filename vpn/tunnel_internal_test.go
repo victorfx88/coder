@@ -16,11 +16,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"tailscale.com/util/dnsname"
 
-	"github.com/coder/quartz"
-
 	"github.com/coder/coder/v2/tailnet"
 	"github.com/coder/coder/v2/tailnet/proto"
 	"github.com/coder/coder/v2/testutil"
+	"github.com/coder/quartz"
 )
 
 func newFakeClient(ctx context.Context, t *testing.T) *fakeClient {
@@ -101,12 +100,6 @@ func TestTunnel_StartStop(t *testing.T) {
 					TunnelFileDescriptor: 2,
 					CoderUrl:             "https://coder.example.com",
 					ApiToken:             "fakeToken",
-					Headers: []*StartRequest_Header{
-						{Name: "X-Test-Header", Value: "test"},
-					},
-					DeviceOs:            "macOS",
-					DeviceId:            "device001",
-					CoderDesktopVersion: "0.24.8",
 				},
 			},
 		})

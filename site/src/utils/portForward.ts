@@ -7,22 +7,15 @@ export const portForwardURL = (
 	workspaceName: string,
 	username: string,
 	protocol: WorkspaceAgentPortShareProtocol,
-	pathname?: string,
-	search?: string,
 ): string => {
 	const { location } = window;
 	const suffix = protocol === "https" ? "s" : "";
 
 	const subdomain = `${port}${suffix}--${agentName}--${workspaceName}--${username}`;
 
-	const baseUrl = `${location.protocol}//${host.replace(/\*/g, subdomain)}`;
+	const baseUrl = `${location.protocol}//${host.replace("*", subdomain)}`;
 	const url = new URL(baseUrl);
-	if (pathname) {
-		url.pathname = pathname;
-	}
-	if (search) {
-		url.search = search;
-	}
+
 	return url.toString();
 };
 
@@ -70,9 +63,7 @@ export const openMaybePortForwardedURL = (
 				workspaceName,
 				username,
 				url.protocol.replace(":", "") as WorkspaceAgentPortShareProtocol,
-				url.pathname,
-				url.search,
-			),
+			) + url.pathname,
 		);
 	} catch (ex) {
 		open(uri);

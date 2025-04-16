@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { API } from "api/api";
-import { Language } from "pages/CreateUserPage/Language";
+import { Language } from "pages/CreateUserPage/CreateUserForm";
 import { coderPort, license, premiumTestsRequired, users } from "../constants";
 import { expectUrl } from "../expectUrl";
 import { createUser } from "../helpers";
@@ -16,8 +16,9 @@ test("setup deployment", async ({ page }) => {
 	}
 
 	// Setup first user
-	await page.getByLabel(Language.emailLabel).fill(users.owner.email);
-	await page.getByLabel(Language.passwordLabel).fill(users.owner.password);
+	await page.getByLabel(Language.usernameLabel).fill(users.admin.username);
+	await page.getByLabel(Language.emailLabel).fill(users.admin.email);
+	await page.getByLabel(Language.passwordLabel).fill(users.admin.password);
 	await page.getByTestId("create").click();
 
 	await expectUrl(page).toHavePathName("/workspaces");
@@ -25,7 +26,7 @@ test("setup deployment", async ({ page }) => {
 
 	for (const user of Object.values(users)) {
 		// Already created as first user
-		if (user.username === "owner") {
+		if (user.username === "admin") {
 			continue;
 		}
 

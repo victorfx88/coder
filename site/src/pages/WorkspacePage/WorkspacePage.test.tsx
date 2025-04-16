@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import * as apiModule from "api/api";
 import type { TemplateVersionParameter, Workspace } from "api/typesGenerated";
-import MockServerSocket from "jest-websocket-mock";
+import EventSourceMock from "eventsourcemock";
 import {
 	DashboardContext,
 	type DashboardProvider,
@@ -84,11 +84,23 @@ const testButton = async (
 
 	const user = userEvent.setup();
 	await user.click(button);
-	expect(actionMock).toHaveBeenCalled();
+	expect(actionMock).toBeCalled();
 };
 
-afterEach(() => {
-	MockServerSocket.clean();
+let originalEventSource: typeof window.EventSource;
+
+beforeAll(() => {
+	originalEventSource = window.EventSource;
+	// mocking out EventSource for SSE
+	window.EventSource = EventSourceMock;
+});
+
+beforeEach(() => {
+	jest.resetAllMocks();
+});
+
+afterAll(() => {
+	window.EventSource = originalEventSource;
 });
 
 describe("WorkspacePage", () => {
@@ -553,7 +565,6 @@ describe("WorkspacePage", () => {
 						experiments: [],
 						organizations: [MockOrganization],
 						showOrganizations: true,
-						canViewOrganizationSettings: true,
 					}}
 				>
 					{children}

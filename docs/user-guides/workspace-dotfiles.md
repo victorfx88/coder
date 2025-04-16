@@ -18,7 +18,6 @@ your workspace automatically.
 
 ![Dotfiles in workspace creation](../images/user-guides/dotfiles-module.png)
 
-> [!NOTE]
 > Template admins: this can be enabled quite easily with a our
 > [dotfiles module](https://registry.coder.com/modules/dotfiles) using just a
 > few lines in the template.
@@ -38,7 +37,6 @@ sudo apt update
 sudo apt install -y neovim fish cargo
 ```
 
-> [!NOTE]
 > Template admins: refer to
 > [this module](https://registry.coder.com/modules/personalize) to enable the
 > `~/personalize` script on templates.

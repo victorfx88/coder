@@ -99,7 +99,6 @@ export const ProxyMenu: FC<ProxyMenuProps> = ({ proxyContextValue }) => {
 						<Latency
 							latency={latencies?.[selectedProxy.id]?.latencyMS}
 							isLoading={proxyLatencyLoading(selectedProxy)}
-							size={24}
 						/>
 					</div>
 				) : (

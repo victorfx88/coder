@@ -174,9 +174,6 @@ networking:
   # Controls if the 'Secure' property is set on browser session cookies.
   # (default: <unset>, type: bool)
   secureAuthCookie: false
-  # Controls the 'SameSite' property is set on browser session cookies.
-  # (default: lax, type: enum[lax\|none])
-  sameSiteAuthCookie: lax
   # Whether Coder only allows connections to workspaces via the browser.
   # (default: <unset>, type: bool)
   browserOnly: false
@@ -265,12 +262,6 @@ oauth2:
     # Client ID for Login with GitHub.
     # (default: <unset>, type: string)
     clientID: ""
-    # Enable device flow for Login with GitHub.
-    # (default: false, type: bool)
-    deviceFlow: false
-    # Enable the default GitHub OAuth2 provider managed by Coder.
-    # (default: true, type: bool)
-    defaultProviderEnable: true
     # Organizations the user must be a member of to Login with GitHub.
     # (default: <unset>, type: string-array)
     allowedOrgs: []
@@ -335,12 +326,6 @@ oidc:
   # Ignore the userinfo endpoint and only use the ID token for user information.
   # (default: false, type: bool)
   ignoreUserInfo: false
-  # Source supplemental user claims from the 'access_token'. This assumes the token
-  # is a jwt signed by the same issuer as the id_token. Using this requires setting
-  # 'oidc-ignore-userinfo' to true. This setting is not compliant with the OIDC
-  # specification and is not recommended. Use at your own risk.
-  # (default: false, type: bool)
-  accessTokenClaims: false
   # This field must be set if using the organization sync feature. Set to the claim
   # to be used for organizations.
   # (default: <unset>, type: string)
@@ -493,15 +478,11 @@ disablePathApps: false
 # (default: <unset>, type: bool)
 disableOwnerWorkspaceAccess: false
 # These options change the behavior of how clients interact with the Coder.
-# Clients include the Coder CLI, Coder Desktop, IDE extensions, and the web UI.
+# Clients include the coder cli, vs code extension, and the web UI.
 client:
   # The SSH deployment prefix is used in the Host of the ssh config.
   # (default: coder., type: string)
   sshHostnamePrefix: coder.
-  # Workspace hostnames use this suffix in SSH config and Coder Connect on Coder
-  # Desktop. By default it is coder, resulting in names like myworkspace.coder.
-  # (default: coder, type: string)
-  workspaceHostnameSuffix: coder
   # These SSH config options will override the default SSH config options. Provide
   # options in "key=value" or "key value" format separated by commas.Using this
   # incorrectly can break SSH to your deployment, use cautiously.
@@ -650,10 +631,6 @@ notifications:
     # The endpoint to which to send webhooks.
     # (default: <unset>, type: url)
     endpoint:
-  inbox:
-    # Enable Coder Inbox.
-    # (default: true, type: bool)
-    enabled: true
   # The upper limit of attempts to send a notification.
   # (default: 5, type: int)
   maxSendAttempts: 5

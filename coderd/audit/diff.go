@@ -30,9 +30,7 @@ type Auditable interface {
 		database.NotificationTemplate |
 		idpsync.OrganizationSyncSettings |
 		idpsync.GroupSyncSettings |
-		idpsync.RoleSyncSettings |
-		database.WorkspaceAgent |
-		database.WorkspaceApp
+		idpsync.RoleSyncSettings
 }
 
 // Map is a map of changed fields in an audited resource. It maps field names to
@@ -60,10 +58,10 @@ func Diff[T Auditable](a Auditor, left, right T) Map { return a.diff(left, right
 // the Auditor feature interface. Only types in the same package as the
 // interface can implement unexported methods.
 type Differ struct {
-	DiffFn func(old, newVal any) Map
+	DiffFn func(old, new any) Map
 }
 
 //nolint:unused
-func (d Differ) diff(old, newVal any) Map {
-	return d.DiffFn(old, newVal)
+func (d Differ) diff(old, new any) Map {
+	return d.DiffFn(old, new)
 }

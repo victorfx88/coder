@@ -1,5 +1,4 @@
 import { test } from "@playwright/test";
-import { users } from "../../constants";
 import {
 	createTemplate,
 	createWorkspace,
@@ -22,19 +21,18 @@ import type { RichParameter } from "../../provisionerGenerated";
 
 test.beforeEach(async ({ page }) => {
 	beforeCoderTest(page);
+	await login(page);
 });
 
 test("update workspace, new optional, immutable parameter added", async ({
 	page,
 }) => {
-	await login(page, users.templateAdmin);
 	const richParameters: RichParameter[] = [firstParameter, secondParameter];
 	const template = await createTemplate(
 		page,
 		echoResponsesWithParameters(richParameters),
 	);
 
-	await login(page, users.member);
 	const workspaceName = await createWorkspace(page, template);
 
 	// Verify that parameter values are default.
@@ -44,7 +42,6 @@ test("update workspace, new optional, immutable parameter added", async ({
 	]);
 
 	// Push updated template.
-	await login(page, users.templateAdmin);
 	const updatedRichParameters = [...richParameters, fifthParameter];
 	await updateTemplate(
 		page,
@@ -54,7 +51,6 @@ test("update workspace, new optional, immutable parameter added", async ({
 	);
 
 	// Now, update the workspace, and select the value for immutable parameter.
-	await login(page, users.member);
 	await updateWorkspace(page, workspaceName, updatedRichParameters, [
 		{ name: fifthParameter.name, value: fifthParameter.options[0].value },
 	]);
@@ -70,14 +66,12 @@ test("update workspace, new optional, immutable parameter added", async ({
 test("update workspace, new required, mutable parameter added", async ({
 	page,
 }) => {
-	await login(page, users.templateAdmin);
 	const richParameters: RichParameter[] = [firstParameter, secondParameter];
 	const template = await createTemplate(
 		page,
 		echoResponsesWithParameters(richParameters),
 	);
 
-	await login(page, users.member);
 	const workspaceName = await createWorkspace(page, template);
 
 	// Verify that parameter values are default.
@@ -87,7 +81,6 @@ test("update workspace, new required, mutable parameter added", async ({
 	]);
 
 	// Push updated template.
-	await login(page, users.templateAdmin);
 	const updatedRichParameters = [...richParameters, sixthParameter];
 	await updateTemplate(
 		page,
@@ -97,7 +90,6 @@ test("update workspace, new required, mutable parameter added", async ({
 	);
 
 	// Now, update the workspace, and provide the parameter value.
-	await login(page, users.member);
 	const buildParameters = [{ name: sixthParameter.name, value: "99" }];
 	await updateWorkspace(
 		page,
@@ -115,14 +107,12 @@ test("update workspace, new required, mutable parameter added", async ({
 });
 
 test("update workspace with ephemeral parameter enabled", async ({ page }) => {
-	await login(page, users.templateAdmin);
 	const richParameters: RichParameter[] = [firstParameter, secondBuildOption];
 	const template = await createTemplate(
 		page,
 		echoResponsesWithParameters(richParameters),
 	);
 
-	await login(page, users.member);
 	const workspaceName = await createWorkspace(page, template);
 
 	// Verify that parameter values are default.

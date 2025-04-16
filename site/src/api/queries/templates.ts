@@ -305,13 +305,6 @@ export const previousTemplateVersion = (
 	};
 };
 
-export const templateVersionPresets = (versionId: string) => {
-	return {
-		queryKey: ["templateVersion", versionId, "presets"],
-		queryFn: () => API.getTemplateVersionPresets(versionId),
-	};
-};
-
 const waitBuildToBeFinished = async (
 	version: TemplateVersion,
 	onRequest?: (data: TemplateVersion) => void,

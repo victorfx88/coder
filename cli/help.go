@@ -42,7 +42,6 @@ func ttyWidth() int {
 // wrapTTY wraps a string to the width of the terminal, or 80 no terminal
 // is detected.
 func wrapTTY(s string) string {
-	// #nosec G115 - Safe conversion as TTY width is expected to be within uint range
 	return wordwrap.WrapString(s, uint(ttyWidth()))
 }
 
@@ -58,8 +57,12 @@ var usageTemplate = func() *template.Template {
 	return template.Must(
 		template.New("usage").Funcs(
 			template.FuncMap{
-				"version": buildinfo.Version,
-				"wrapTTY": wrapTTY,
+				"version": func() string {
+					return buildinfo.Version()
+				},
+				"wrapTTY": func(s string) string {
+					return wrapTTY(s)
+				},
 				"trimNewline": func(s string) string {
 					return strings.TrimSuffix(s, "\n")
 				},
@@ -186,7 +189,7 @@ var usageTemplate = func() *template.Template {
 				},
 				"formatGroupDescription": func(s string) string {
 					s = strings.ReplaceAll(s, "\n", "")
-					s += "\n"
+					s = s + "\n"
 					s = wrapTTY(s)
 					return s
 				},

@@ -29,7 +29,7 @@ func Test_absoluteBinaryPath(t *testing.T) {
 		{
 			name:             "TestOldVersion",
 			terraformVersion: "1.0.9",
-			expectedErr:      errTerraformMinorVersionMismatch,
+			expectedErr:      terraformMinorVersionMismatch,
 		},
 		{
 			name:             "TestNewVersion",
@@ -54,6 +54,7 @@ func Test_absoluteBinaryPath(t *testing.T) {
 				t.Skip("Dummy terraform executable on Windows requires sh which isn't very practical.")
 			}
 
+			log := testutil.Logger(t)
 			// Create a temp dir with the binary
 			tempDir := t.TempDir()
 			terraformBinaryOutput := fmt.Sprintf(`#!/bin/sh
@@ -84,12 +85,11 @@ func Test_absoluteBinaryPath(t *testing.T) {
 			}
 
 			ctx := testutil.Context(t, testutil.WaitShort)
-			actualBinaryDetails, actualErr := systemBinary(ctx)
+			actualAbsoluteBinary, actualErr := absoluteBinaryPath(ctx, log)
 
+			require.Equal(t, expectedAbsoluteBinary, actualAbsoluteBinary)
 			if tt.expectedErr == nil {
 				require.NoError(t, actualErr)
-				require.Equal(t, expectedAbsoluteBinary, actualBinaryDetails.absolutePath)
-				require.Equal(t, tt.terraformVersion, actualBinaryDetails.version.String())
 			} else {
 				require.EqualError(t, actualErr, tt.expectedErr.Error())
 			}

@@ -2,12 +2,12 @@ package agentsdk
 
 import (
 	"context"
-	"slices"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 	"golang.org/x/xerrors"
 	protobuf "google.golang.org/protobuf/proto"
 
@@ -157,7 +157,7 @@ func TestLogSender_LogLimitExceeded(t *testing.T) {
 		&proto.BatchCreateLogsResponse{LogLimitExceeded: true})
 
 	err := testutil.RequireRecvCtx(ctx, t, loopErr)
-	require.ErrorIs(t, err, ErrLogLimitExceeded)
+	require.ErrorIs(t, err, LogLimitExceededError)
 
 	// Should also unblock WaitUntilEmpty
 	err = testutil.RequireRecvCtx(ctx, t, empty)
@@ -180,7 +180,7 @@ func TestLogSender_LogLimitExceeded(t *testing.T) {
 		loopErr <- err
 	}()
 	err = testutil.RequireRecvCtx(ctx, t, loopErr)
-	require.ErrorIs(t, err, ErrLogLimitExceeded)
+	require.ErrorIs(t, err, LogLimitExceededError)
 }
 
 func TestLogSender_SkipHugeLog(t *testing.T) {

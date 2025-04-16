@@ -79,7 +79,6 @@ export const DuplicateTemplateView: FC<CreateTemplatePageViewProps> = ({
 						templateVersionQuery.data!.job.file_id,
 						formData.user_variable_values,
 						formData.provisioner_type,
-						formData.tags,
 					),
 					template: newTemplate(formData),
 				});

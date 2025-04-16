@@ -161,11 +161,11 @@ func TestTemplates(t *testing.T) {
 							Name: "some",
 							Type: "example",
 							Agents: []*proto.Agent{{
-								Id:   "something",
-								Name: "test",
+								Id: "something",
 								Auth: &proto.Agent_Token{
 									Token: uuid.NewString(),
 								},
+								Name: "test",
 							}},
 						}, {
 							Name: "another",
@@ -922,7 +922,6 @@ func TestTemplateACL(t *testing.T) {
 
 	t.Run("everyoneGroup", func(t *testing.T) {
 		t.Parallel()
-
 		client, user := coderdenttest.New(t, &coderdenttest.Options{LicenseOptions: &coderdenttest.LicenseOptions{
 			Features: license.Features{
 				codersdk.FeatureTemplateRBAC: 1,
@@ -941,7 +940,7 @@ func TestTemplateACL(t *testing.T) {
 		require.NoError(t, err)
 
 		require.Len(t, acl.Groups, 1)
-		require.Len(t, acl.Groups[0].Members, 2) // orgAdmin + TemplateAdmin
+		require.Len(t, acl.Groups[0].Members, 2)
 		require.Len(t, acl.Users, 0)
 	})
 
@@ -2019,7 +2018,7 @@ func TestMultipleOrganizationTemplates(t *testing.T) {
 	t.Logf("Second organization: %s", second.ID.String())
 	t.Logf("Third organization: %s", third.ID.String())
 
-	t.Log("Creating template version in second organization")
+	t.Logf("Creating template version in second organization")
 
 	start := time.Now()
 	version := coderdtest.CreateTemplateVersion(t, templateAdmin, second.ID, nil)

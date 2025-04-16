@@ -2,7 +2,6 @@ package runner
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -580,8 +579,6 @@ func (r *Runner) runTemplateImport(ctx context.Context) (*proto.CompletedJob, *p
 		externalAuthProviderNames = append(externalAuthProviderNames, it.Id)
 	}
 
-	// fmt.Println("completed job: template import: graph:", startProvision.Graph)
-
 	return &proto.CompletedJob{
 		JobId: r.job.JobId,
 		Type: &proto.CompletedJob_TemplateImport_{
@@ -593,8 +590,6 @@ func (r *Runner) runTemplateImport(ctx context.Context) (*proto.CompletedJob, *p
 				ExternalAuthProviders:      startProvision.ExternalAuthProviders,
 				StartModules:               startProvision.Modules,
 				StopModules:                stopProvision.Modules,
-				Presets:                    startProvision.Presets,
-				Plan:                       startProvision.Plan,
 			},
 		},
 	}, nil
@@ -655,8 +650,6 @@ type templateImportProvision struct {
 	Parameters            []*sdkproto.RichParameter
 	ExternalAuthProviders []*sdkproto.ExternalAuthProviderResource
 	Modules               []*sdkproto.Module
-	Presets               []*sdkproto.Preset
-	Plan                  json.RawMessage
 }
 
 // Performs a dry-run provision when importing a template.
@@ -749,8 +742,6 @@ func (r *Runner) runTemplateImportProvisionWithRichParameters(
 				Parameters:            c.Parameters,
 				ExternalAuthProviders: c.ExternalAuthProviders,
 				Modules:               c.Modules,
-				Presets:               c.Presets,
-				Plan:                  c.Plan,
 			}, nil
 		default:
 			return nil, xerrors.Errorf("invalid message type %q received from provisioner",
@@ -885,8 +876,7 @@ func (r *Runner) commitQuota(ctx context.Context, resources []*sdkproto.Resource
 	const stage = "Commit quota"
 
 	resp, err := r.quotaCommitter.CommitQuota(ctx, &proto.CommitQuotaRequest{
-		JobId: r.job.JobId,
-		// #nosec G115 - Safe conversion as cost is expected to be within int32 range for provisioning costs
+		JobId:     r.job.JobId,
 		DailyCost: int32(cost),
 	})
 	if err != nil {

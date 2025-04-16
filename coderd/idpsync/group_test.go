@@ -4,12 +4,12 @@ import (
 	"context"
 	"database/sql"
 	"regexp"
-	"slices"
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/slices"
 	"golang.org/x/xerrors"
 
 	"cdr.dev/slog/sloggers/slogtest"
@@ -872,7 +872,7 @@ func (o orgSetupDefinition) Assert(t *testing.T, orgID uuid.UUID, db database.St
 	}
 }
 
-func (o *orgGroupAssert) Assert(t *testing.T, orgID uuid.UUID, db database.Store, user database.User) {
+func (o orgGroupAssert) Assert(t *testing.T, orgID uuid.UUID, db database.Store, user database.User) {
 	t.Helper()
 
 	ctx := context.Background()

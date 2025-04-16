@@ -49,7 +49,6 @@ export const WorkspaceBuildPage: FC = () => {
 			<WorkspaceBuildPageView
 				logs={logs}
 				build={build}
-				buildError={wsBuildQuery.error}
 				builds={buildsQuery.data}
 				activeBuildNumber={buildNumber}
 			/>

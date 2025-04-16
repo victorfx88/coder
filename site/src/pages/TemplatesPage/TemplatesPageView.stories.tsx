@@ -74,11 +74,6 @@ export const WithTemplates: Story = {
 			},
 		],
 		examples: [],
-		workspacePermissions: {
-			[MockTemplate.organization_id]: {
-				createWorkspaceForUserID: true,
-			},
-		},
 	},
 };
 
@@ -86,30 +81,6 @@ export const MultipleOrganizations: Story = {
 	args: {
 		...WithTemplates.args,
 		showOrganizations: true,
-	},
-};
-
-export const CannotCreateWorkspaces: Story = {
-	args: {
-		...WithTemplates.args,
-		workspacePermissions: {
-			[MockTemplate.organization_id]: {
-				createWorkspaceForUserID: false,
-			},
-		},
-	},
-};
-
-export const WithFilteredAllTemplates: Story = {
-	args: {
-		...WithTemplates.args,
-		templates: [],
-		...getDefaultFilterProps({
-			query: "deprecated:false searchnotfound",
-			menus: {},
-			values: {},
-			used: true,
-		}),
 	},
 };
 

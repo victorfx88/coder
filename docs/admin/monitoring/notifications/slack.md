@@ -89,11 +89,11 @@ To build the server to receive webhooks and interact with Slack:
                return res.status(400).send("Error: request body is missing");
            }
 
-           const { title_markdown, body_markdown } = req.body;
-              if (!title_markdown || !body_markdown) {
-                  return res
-                      .status(400)
-                      .send('Error: missing fields: "title_markdown", or "body_markdown"');
+           const { title, body } = req.body;
+           if (!title || !body) {
+               return res
+                   .status(400)
+                   .send('Error: missing fields: "title", or "body"');
            }
 
            const payload = req.body.payload;
@@ -119,11 +119,11 @@ To build the server to receive webhooks and interact with Slack:
                blocks: [
                    {
                        type: "header",
-                       text: { type: "mrkdwn", text: title_markdown },
+                       text: { type: "plain_text", text: title },
                    },
                    {
                        type: "section",
-                       text: { type: "mrkdwn", text: body_markdown },
+                       text: { type: "mrkdwn", text: body },
                    },
                ],
            };
@@ -181,11 +181,12 @@ To build the server to receive webhooks and interact with Slack:
 Slack requires the bot to acknowledge when a user clicks on a URL action button.
 This is handled by setting up interactivity.
 
-Under "Interactivity & Shortcuts" in your Slack app settings, set the Request
-URL to match the public URL of your web server's endpoint.
+1. Under "Interactivity & Shortcuts" in your Slack app settings, set the Request
+   URL to match the public URL of your web server's endpoint.
 
-You can use any public endpoint that accepts and responds to POST requests with HTTP 200.
-For temporary testing, you can set it to `https://httpbin.org/status/200`.
+> Notice: You can use any public endpoint that accepts and responds to POST
+> requests with HTTP 200. For temporary testing, you can set it to
+> `https://httpbin.org/status/200`.
 
 Once this is set, Slack will send interaction payloads to your server, which
 must respond appropriately.

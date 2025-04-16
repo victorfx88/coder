@@ -10,7 +10,6 @@ import { DropdownArrow } from "components/DropdownArrow/DropdownArrow";
 import { Pill } from "components/Pill/Pill";
 import { Stack } from "components/Stack/Stack";
 import { TimelineEntry } from "components/Timeline/TimelineEntry";
-import { NetworkIcon } from "lucide-react";
 import { type FC, useState } from "react";
 import { Link as RouterLink } from "react-router-dom";
 import type { ThemeRole } from "theme/roles";
@@ -102,20 +101,10 @@ export const AuditLogRow: FC<AuditLogRowProps> = ({
 						css={styles.auditLogHeaderInfo}
 					>
 						<Stack direction="row" alignItems="center" css={styles.fullWidth}>
-							{/*
-							 * Session logs don't have an associated user to the log,
-							 * so when it happens we display a default icon to represent non user actions
-							 */}
-							{auditLog.user ? (
-								<Avatar
-									fallback={auditLog.user.username}
-									src={auditLog.user.avatar_url}
-								/>
-							) : (
-								<Avatar>
-									<NetworkIcon className="h-full w-full p-1" />
-								</Avatar>
-							)}
+							<Avatar
+								fallback={auditLog.user?.username ?? "?"}
+								src={auditLog.user?.avatar_url}
+							/>
 
 							<Stack
 								alignItems="baseline"
@@ -139,8 +128,6 @@ export const AuditLogRow: FC<AuditLogRowProps> = ({
 								</Stack>
 
 								<Stack direction="row" alignItems="center">
-									<StatusPill code={auditLog.status_code} />
-
 									{/* With multi-org, there is not enough space so show
                       everything in a tooltip. */}
 									{showOrgDetails ? (
@@ -182,12 +169,6 @@ export const AuditLogRow: FC<AuditLogRowProps> = ({
 															</Link>
 														</div>
 													)}
-													{auditLog.additional_fields?.reason && (
-														<div>
-															<h4 css={styles.auditLogInfoHeader}>Reason:</h4>
-															<div>{auditLog.additional_fields?.reason}</div>
-														</div>
-													)}
 												</div>
 											}
 										>
@@ -222,6 +203,13 @@ export const AuditLogRow: FC<AuditLogRowProps> = ({
 											)}
 										</Stack>
 									)}
+
+									<Pill
+										css={styles.httpStatusPill}
+										type={httpStatusColor(auditLog.status_code)}
+									>
+										{auditLog.status_code.toString()}
+									</Pill>
 								</Stack>
 							</Stack>
 						</Stack>
@@ -230,7 +218,7 @@ export const AuditLogRow: FC<AuditLogRowProps> = ({
 					{shouldDisplayDiff ? (
 						<div> {<DropdownArrow close={isDiffOpen} />}</div>
 					) : (
-						<div css={styles.columnWithoutDiff} />
+						<div css={styles.columnWithoutDiff}></div>
 					)}
 				</Stack>
 
@@ -243,19 +231,6 @@ export const AuditLogRow: FC<AuditLogRowProps> = ({
 		</TimelineEntry>
 	);
 };
-
-function StatusPill({ code }: { code: number }) {
-	const isHttp = code >= 100;
-
-	return (
-		<Pill
-			css={styles.statusCodePill}
-			type={isHttp ? httpStatusColor(code) : code === 0 ? "success" : "error"}
-		>
-			{code.toString()}
-		</Pill>
-	);
-}
 
 const styles = {
 	auditLogCell: {
@@ -312,7 +287,7 @@ const styles = {
 		width: "100%",
 	},
 
-	statusCodePill: {
+	httpStatusPill: {
 		fontSize: 10,
 		height: 20,
 		paddingLeft: 10,

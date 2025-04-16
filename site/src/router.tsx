@@ -13,13 +13,13 @@ import { RequireAuth } from "./contexts/auth/RequireAuth";
 import { DashboardLayout } from "./modules/dashboard/DashboardLayout";
 import AuditPage from "./pages/AuditPage/AuditPage";
 import { HealthLayout } from "./pages/HealthPage/HealthLayout";
-import LoginOAuthDevicePage from "./pages/LoginOAuthDevicePage/LoginOAuthDevicePage";
 import LoginPage from "./pages/LoginPage/LoginPage";
 import { SetupPage } from "./pages/SetupPage/SetupPage";
 import { TemplateLayout } from "./pages/TemplatePage/TemplateLayout";
 import { TemplateSettingsLayout } from "./pages/TemplateSettingsPage/TemplateSettingsLayout";
 import TemplatesPage from "./pages/TemplatesPage/TemplatesPage";
 import UserSettingsLayout from "./pages/UserSettingsPage/Layout";
+import { UsersLayout } from "./pages/UsersPage/UsersLayout";
 import UsersPage from "./pages/UsersPage/UsersPage";
 import { WorkspaceSettingsLayout } from "./pages/WorkspaceSettingsPage/WorkspaceSettingsLayout";
 import WorkspacesPage from "./pages/WorkspacesPage/WorkspacesPage";
@@ -31,8 +31,8 @@ const NotFoundPage = lazy(() => import("./pages/404Page/404Page"));
 const DeploymentSettingsLayout = lazy(
 	() => import("./modules/management/DeploymentSettingsLayout"),
 );
-const DeploymentConfigProvider = lazy(
-	() => import("./modules/management/DeploymentConfigProvider"),
+const DeploymentSettingsProvider = lazy(
+	() => import("./modules/management/DeploymentSettingsProvider"),
 );
 const OrganizationSidebarLayout = lazy(
 	() => import("./modules/management/OrganizationSidebarLayout"),
@@ -95,11 +95,21 @@ const TemplatePermissionsPage = lazy(
 const TemplateSummaryPage = lazy(
 	() => import("./pages/TemplatePage/TemplateSummaryPage/TemplateSummaryPage"),
 );
-const CreateWorkspaceExperimentRouter = lazy(
-	() => import("./pages/CreateWorkspacePage/CreateWorkspaceExperimentRouter"),
+const CreateWorkspacePage = lazy(
+	() => import("./pages/CreateWorkspacePage/CreateWorkspacePage"),
 );
-const OverviewPage = lazy(
-	() => import("./pages/DeploymentSettingsPage/OverviewPage/OverviewPage"),
+const CreateGroupPage = lazy(
+	() => import("./pages/GroupsPage/CreateGroupPage"),
+);
+const GroupPage = lazy(() => import("./pages/GroupsPage/GroupPage"));
+const SettingsGroupPage = lazy(
+	() => import("./pages/GroupsPage/SettingsGroupPage"),
+);
+const GeneralSettingsPage = lazy(
+	() =>
+		import(
+			"./pages/DeploymentSettingsPage/GeneralSettingsPage/GeneralSettingsPage"
+		),
 );
 const SecuritySettingsPage = lazy(
 	() =>
@@ -226,48 +236,40 @@ const AddNewLicensePage = lazy(
 			"./pages/DeploymentSettingsPage/LicensesSettingsPage/AddNewLicensePage"
 		),
 );
-const OrganizationRedirect = lazy(
-	() => import("./pages/OrganizationSettingsPage/OrganizationRedirect"),
-);
-
 const CreateOrganizationPage = lazy(
-	() => import("./pages/OrganizationSettingsPage/CreateOrganizationPage"),
+	() => import("./pages/ManagementSettingsPage/CreateOrganizationPage"),
 );
 const OrganizationSettingsPage = lazy(
-	() => import("./pages/OrganizationSettingsPage/OrganizationSettingsPage"),
+	() => import("./pages/ManagementSettingsPage/OrganizationSettingsPage"),
 );
-const GroupsPageProvider = lazy(
-	() => import("./pages/GroupsPage/GroupsPageProvider"),
+const OrganizationGroupsPage = lazy(
+	() => import("./pages/ManagementSettingsPage/GroupsPage/GroupsPage"),
 );
-const GroupsPage = lazy(() => import("./pages/GroupsPage/GroupsPage"));
-const CreateGroupPage = lazy(
-	() => import("./pages/GroupsPage/CreateGroupPage"),
+const CreateOrganizationGroupPage = lazy(
+	() => import("./pages/ManagementSettingsPage/GroupsPage/CreateGroupPage"),
 );
-const GroupPage = lazy(() => import("./pages/GroupsPage/GroupPage"));
-const GroupSettingsPage = lazy(
-	() => import("./pages/GroupsPage/GroupSettingsPage"),
+const OrganizationGroupPage = lazy(
+	() => import("./pages/ManagementSettingsPage/GroupsPage/GroupPage"),
+);
+const OrganizationGroupSettingsPage = lazy(
+	() => import("./pages/ManagementSettingsPage/GroupsPage/GroupSettingsPage"),
 );
 const OrganizationMembersPage = lazy(
-	() => import("./pages/OrganizationSettingsPage/OrganizationMembersPage"),
+	() => import("./pages/ManagementSettingsPage/OrganizationMembersPage"),
 );
 const OrganizationCustomRolesPage = lazy(
 	() =>
-		import("./pages/OrganizationSettingsPage/CustomRolesPage/CustomRolesPage"),
+		import("./pages/ManagementSettingsPage/CustomRolesPage/CustomRolesPage"),
 );
 const OrganizationIdPSyncPage = lazy(
-	() => import("./pages/OrganizationSettingsPage/IdpSyncPage/IdpSyncPage"),
+	() => import("./pages/ManagementSettingsPage/IdpSyncPage/IdpSyncPage"),
 );
 const CreateEditRolePage = lazy(
 	() =>
-		import(
-			"./pages/OrganizationSettingsPage/CustomRolesPage/CreateEditRolePage"
-		),
+		import("./pages/ManagementSettingsPage/CustomRolesPage/CreateEditRolePage"),
 );
-const ProvisionersPage = lazy(
-	() =>
-		import(
-			"./pages/OrganizationSettingsPage/OrganizationProvisionersPage/OrganizationProvisionersPage"
-		),
+const OrganizationProvisionersPage = lazy(
+	() => import("./pages/ManagementSettingsPage/OrganizationProvisionersPage"),
 );
 const TemplateEmbedPage = lazy(
 	() => import("./pages/TemplatePage/TemplateEmbedPage/TemplateEmbedPage"),
@@ -279,6 +281,7 @@ const TemplateInsightsPage = lazy(
 const PremiumPage = lazy(
 	() => import("./pages/DeploymentSettingsPage/PremiumPage/PremiumPage"),
 );
+const GroupsPage = lazy(() => import("./pages/GroupsPage/GroupsPage"));
 const IconsPage = lazy(() => import("./pages/IconsPage/IconsPage"));
 const AccessURLPage = lazy(() => import("./pages/HealthPage/AccessURLPage"));
 const DatabasePage = lazy(() => import("./pages/HealthPage/DatabasePage"));
@@ -309,12 +312,6 @@ const ChangePasswordPage = lazy(
 const IdpOrgSyncPage = lazy(
 	() => import("./pages/DeploymentSettingsPage/IdpOrgSyncPage/IdpOrgSyncPage"),
 );
-const ProvisionerJobsPage = lazy(
-	() =>
-		import(
-			"./pages/OrganizationSettingsPage/OrganizationProvisionerJobsPage/OrganizationProvisionerJobsPage"
-		),
-);
 
 const RoutesWithSuspense = () => {
 	return (
@@ -337,7 +334,7 @@ const templateRouter = () => {
 					<Route path="insights" element={<TemplateInsightsPage />} />
 				</Route>
 
-				<Route path="workspace" element={<CreateWorkspaceExperimentRouter />} />
+				<Route path="workspace" element={<CreateWorkspacePage />} />
 
 				<Route path="settings" element={<TemplateSettingsLayout />}>
 					<Route index element={<TemplateSettingsPage />} />
@@ -356,16 +353,17 @@ const templateRouter = () => {
 	);
 };
 
-const groupsRouter = () => {
+const organizationGroupsRouter = () => {
 	return (
 		<Route path="groups">
-			<Route element={<GroupsPageProvider />}>
-				<Route index element={<GroupsPage />} />
+			<Route index element={<OrganizationGroupsPage />} />
 
-				<Route path="create" element={<CreateGroupPage />} />
-				<Route path=":groupName" element={<GroupPage />} />
-				<Route path=":groupName/settings" element={<GroupSettingsPage />} />
-			</Route>
+			<Route path="create" element={<CreateOrganizationGroupPage />} />
+			<Route path=":groupName" element={<OrganizationGroupPage />} />
+			<Route
+				path=":groupName/settings"
+				element={<OrganizationGroupSettingsPage />}
+			/>
 		</Route>
 	);
 };
@@ -377,7 +375,6 @@ export const router = createBrowserRouter(
 			errorElement={<GlobalErrorBoundary />}
 		>
 			<Route path="login" element={<LoginPage />} />
-			<Route path="login/device" element={<LoginOAuthDevicePage />} />
 			<Route path="setup" element={<SetupPage />} />
 			<Route path="reset-password">
 				<Route index element={<RequestOTPPage />} />
@@ -408,15 +405,23 @@ export const router = createBrowserRouter(
 						{templateRouter()}
 					</Route>
 
-					<Route
-						path="/users/*"
-						element={<Navigate to="/deployment/users" replace />}
-					/>
+					<Route path="/users">
+						<Route element={<UsersLayout />}>
+							<Route index element={<UsersPage />} />
+						</Route>
 
-					<Route
-						path="/groups/*"
-						element={<Navigate to="/deployment/groups" replace />}
-					/>
+						<Route path="create" element={<CreateUserPage />} />
+					</Route>
+
+					<Route path="/groups">
+						<Route element={<UsersLayout />}>
+							<Route index element={<GroupsPage />} />
+						</Route>
+
+						<Route path="create" element={<CreateGroupPage />} />
+						<Route path=":groupName" element={<GroupPage />} />
+						<Route path=":groupName/settings" element={<SettingsGroupPage />} />
+					</Route>
 
 					<Route path="/audit" element={<AuditPage />} />
 
@@ -424,20 +429,19 @@ export const router = createBrowserRouter(
 						<Route path="new" element={<CreateOrganizationPage />} />
 
 						{/* General settings for the default org can omit the organization name */}
-						<Route index element={<OrganizationRedirect />} />
+						<Route index element={<OrganizationSettingsPage />} />
 
 						<Route path=":organization" element={<OrganizationSidebarLayout />}>
 							<Route index element={<OrganizationMembersPage />} />
-							{groupsRouter()}
+							{organizationGroupsRouter()}
 							<Route path="roles">
 								<Route index element={<OrganizationCustomRolesPage />} />
 								<Route path="create" element={<CreateEditRolePage />} />
 								<Route path=":roleName" element={<CreateEditRolePage />} />
 							</Route>
-							<Route path="provisioners" element={<ProvisionersPage />} />
 							<Route
-								path="provisioner-jobs"
-								element={<ProvisionerJobsPage />}
+								path="provisioners"
+								element={<OrganizationProvisionersPage />}
 							/>
 							<Route path="idp-sync" element={<OrganizationIdPSyncPage />} />
 							<Route path="settings" element={<OrganizationSettingsPage />} />
@@ -445,8 +449,8 @@ export const router = createBrowserRouter(
 					</Route>
 
 					<Route path="/deployment" element={<DeploymentSettingsLayout />}>
-						<Route element={<DeploymentConfigProvider />}>
-							<Route path="overview" element={<OverviewPage />} />
+						<Route element={<DeploymentSettingsProvider />}>
+							<Route path="general" element={<GeneralSettingsPage />} />
 							<Route path="security" element={<SecuritySettingsPage />} />
 							<Route
 								path="observability"
@@ -463,6 +467,8 @@ export const router = createBrowserRouter(
 								path="notifications"
 								element={<DeploymentNotificationsPage />}
 							/>
+							<Route path="idp-org-sync" element={<IdpOrgSyncPage />} />
+							<Route path="premium" element={<PremiumPage />} />
 						</Route>
 
 						<Route path="licenses">
@@ -482,11 +488,18 @@ export const router = createBrowserRouter(
 
 						<Route path="users" element={<UsersPage />} />
 						<Route path="users/create" element={<CreateUserPage />} />
+						<Route path="groups">
+							<Route element={<UsersLayout />}>
+								<Route index element={<GroupsPage />} />
+							</Route>
 
-						{groupsRouter()}
-
-						<Route path="idp-org-sync" element={<IdpOrgSyncPage />} />
-						<Route path="premium" element={<PremiumPage />} />
+							<Route path="create" element={<CreateGroupPage />} />
+							<Route path=":groupName" element={<GroupPage />} />
+							<Route
+								path=":groupName/settings"
+								element={<SettingsGroupPage />}
+							/>
+						</Route>
 					</Route>
 
 					<Route path="/settings" element={<UserSettingsLayout />}>

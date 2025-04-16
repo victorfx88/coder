@@ -12,14 +12,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
+	"golang.org/x/xerrors"
 	"tailscale.com/tailcfg"
 	"tailscale.com/wgengine/capture"
 
-	"github.com/google/uuid"
-	"golang.org/x/xerrors"
-
 	"cdr.dev/slog"
-
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/tailnet"
 	"github.com/coder/coder/v2/tailnet/proto"
@@ -31,7 +29,6 @@ var ErrSkipClose = xerrors.New("skip tailnet close")
 
 const (
 	AgentSSHPort             = tailnet.WorkspaceAgentSSHPort
-	AgentStandardSSHPort     = tailnet.WorkspaceAgentStandardSSHPort
 	AgentReconnectingPTYPort = tailnet.WorkspaceAgentReconnectingPTYPort
 	AgentSpeedtestPort       = tailnet.WorkspaceAgentSpeedtestPort
 	// AgentHTTPAPIServerPort serves a HTTP server with endpoints for e.g.
@@ -123,24 +120,16 @@ func init() {
 	// Add a thousand more ports to the ignore list during tests so it's easier
 	// to find an available port.
 	for i := 63000; i < 64000; i++ {
-		// #nosec G115 - Safe conversion as port numbers are within uint16 range (0-65535)
 		AgentIgnoredListeningPorts[uint16(i)] = struct{}{}
 	}
 }
 
-type resolver interface {
-	LookupIP(ctx context.Context, network, host string) ([]net.IP, error)
-}
-
 type Client struct {
 	client *codersdk.Client
-
-	// overridden in tests
-	resolver resolver
 }
 
 func New(c *codersdk.Client) *Client {
-	return &Client{client: c, resolver: net.DefaultResolver}
+	return &Client{client: c}
 }
 
 // AgentConnectionInfo returns required information for establishing
@@ -150,7 +139,6 @@ type AgentConnectionInfo struct {
 	DERPMap                  *tailcfg.DERPMap `json:"derp_map"`
 	DERPForceWebSockets      bool             `json:"derp_force_websockets"`
 	DisableDirectConnections bool             `json:"disable_direct_connections"`
-	HostnameSuffix           string           `json:"hostname_suffix,omitempty"`
 }
 
 func (c *Client) AgentConnectionInfoGeneric(ctx context.Context) (AgentConnectionInfo, error) {
@@ -317,21 +305,6 @@ type WorkspaceAgentReconnectingPTYOpts struct {
 	// issue-reconnecting-pty-signed-token endpoint. If set, the session token
 	// on the client will not be sent.
 	SignedToken string
-
-	// Experimental: Container, if set, will attempt to exec into a running container
-	// visible to the agent. This should be a unique container ID
-	// (implementation-dependent).
-	// ContainerUser is the user as which to exec into the container.
-	// NOTE: This feature is currently experimental and is currently "opt-in".
-	// In order to use this feature, the agent must have the environment variable
-	// CODER_AGENT_DEVCONTAINERS_ENABLE set to "true".
-	Container     string
-	ContainerUser string
-
-	// BackendType is the type of backend to use for the PTY. If not set, the
-	// workspace agent will attempt to determine the preferred backend type.
-	// Supported values are "screen" and "buffered".
-	BackendType string
 }
 
 // AgentReconnectingPTY spawns a PTY that reconnects using the token provided.
@@ -347,15 +320,6 @@ func (c *Client) AgentReconnectingPTY(ctx context.Context, opts WorkspaceAgentRe
 	q.Set("width", strconv.Itoa(int(opts.Width)))
 	q.Set("height", strconv.Itoa(int(opts.Height)))
 	q.Set("command", opts.Command)
-	if opts.Container != "" {
-		q.Set("container", opts.Container)
-	}
-	if opts.ContainerUser != "" {
-		q.Set("container_user", opts.ContainerUser)
-	}
-	if opts.BackendType != "" {
-		q.Set("backend_type", opts.BackendType)
-	}
 	// If we're using a signed token, set the query parameter.
 	if opts.SignedToken != "" {
 		q.Set(codersdk.SignedAppTokenQueryParameter, opts.SignedToken)
@@ -390,47 +354,4 @@ func (c *Client) AgentReconnectingPTY(ctx context.Context, opts WorkspaceAgentRe
 		return nil, codersdk.ReadBodyAsError(res)
 	}
 	return websocket.NetConn(context.Background(), conn, websocket.MessageBinary), nil
-}
-
-type CoderConnectQueryOptions struct {
-	HostnameSuffix string
-}
-
-// IsCoderConnectRunning checks if Coder Connect (OS level tunnel to workspaces) is running on the system. If you
-// already know the hostname suffix your deployment uses, you can pass it in the CoderConnectQueryOptions to avoid an
-// API call to AgentConnectionInfoGeneric.
-func (c *Client) IsCoderConnectRunning(ctx context.Context, o CoderConnectQueryOptions) (bool, error) {
-	suffix := o.HostnameSuffix
-	if suffix == "" {
-		info, err := c.AgentConnectionInfoGeneric(ctx)
-		if err != nil {
-			return false, xerrors.Errorf("get agent connection info: %w", err)
-		}
-		suffix = info.HostnameSuffix
-	}
-	domainName := fmt.Sprintf(tailnet.IsCoderConnectEnabledFmtString, suffix)
-	var dnsError *net.DNSError
-	ips, err := c.resolver.LookupIP(ctx, "ip6", domainName)
-	if xerrors.As(err, &dnsError) {
-		if dnsError.IsNotFound {
-			return false, nil
-		}
-	}
-	if err != nil {
-		return false, xerrors.Errorf("lookup DNS %s: %w", domainName, err)
-	}
-
-	// The returned IP addresses are probably from the Coder Connect DNS server, but there are sometimes weird captive
-	// internet setups where the DNS server is configured to return an address for any IP query. So, to avoid false
-	// positives, check if we can find an address from our service prefix.
-	for _, ip := range ips {
-		addr, ok := netip.AddrFromSlice(ip)
-		if !ok {
-			continue
-		}
-		if tailnet.CoderServicePrefix.AsNetip().Contains(addr) {
-			return true, nil
-		}
-	}
-	return false, nil
 }

@@ -20,13 +20,12 @@ import (
 	"golang.org/x/xerrors"
 
 	"cdr.dev/slog"
-	"github.com/coder/retry"
-
 	"github.com/coder/coder/v2/coderd/tracing"
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/provisionerd/proto"
 	"github.com/coder/coder/v2/provisionerd/runner"
 	sdkproto "github.com/coder/coder/v2/provisionersdk/proto"
+	"github.com/coder/retry"
 )
 
 // Dialer represents the function to create a daemon client connection.
@@ -57,7 +56,6 @@ type Options struct {
 	TracerProvider trace.TracerProvider
 	Metrics        *Metrics
 
-	ExternalProvisioner bool
 	ForceCancelInterval time.Duration
 	UpdateInterval      time.Duration
 	LogBufferInterval   time.Duration
@@ -99,13 +97,12 @@ func New(clientDialer Dialer, opts *Options) *Server {
 		clientDialer: clientDialer,
 		clientCh:     make(chan proto.DRPCProvisionerDaemonClient),
 
-		closeContext:        ctx,
-		closeCancel:         ctxCancel,
-		closedCh:            make(chan struct{}),
-		shuttingDownCh:      make(chan struct{}),
-		acquireDoneCh:       make(chan struct{}),
-		initConnectionCh:    opts.InitConnectionCh,
-		externalProvisioner: opts.ExternalProvisioner,
+		closeContext:     ctx,
+		closeCancel:      ctxCancel,
+		closedCh:         make(chan struct{}),
+		shuttingDownCh:   make(chan struct{}),
+		acquireDoneCh:    make(chan struct{}),
+		initConnectionCh: opts.InitConnectionCh,
 	}
 
 	daemon.wg.Add(2)
@@ -144,9 +141,8 @@ type Server struct {
 	// shuttingDownCh will receive when we start graceful shutdown
 	shuttingDownCh chan struct{}
 	// acquireDoneCh will receive when the acquireLoop exits
-	acquireDoneCh       chan struct{}
-	activeJob           *runner.Runner
-	externalProvisioner bool
+	acquireDoneCh chan struct{}
+	activeJob     *runner.Runner
 }
 
 type Metrics struct {
@@ -216,10 +212,6 @@ func NewMetrics(reg prometheus.Registerer) Metrics {
 func (p *Server) connect() {
 	defer p.opts.Logger.Debug(p.closeContext, "connect loop exited")
 	defer p.wg.Done()
-	logConnect := p.opts.Logger.Debug
-	if p.externalProvisioner {
-		logConnect = p.opts.Logger.Info
-	}
 	// An exponential back-off occurs when the connection is failing to dial.
 	// This is to prevent server spam in case of a coderd outage.
 connectLoop:
@@ -247,12 +239,7 @@ connectLoop:
 			p.opts.Logger.Warn(p.closeContext, "coderd client failed to dial", slog.Error(err))
 			continue
 		}
-		// This log is useful to verify that an external provisioner daemon is
-		// successfully connecting to coderd. It doesn't add much value if the
-		// daemon is built-in, so we only log it on the info level if p.externalProvisioner
-		// is true. This log message is mentioned in the docs:
-		// https://github.com/coder/coder/blob/5bd86cb1c06561d1d3e90ce689da220467e525c0/docs/admin/provisioners.md#L346
-		logConnect(p.closeContext, "successfully connected to coderd")
+		p.opts.Logger.Info(p.closeContext, "successfully connected to coderd")
 		retrier.Reset()
 		p.initConnectionOnce.Do(func() {
 			close(p.initConnectionCh)
@@ -265,7 +252,7 @@ connectLoop:
 				client.DRPCConn().Close()
 				return
 			case <-client.DRPCConn().Closed():
-				logConnect(p.closeContext, "connection to coderd closed")
+				p.opts.Logger.Info(p.closeContext, "connection to coderd closed")
 				continue connectLoop
 			case p.clientCh <- client:
 				continue
@@ -291,7 +278,7 @@ func (p *Server) acquireLoop() {
 	defer p.wg.Done()
 	defer func() { close(p.acquireDoneCh) }()
 	ctx := p.closeContext
-	for retrier := retry.New(10*time.Millisecond, 1*time.Second); retrier.Wait(ctx); {
+	for {
 		if p.acquireExit() {
 			return
 		}
@@ -300,17 +287,7 @@ func (p *Server) acquireLoop() {
 			p.opts.Logger.Debug(ctx, "shut down before client (re) connected")
 			return
 		}
-		err := p.acquireAndRunOne(client)
-		if err != nil && ctx.Err() == nil { // Only log if context is not done.
-			// Short-circuit: don't wait for the retry delay to exit, if required.
-			if p.acquireExit() {
-				return
-			}
-			p.opts.Logger.Warn(ctx, "failed to acquire job, retrying", slog.F("delay", fmt.Sprintf("%vms", retrier.Delay.Milliseconds())), slog.Error(err))
-		} else {
-			// Reset the retrier after each successful acquisition.
-			retrier.Reset()
-		}
+		p.acquireAndRunOne(client)
 	}
 }
 
@@ -329,7 +306,7 @@ func (p *Server) acquireExit() bool {
 	return false
 }
 
-func (p *Server) acquireAndRunOne(client proto.DRPCProvisionerDaemonClient) error {
+func (p *Server) acquireAndRunOne(client proto.DRPCProvisionerDaemonClient) {
 	ctx := p.closeContext
 	p.opts.Logger.Debug(ctx, "start of acquireAndRunOne")
 	job, err := p.acquireGraceful(client)
@@ -338,15 +315,15 @@ func (p *Server) acquireAndRunOne(client proto.DRPCProvisionerDaemonClient) erro
 		if errors.Is(err, context.Canceled) ||
 			errors.Is(err, yamux.ErrSessionShutdown) ||
 			errors.Is(err, fasthttputil.ErrInmemoryListenerClosed) {
-			return err
+			return
 		}
 
 		p.opts.Logger.Warn(ctx, "provisionerd was unable to acquire job", slog.Error(err))
-		return xerrors.Errorf("failed to acquire job: %w", err)
+		return
 	}
 	if job.JobId == "" {
 		p.opts.Logger.Debug(ctx, "acquire job successfully canceled")
-		return nil
+		return
 	}
 
 	if len(job.TraceMetadata) > 0 {
@@ -378,7 +355,6 @@ func (p *Server) acquireAndRunOne(client proto.DRPCProvisionerDaemonClient) erro
 			slog.F("workspace_build_id", build.WorkspaceBuildId),
 			slog.F("workspace_id", build.Metadata.WorkspaceId),
 			slog.F("workspace_name", build.WorkspaceName),
-			slog.F("is_prebuild", build.Metadata.IsPrebuild),
 		)
 
 		span.SetAttributes(
@@ -388,7 +364,6 @@ func (p *Server) acquireAndRunOne(client proto.DRPCProvisionerDaemonClient) erro
 			attribute.String("workspace_owner_id", build.Metadata.WorkspaceOwnerId),
 			attribute.String("workspace_owner", build.Metadata.WorkspaceOwner),
 			attribute.String("workspace_transition", build.Metadata.WorkspaceTransition.String()),
-			attribute.Bool("is_prebuild", build.Metadata.IsPrebuild),
 		)
 	}
 
@@ -403,9 +378,9 @@ func (p *Server) acquireAndRunOne(client proto.DRPCProvisionerDaemonClient) erro
 			Error: fmt.Sprintf("failed to connect to provisioner: %s", resp.Error),
 		})
 		if err != nil {
-			p.opts.Logger.Error(ctx, "failed to report provisioner job failed", slog.F("job_id", job.JobId), slog.Error(err))
+			p.opts.Logger.Error(ctx, "provisioner job failed", slog.F("job_id", job.JobId), slog.Error(err))
 		}
-		return xerrors.Errorf("failed to report provisioner job failed: %w", err)
+		return
 	}
 
 	p.mutex.Lock()
@@ -429,7 +404,6 @@ func (p *Server) acquireAndRunOne(client proto.DRPCProvisionerDaemonClient) erro
 	p.mutex.Lock()
 	p.activeJob = nil
 	p.mutex.Unlock()
-	return nil
 }
 
 // acquireGraceful attempts to acquire a job from the server, handling canceling the acquisition if we gracefully shut

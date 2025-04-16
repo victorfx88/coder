@@ -258,7 +258,6 @@ export const TemplatePermissionsPageView: FC<
 												<AvatarData
 													avatar={
 														<Avatar
-															size="lg"
 															fallback={group.display_name || group.name}
 															src={group.avatar_url}
 														/>

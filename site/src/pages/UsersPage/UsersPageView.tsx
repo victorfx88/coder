@@ -1,16 +1,11 @@
 import type { GroupsByUserId } from "api/queries/groups";
 import type * as TypesGen from "api/typesGenerated";
 import { Button } from "components/Button/Button";
+import { PageHeader, PageHeaderTitle } from "components/PageHeader/PageHeader";
 import {
 	PaginationContainer,
 	type PaginationResult,
 } from "components/PaginationWidget/PaginationContainer";
-import {
-	SettingsHeader,
-	SettingsHeaderDescription,
-	SettingsHeaderTitle,
-} from "components/SettingsHeader/SettingsHeader";
-import { Stack } from "components/Stack/Stack";
 import { UserPlusIcon } from "lucide-react";
 import type { ComponentProps, FC } from "react";
 import { Link as RouterLink } from "react-router-dom";
@@ -72,7 +67,8 @@ export const UsersPageView: FC<UsersPageViewProps> = ({
 }) => {
 	return (
 		<>
-			<SettingsHeader
+			<PageHeader
+				css={{ paddingTop: 0 }}
 				actions={
 					canCreateUser && (
 						<Button asChild>
@@ -84,11 +80,8 @@ export const UsersPageView: FC<UsersPageViewProps> = ({
 					)
 				}
 			>
-				<SettingsHeaderTitle>Users</SettingsHeaderTitle>
-				<SettingsHeaderDescription>
-					Manage user accounts and permissions.
-				</SettingsHeaderDescription>
-			</SettingsHeader>
+				<PageHeaderTitle>Users</PageHeaderTitle>
+			</PageHeader>
 
 			<UsersFilter {...filterProps} />
 

@@ -257,12 +257,12 @@ func (api *API) tokens(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var userIDs []uuid.UUID
+	var userIds []uuid.UUID
 	for _, key := range keys {
-		userIDs = append(userIDs, key.UserID)
+		userIds = append(userIds, key.UserID)
 	}
 
-	users, _ := api.Database.GetUsersByIDs(ctx, userIDs)
+	users, _ := api.Database.GetUsersByIDs(ctx, userIds)
 	usersByID := map[uuid.UUID]database.User{}
 	for _, user := range users {
 		usersByID[user.ID] = user
@@ -382,10 +382,12 @@ func (api *API) createAPIKey(ctx context.Context, params apikey.CreateParams) (*
 		APIKeys: []telemetry.APIKey{telemetry.ConvertAPIKey(newkey)},
 	})
 
-	return api.DeploymentValues.HTTPCookies.Apply(&http.Cookie{
+	return &http.Cookie{
 		Name:     codersdk.SessionTokenCookie,
 		Value:    sessionToken,
 		Path:     "/",
 		HttpOnly: true,
-	}), &newkey, nil
+		SameSite: http.SameSiteLaxMode,
+		Secure:   api.SecureAuthCookie,
+	}, &newkey, nil
 }

@@ -17,8 +17,6 @@ import (
 	"golang.org/x/sys/unix"
 	"golang.org/x/xerrors"
 	"kernel.org/pub/linux/libs/security/libcap/cap"
-
-	"github.com/coder/coder/v2/agent/usershell"
 )
 
 // CLI runs the agent-exec command. It should only be called by the cli package.
@@ -116,8 +114,7 @@ func CLI() error {
 
 	// Remove environment variables specific to the agentexec command. This is
 	// especially important for environments that are attempting to develop Coder in Coder.
-	ei := usershell.SystemEnvInfo{}
-	env := ei.Environ()
+	env := os.Environ()
 	env = slices.DeleteFunc(env, func(e string) bool {
 		return strings.HasPrefix(e, EnvProcPrioMgmt) ||
 			strings.HasPrefix(e, EnvProcOOMScore) ||

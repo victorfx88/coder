@@ -8,11 +8,7 @@ import Skeleton from "@mui/material/Skeleton";
 import Tooltip from "@mui/material/Tooltip";
 import type { GetLicensesResponse } from "api/api";
 import type { UserStatusChangeCount } from "api/typesGenerated";
-import {
-	SettingsHeader,
-	SettingsHeaderDescription,
-	SettingsHeaderTitle,
-} from "components/SettingsHeader/SettingsHeader";
+import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import { Stack } from "components/Stack/Stack";
 import { useWindowSize } from "hooks/useWindowSize";
 import type { FC } from "react";
@@ -64,12 +60,10 @@ const LicensesSettingsPageView: FC<Props> = ({
 				direction="row"
 				justifyContent="space-between"
 			>
-				<SettingsHeader>
-					<SettingsHeaderTitle>Licenses</SettingsHeaderTitle>
-					<SettingsHeaderDescription>
-						Manage licenses to unlock Premium features.
-					</SettingsHeaderDescription>
-				</SettingsHeader>
+				<SettingsHeader
+					title="Licenses"
+					description="Manage licenses to unlock Premium features."
+				/>
 
 				<Stack direction="row" spacing={2}>
 					<Button
@@ -99,7 +93,7 @@ const LicensesSettingsPageView: FC<Props> = ({
 
 				{!isLoading && licenses && licenses?.length > 0 && (
 					<Stack spacing={4} className="licenses">
-						{[...(licenses ?? [])]
+						{licenses
 							?.sort(
 								(a, b) =>
 									new Date(b.claims.license_expires).valueOf() -

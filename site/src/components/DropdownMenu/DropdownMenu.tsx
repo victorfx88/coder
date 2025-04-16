@@ -7,10 +7,12 @@
  */
 
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
-import { Check, ChevronRight, Circle } from "lucide-react";
+import { Button } from "components/Button/Button";
+import { Check, ChevronDownIcon, ChevronRight, Circle } from "lucide-react";
 import {
 	type ComponentPropsWithoutRef,
 	type ElementRef,
+	type FC,
 	type HTMLAttributes,
 	forwardRef,
 } from "react";

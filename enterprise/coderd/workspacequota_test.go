@@ -73,9 +73,9 @@ func TestWorkspaceQuota(t *testing.T) {
 
 		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
 		defer cancel()
-		maxWorkspaces := 1
+		max := 1
 		client, _, api, user := coderdenttest.NewWithAPI(t, &coderdenttest.Options{
-			UserWorkspaceQuota: maxWorkspaces,
+			UserWorkspaceQuota: max,
 			LicenseOptions: &coderdenttest.LicenseOptions{
 				Features: license.Features{
 					codersdk.FeatureTemplateRBAC: 1,
@@ -195,9 +195,9 @@ func TestWorkspaceQuota(t *testing.T) {
 
 		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
 		defer cancel()
-		maxWorkspaces := 1
+		max := 1
 		client, _, api, user := coderdenttest.NewWithAPI(t, &coderdenttest.Options{
-			UserWorkspaceQuota: maxWorkspaces,
+			UserWorkspaceQuota: max,
 			LicenseOptions: &coderdenttest.LicenseOptions{
 				Features: license.Features{
 					codersdk.FeatureTemplateRBAC: 1,

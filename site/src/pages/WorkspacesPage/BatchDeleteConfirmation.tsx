@@ -4,7 +4,6 @@ import ScheduleIcon from "@mui/icons-material/Schedule";
 import { visuallyHidden } from "@mui/utils";
 import type { Workspace } from "api/typesGenerated";
 import { ConfirmDialog } from "components/Dialogs/ConfirmDialog/ConfirmDialog";
-import { ExternalImage } from "components/ExternalImage/ExternalImage";
 import { Stack } from "components/Stack/Stack";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
@@ -248,11 +247,7 @@ const Resources: FC<StageProps> = ({ workspaces }) => {
 			>
 				{Object.entries(resources).map(([type, summary]) => (
 					<Stack key={type} direction="row" alignItems="center" spacing={1}>
-						<ExternalImage
-							src={summary.icon}
-							width={styles.summaryIcon.width}
-							height={styles.summaryIcon.height}
-						/>
+						<img alt="" src={summary.icon} css={styles.summaryIcon} />
 						<span>
 							{summary.count} <code>{type}</code>
 						</span>

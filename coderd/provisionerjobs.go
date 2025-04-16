@@ -72,9 +72,7 @@ func (api *API) provisionerJob(rw http.ResponseWriter, r *http.Request) {
 // @Tags Organizations
 // @Param organization path string true "Organization ID" format(uuid)
 // @Param limit query int false "Page limit"
-// @Param ids query []string false "Filter results by job IDs" format(uuid)
 // @Param status query codersdk.ProvisionerJobStatus false "Filter results by status" enums(pending,running,succeeded,canceling,canceled,failed)
-// @Param tags query object false "Provisioner tags to filter by (JSON of the form {'tag1':'value1','tag2':'value2'})"
 // @Success 200 {array} codersdk.ProvisionerJob
 // @Router /organizations/{organization}/provisionerjobs [get]
 func (api *API) provisionerJobs(rw http.ResponseWriter, r *http.Request) {
@@ -103,12 +101,8 @@ func (api *API) handleAuthAndFetchProvisionerJobs(rw http.ResponseWriter, r *htt
 
 	qp := r.URL.Query()
 	p := httpapi.NewQueryParamParser()
-	limit := p.PositiveInt32(qp, 50, "limit")
+	limit := p.PositiveInt32(qp, 0, "limit")
 	status := p.Strings(qp, nil, "status")
-	if ids == nil {
-		ids = p.UUIDs(qp, nil, "ids")
-	}
-	tags := p.JSONStringMap(qp, database.StringMap{}, "tags")
 	p.ErrorExcessParams(qp)
 	if len(p.Errors) > 0 {
 		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
@@ -119,11 +113,10 @@ func (api *API) handleAuthAndFetchProvisionerJobs(rw http.ResponseWriter, r *htt
 	}
 
 	jobs, err := api.Database.GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisioner(ctx, database.GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerParams{
-		OrganizationID: org.ID,
+		OrganizationID: uuid.NullUUID{UUID: org.ID, Valid: true},
 		Status:         slice.StringEnums[database.ProvisionerJobStatus](status),
 		Limit:          sql.NullInt32{Int32: limit, Valid: limit > 0},
 		IDs:            ids,
-		Tags:           tags,
 	})
 	if err != nil {
 		if httpapi.Is404Error(err) {
@@ -395,17 +388,6 @@ func convertProvisionerJobWithQueuePosition(pj database.GetProvisionerJobsByOrga
 		QueueSize:      pj.QueueSize,
 	})
 	job.AvailableWorkers = pj.AvailableWorkers
-	job.Metadata = codersdk.ProvisionerJobMetadata{
-		TemplateVersionName: pj.TemplateVersionName,
-		TemplateID:          pj.TemplateID.UUID,
-		TemplateName:        pj.TemplateName,
-		TemplateDisplayName: pj.TemplateDisplayName,
-		TemplateIcon:        pj.TemplateIcon,
-		WorkspaceName:       pj.WorkspaceName,
-	}
-	if pj.WorkspaceID.Valid {
-		job.Metadata.WorkspaceID = &pj.WorkspaceID.UUID
-	}
 	return job
 }
 
@@ -553,9 +535,6 @@ func (f *logFollower) follow() {
 		}
 		return
 	}
-
-	// Log the request immediately instead of after it completes.
-	httpmw.RequestLoggerFromContext(f.ctx).WriteLog(f.ctx, http.StatusAccepted)
 
 	// no need to wait if the job is done
 	if f.complete {

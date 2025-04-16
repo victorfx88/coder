@@ -5,12 +5,7 @@ import {
 	EnabledBadge,
 	PremiumBadge,
 } from "components/Badges/Badges";
-import {
-	SettingsHeader,
-	SettingsHeaderDescription,
-	SettingsHeaderDocsLink,
-	SettingsHeaderTitle,
-} from "components/SettingsHeader/SettingsHeader";
+import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import { Stack } from "components/Stack/Stack";
 import type { FC } from "react";
 import {
@@ -36,12 +31,10 @@ export const SecuritySettingsPageView: FC<SecuritySettingsPageViewProps> = ({
 	return (
 		<Stack direction="column" spacing={6}>
 			<div>
-				<SettingsHeader>
-					<SettingsHeaderTitle>Security</SettingsHeaderTitle>
-					<SettingsHeaderDescription>
-						Ensure your Coder deployment is secure.
-					</SettingsHeaderDescription>
-				</SettingsHeader>
+				<SettingsHeader
+					title="Security"
+					description="Ensure your Coder deployment is secure."
+				/>
 
 				<OptionsTable
 					options={useDeploymentOptions(
@@ -55,20 +48,11 @@ export const SecuritySettingsPageView: FC<SecuritySettingsPageViewProps> = ({
 
 			<div>
 				<SettingsHeader
-					actions={
-						<SettingsHeaderDocsLink
-							href={docs("/admin/networking#browser-only-connections")}
-						/>
-					}
-				>
-					<SettingsHeaderTitle level="h2" hierarchy="secondary">
-						Browser-Only Connections
-					</SettingsHeaderTitle>
-					<SettingsHeaderDescription>
-						Block all workspace access via SSH, port forward, and other
-						non-browser connections.
-					</SettingsHeaderDescription>
-				</SettingsHeader>
+					title="Browser Only Connections"
+					secondary
+					description="Block all workspace access via SSH, port forward, and other non-browser connections."
+					docsHref={docs("/admin/networking#browser-only-connections")}
+				/>
 
 				<Badges>
 					{featureBrowserOnlyEnabled ? <EnabledBadge /> : <DisabledBadge />}
@@ -78,14 +62,11 @@ export const SecuritySettingsPageView: FC<SecuritySettingsPageViewProps> = ({
 
 			{tlsOptions.length > 0 && (
 				<div>
-					<SettingsHeader>
-						<SettingsHeaderTitle level="h2" hierarchy="secondary">
-							TLS
-						</SettingsHeaderTitle>
-						<SettingsHeaderDescription>
-							Ensure TLS is properly configured for your Coder deployment.
-						</SettingsHeaderDescription>
-					</SettingsHeader>
+					<SettingsHeader
+						title="TLS"
+						secondary
+						description="Ensure TLS is properly configured for your Coder deployment."
+					/>
 
 					<OptionsTable options={tlsOptions} />
 				</div>

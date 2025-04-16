@@ -14,7 +14,6 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"cdr.dev/slog"
@@ -103,18 +102,12 @@ func (api *API) workspace(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	appStatus := codersdk.WorkspaceAppStatus{}
-	if len(data.appStatuses) > 0 {
-		appStatus = data.appStatuses[0]
-	}
-
 	w, err := convertWorkspace(
 		apiKey.UserID,
 		workspace,
 		data.builds[0],
 		data.templates[0],
 		api.Options.AllowWorkspaceRenames,
-		appStatus,
 	)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
@@ -307,18 +300,12 @@ func (api *API) workspaceByOwnerAndName(rw http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	appStatus := codersdk.WorkspaceAppStatus{}
-	if len(data.appStatuses) > 0 {
-		appStatus = data.appStatuses[0]
-	}
-
 	w, err := convertWorkspace(
 		apiKey.UserID,
 		workspace,
 		data.builds[0],
 		data.templates[0],
 		api.Options.AllowWorkspaceRenames,
-		appStatus,
 	)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
@@ -406,72 +393,8 @@ func (api *API) postUserWorkspaces(rw http.ResponseWriter, r *http.Request) {
 		ctx     = r.Context()
 		apiKey  = httpmw.APIKey(r)
 		auditor = api.Auditor.Load()
+		user    = httpmw.UserParam(r)
 	)
-
-	var req codersdk.CreateWorkspaceRequest
-	if !httpapi.Read(ctx, rw, r, &req) {
-		return
-	}
-
-	var owner workspaceOwner
-	// This user fetch is an optimization path for the most common case of creating a
-	// workspace for 'Me'.
-	//
-	// This is also required to allow `owners` to create workspaces for users
-	// that are not in an organization.
-	user, ok := httpmw.UserParamOptional(r)
-	if ok {
-		owner = workspaceOwner{
-			ID:        user.ID,
-			Username:  user.Username,
-			AvatarURL: user.AvatarURL,
-		}
-	} else {
-		// A workspace can still be created if the caller can read the organization
-		// member. The organization is required, which can be sourced from the
-		// template.
-		//
-		// TODO: This code gets called twice for each workspace build request.
-		//   This is inefficient and costs at most 2 extra RTTs to the DB.
-		//   This can be optimized. It exists as it is now for code simplicity.
-		//   The most common case is to create a workspace for 'Me'. Which does
-		//   not enter this code branch.
-		template, ok := requestTemplate(ctx, rw, req, api.Database)
-		if !ok {
-			return
-		}
-
-		// We need to fetch the original user as a system user to fetch the
-		// user_id. 'ExtractUserContext' handles all cases like usernames,
-		// 'Me', etc.
-		// nolint:gocritic // The user_id needs to be fetched. This handles all those cases.
-		user, ok := httpmw.ExtractUserContext(dbauthz.AsSystemRestricted(ctx), api.Database, rw, r)
-		if !ok {
-			return
-		}
-
-		organizationMember, err := database.ExpectOne(api.Database.OrganizationMembers(ctx, database.OrganizationMembersParams{
-			OrganizationID: template.OrganizationID,
-			UserID:         user.ID,
-			IncludeSystem:  false,
-		}))
-		if httpapi.Is404Error(err) {
-			httpapi.ResourceNotFound(rw)
-			return
-		}
-		if err != nil {
-			httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-				Message: "Internal error fetching organization member.",
-				Detail:  err.Error(),
-			})
-			return
-		}
-		owner = workspaceOwner{
-			ID:        organizationMember.OrganizationMember.UserID,
-			Username:  organizationMember.Username,
-			AvatarURL: organizationMember.AvatarURL,
-		}
-	}
 
 	aReq, commitAudit := audit.InitRequest[database.WorkspaceTable](rw, &audit.RequestParams{
 		Audit:   *auditor,
@@ -479,11 +402,22 @@ func (api *API) postUserWorkspaces(rw http.ResponseWriter, r *http.Request) {
 		Request: r,
 		Action:  database.AuditActionCreate,
 		AdditionalFields: audit.AdditionalFields{
-			WorkspaceOwner: owner.Username,
+			WorkspaceOwner: user.Username,
 		},
 	})
 
 	defer commitAudit()
+
+	var req codersdk.CreateWorkspaceRequest
+	if !httpapi.Read(ctx, rw, r, &req) {
+		return
+	}
+
+	owner := workspaceOwner{
+		ID:        user.ID,
+		Username:  user.Username,
+		AvatarURL: user.AvatarURL,
+	}
 	createWorkspace(ctx, aReq, apiKey.UserID, api, owner, req, rw, r)
 }
 
@@ -503,8 +437,65 @@ func createWorkspace(
 	rw http.ResponseWriter,
 	r *http.Request,
 ) {
-	template, ok := requestTemplate(ctx, rw, req, api.Database)
-	if !ok {
+	// If we were given a `TemplateVersionID`, we need to determine the `TemplateID` from it.
+	templateID := req.TemplateID
+	if templateID == uuid.Nil {
+		templateVersion, err := api.Database.GetTemplateVersionByID(ctx, req.TemplateVersionID)
+		if httpapi.Is404Error(err) {
+			httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+				Message: fmt.Sprintf("Template version %q doesn't exist.", templateID.String()),
+				Validations: []codersdk.ValidationError{{
+					Field:  "template_version_id",
+					Detail: "template not found",
+				}},
+			})
+			return
+		}
+		if err != nil {
+			httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
+				Message: "Internal error fetching template version.",
+				Detail:  err.Error(),
+			})
+			return
+		}
+		if templateVersion.Archived {
+			httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
+				Message: "Archived template versions cannot be used to make a workspace.",
+				Validations: []codersdk.ValidationError{
+					{
+						Field:  "template_version_id",
+						Detail: "template version archived",
+					},
+				},
+			})
+			return
+		}
+
+		templateID = templateVersion.TemplateID.UUID
+	}
+
+	template, err := api.Database.GetTemplateByID(ctx, templateID)
+	if httpapi.Is404Error(err) {
+		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+			Message: fmt.Sprintf("Template %q doesn't exist.", templateID.String()),
+			Validations: []codersdk.ValidationError{{
+				Field:  "template_id",
+				Detail: "template not found",
+			}},
+		})
+		return
+	}
+	if err != nil {
+		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
+			Message: "Internal error fetching template.",
+			Detail:  err.Error(),
+		})
+		return
+	}
+	if template.Deleted {
+		httpapi.Write(ctx, rw, http.StatusNotFound, codersdk.Response{
+			Message: fmt.Sprintf("Template %q has been deleted!", template.Name),
+		})
 		return
 	}
 
@@ -671,8 +662,7 @@ func createWorkspace(
 			Reason(database.BuildReasonInitiator).
 			Initiator(initiatorID).
 			ActiveVersion().
-			RichParameterValues(req.RichParameterValues).
-			TemplateVersionPresetID(req.TemplateVersionPresetID)
+			RichParameterValues(req.RichParameterValues)
 		if req.TemplateVersionID != uuid.Nil {
 			builder = builder.VersionID(req.TemplateVersionID)
 		}
@@ -741,7 +731,6 @@ func createWorkspace(
 		[]database.WorkspaceResourceMetadatum{},
 		[]database.WorkspaceAgent{},
 		[]database.WorkspaceApp{},
-		[]database.WorkspaceAppStatus{},
 		[]database.WorkspaceAgentScript{},
 		[]database.WorkspaceAgentLogSource{},
 		database.TemplateVersion{},
@@ -761,7 +750,6 @@ func createWorkspace(
 		apiBuild,
 		template,
 		api.Options.AllowWorkspaceRenames,
-		codersdk.WorkspaceAppStatus{},
 	)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
@@ -771,72 +759,6 @@ func createWorkspace(
 		return
 	}
 	httpapi.Write(ctx, rw, http.StatusCreated, w)
-}
-
-func requestTemplate(ctx context.Context, rw http.ResponseWriter, req codersdk.CreateWorkspaceRequest, db database.Store) (database.Template, bool) {
-	// If we were given a `TemplateVersionID`, we need to determine the `TemplateID` from it.
-	templateID := req.TemplateID
-
-	if templateID == uuid.Nil {
-		templateVersion, err := db.GetTemplateVersionByID(ctx, req.TemplateVersionID)
-		if httpapi.Is404Error(err) {
-			httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
-				Message: fmt.Sprintf("Template version %q doesn't exist.", req.TemplateVersionID),
-				Validations: []codersdk.ValidationError{{
-					Field:  "template_version_id",
-					Detail: "template not found",
-				}},
-			})
-			return database.Template{}, false
-		}
-		if err != nil {
-			httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-				Message: "Internal error fetching template version.",
-				Detail:  err.Error(),
-			})
-			return database.Template{}, false
-		}
-		if templateVersion.Archived {
-			httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-				Message: "Archived template versions cannot be used to make a workspace.",
-				Validations: []codersdk.ValidationError{
-					{
-						Field:  "template_version_id",
-						Detail: "template version archived",
-					},
-				},
-			})
-			return database.Template{}, false
-		}
-
-		templateID = templateVersion.TemplateID.UUID
-	}
-
-	template, err := db.GetTemplateByID(ctx, templateID)
-	if httpapi.Is404Error(err) {
-		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
-			Message: fmt.Sprintf("Template %q doesn't exist.", templateID),
-			Validations: []codersdk.ValidationError{{
-				Field:  "template_id",
-				Detail: "template not found",
-			}},
-		})
-		return database.Template{}, false
-	}
-	if err != nil {
-		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-			Message: "Internal error fetching template.",
-			Detail:  err.Error(),
-		})
-		return database.Template{}, false
-	}
-	if template.Deleted {
-		httpapi.Write(ctx, rw, http.StatusNotFound, codersdk.Response{
-			Message: fmt.Sprintf("Template %q has been deleted!", template.Name),
-		})
-		return database.Template{}, false
-	}
-	return template, true
 }
 
 func (api *API) notifyWorkspaceCreated(
@@ -879,10 +801,9 @@ func (api *API) notifyWorkspaceCreated(
 		receiverID,
 		notifications.TemplateWorkspaceCreated,
 		map[string]string{
-			"workspace":                workspace.Name,
-			"template":                 template.Name,
-			"version":                  version.Name,
-			"workspace_owner_username": owner.Username,
+			"workspace": workspace.Name,
+			"template":  template.Name,
+			"version":   version.Name,
 		},
 		map[string]any{
 			"workspace":        map[string]any{"id": workspace.ID, "name": workspace.Name},
@@ -1312,18 +1233,12 @@ func (api *API) putWorkspaceDormant(rw http.ResponseWriter, r *http.Request) {
 
 	aReq.New = newWorkspace
 
-	appStatus := codersdk.WorkspaceAppStatus{}
-	if len(data.appStatuses) > 0 {
-		appStatus = data.appStatuses[0]
-	}
-
 	w, err := convertWorkspace(
 		apiKey.UserID,
 		workspace,
 		data.builds[0],
 		data.templates[0],
 		api.Options.AllowWorkspaceRenames,
-		appStatus,
 	)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
@@ -1803,33 +1718,12 @@ func (api *API) resolveAutostart(rw http.ResponseWriter, r *http.Request) {
 // @Param workspace path string true "Workspace ID" format(uuid)
 // @Success 200 {object} codersdk.Response
 // @Router /workspaces/{workspace}/watch [get]
-// @Deprecated Use /workspaces/{workspace}/watch-ws instead
-func (api *API) watchWorkspaceSSE(rw http.ResponseWriter, r *http.Request) {
-	api.watchWorkspace(rw, r, httpapi.ServerSentEventSender)
-}
-
-// @Summary Watch workspace by ID via WebSockets
-// @ID watch-workspace-by-id-via-websockets
-// @Security CoderSessionToken
-// @Produce json
-// @Tags Workspaces
-// @Param workspace path string true "Workspace ID" format(uuid)
-// @Success 200 {object} codersdk.ServerSentEvent
-// @Router /workspaces/{workspace}/watch-ws [get]
-func (api *API) watchWorkspaceWS(rw http.ResponseWriter, r *http.Request) {
-	api.watchWorkspace(rw, r, httpapi.OneWayWebSocketEventSender)
-}
-
-func (api *API) watchWorkspace(
-	rw http.ResponseWriter,
-	r *http.Request,
-	connect httpapi.EventSender,
-) {
+func (api *API) watchWorkspace(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	workspace := httpmw.WorkspaceParam(r)
 	apiKey := httpmw.APIKey(r)
 
-	sendEvent, senderClosed, err := connect(rw, r)
+	sendEvent, senderClosed, err := httpapi.ServerSentEventSender(rw, r)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
 			Message: "Internal error setting up server-sent events.",
@@ -1845,7 +1739,7 @@ func (api *API) watchWorkspace(
 	sendUpdate := func(_ context.Context, _ []byte) {
 		workspace, err := api.Database.GetWorkspaceByID(ctx, workspace.ID)
 		if err != nil {
-			_ = sendEvent(codersdk.ServerSentEvent{
+			_ = sendEvent(ctx, codersdk.ServerSentEvent{
 				Type: codersdk.ServerSentEventTypeError,
 				Data: codersdk.Response{
 					Message: "Internal error fetching workspace.",
@@ -1857,7 +1751,7 @@ func (api *API) watchWorkspace(
 
 		data, err := api.workspaceData(ctx, []database.Workspace{workspace})
 		if err != nil {
-			_ = sendEvent(codersdk.ServerSentEvent{
+			_ = sendEvent(ctx, codersdk.ServerSentEvent{
 				Type: codersdk.ServerSentEventTypeError,
 				Data: codersdk.Response{
 					Message: "Internal error fetching workspace data.",
@@ -1867,7 +1761,7 @@ func (api *API) watchWorkspace(
 			return
 		}
 		if len(data.templates) == 0 {
-			_ = sendEvent(codersdk.ServerSentEvent{
+			_ = sendEvent(ctx, codersdk.ServerSentEvent{
 				Type: codersdk.ServerSentEventTypeError,
 				Data: codersdk.Response{
 					Message: "Forbidden reading template of selected workspace.",
@@ -1876,20 +1770,15 @@ func (api *API) watchWorkspace(
 			return
 		}
 
-		appStatus := codersdk.WorkspaceAppStatus{}
-		if len(data.appStatuses) > 0 {
-			appStatus = data.appStatuses[0]
-		}
 		w, err := convertWorkspace(
 			apiKey.UserID,
 			workspace,
 			data.builds[0],
 			data.templates[0],
 			api.Options.AllowWorkspaceRenames,
-			appStatus,
 		)
 		if err != nil {
-			_ = sendEvent(codersdk.ServerSentEvent{
+			_ = sendEvent(ctx, codersdk.ServerSentEvent{
 				Type: codersdk.ServerSentEventTypeError,
 				Data: codersdk.Response{
 					Message: "Internal error converting workspace.",
@@ -1897,7 +1786,7 @@ func (api *API) watchWorkspace(
 				},
 			})
 		}
-		_ = sendEvent(codersdk.ServerSentEvent{
+		_ = sendEvent(ctx, codersdk.ServerSentEvent{
 			Type: codersdk.ServerSentEventTypeData,
 			Data: w,
 		})
@@ -1915,7 +1804,7 @@ func (api *API) watchWorkspace(
 				sendUpdate(ctx, nil)
 			}))
 	if err != nil {
-		_ = sendEvent(codersdk.ServerSentEvent{
+		_ = sendEvent(ctx, codersdk.ServerSentEvent{
 			Type: codersdk.ServerSentEventTypeError,
 			Data: codersdk.Response{
 				Message: "Internal error subscribing to workspace events.",
@@ -1929,7 +1818,7 @@ func (api *API) watchWorkspace(
 	// This is required to show whether the workspace is up-to-date.
 	cancelTemplateSubscribe, err := api.Pubsub.Subscribe(watchTemplateChannel(workspace.TemplateID), sendUpdate)
 	if err != nil {
-		_ = sendEvent(codersdk.ServerSentEvent{
+		_ = sendEvent(ctx, codersdk.ServerSentEvent{
 			Type: codersdk.ServerSentEventTypeError,
 			Data: codersdk.Response{
 				Message: "Internal error subscribing to template events.",
@@ -1942,7 +1831,7 @@ func (api *API) watchWorkspace(
 
 	// An initial ping signals to the request that the server is now ready
 	// and the client can begin servicing a channel with data.
-	_ = sendEvent(codersdk.ServerSentEvent{
+	_ = sendEvent(ctx, codersdk.ServerSentEvent{
 		Type: codersdk.ServerSentEventTypePing,
 	})
 	// Send updated workspace info after connection is established. This avoids
@@ -1997,7 +1886,6 @@ func (api *API) workspaceTimings(rw http.ResponseWriter, r *http.Request) {
 type workspaceData struct {
 	templates    []database.Template
 	builds       []codersdk.WorkspaceBuild
-	appStatuses  []codersdk.WorkspaceAppStatus
 	allowRenames bool
 }
 
@@ -2013,42 +1901,18 @@ func (api *API) workspaceData(ctx context.Context, workspaces []database.Workspa
 		templateIDs = append(templateIDs, workspace.TemplateID)
 	}
 
-	var (
-		templates   []database.Template
-		builds      []database.WorkspaceBuild
-		appStatuses []database.WorkspaceAppStatus
-		eg          errgroup.Group
-	)
-	eg.Go(func() (err error) {
-		templates, err = api.Database.GetTemplatesWithFilter(ctx, database.GetTemplatesWithFilterParams{
-			IDs: templateIDs,
-		})
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return xerrors.Errorf("get templates: %w", err)
-		}
-		return nil
+	templates, err := api.Database.GetTemplatesWithFilter(ctx, database.GetTemplatesWithFilterParams{
+		IDs: templateIDs,
 	})
-	eg.Go(func() (err error) {
-		// This query must be run as system restricted to be efficient.
-		// nolint:gocritic
-		builds, err = api.Database.GetLatestWorkspaceBuildsByWorkspaceIDs(dbauthz.AsSystemRestricted(ctx), workspaceIDs)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return xerrors.Errorf("get workspace builds: %w", err)
-		}
-		return nil
-	})
-	eg.Go(func() (err error) {
-		// This query must be run as system restricted to be efficient.
-		// nolint:gocritic
-		appStatuses, err = api.Database.GetLatestWorkspaceAppStatusesByWorkspaceIDs(dbauthz.AsSystemRestricted(ctx), workspaceIDs)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return xerrors.Errorf("get workspace app statuses: %w", err)
-		}
-		return nil
-	})
-	err := eg.Wait()
-	if err != nil {
-		return workspaceData{}, err
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return workspaceData{}, xerrors.Errorf("get templates: %w", err)
+	}
+
+	// This query must be run as system restricted to be efficient.
+	// nolint:gocritic
+	builds, err := api.Database.GetLatestWorkspaceBuildsByWorkspaceIDs(dbauthz.AsSystemRestricted(ctx), workspaceIDs)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return workspaceData{}, xerrors.Errorf("get workspace builds: %w", err)
 	}
 
 	data, err := api.workspaceBuildsData(ctx, builds)
@@ -2064,7 +1928,6 @@ func (api *API) workspaceData(ctx context.Context, workspaces []database.Workspa
 		data.metadata,
 		data.agents,
 		data.apps,
-		data.appStatuses,
 		data.scripts,
 		data.logSources,
 		data.templateVersions,
@@ -2076,7 +1939,6 @@ func (api *API) workspaceData(ctx context.Context, workspaces []database.Workspa
 
 	return workspaceData{
 		templates:    templates,
-		appStatuses:  db2sdk.WorkspaceAppStatuses(appStatuses),
 		builds:       apiBuilds,
 		allowRenames: api.Options.AllowWorkspaceRenames,
 	}, nil
@@ -2090,10 +1952,6 @@ func convertWorkspaces(requesterID uuid.UUID, workspaces []database.Workspace, d
 	templateByID := map[uuid.UUID]database.Template{}
 	for _, template := range data.templates {
 		templateByID[template.ID] = template
-	}
-	appStatusesByWorkspaceID := map[uuid.UUID]codersdk.WorkspaceAppStatus{}
-	for _, appStatus := range data.appStatuses {
-		appStatusesByWorkspaceID[appStatus.WorkspaceID] = appStatus
 	}
 
 	apiWorkspaces := make([]codersdk.Workspace, 0, len(workspaces))
@@ -2111,7 +1969,6 @@ func convertWorkspaces(requesterID uuid.UUID, workspaces []database.Workspace, d
 		if !exists {
 			continue
 		}
-		appStatus := appStatusesByWorkspaceID[workspace.ID]
 
 		w, err := convertWorkspace(
 			requesterID,
@@ -2119,7 +1976,6 @@ func convertWorkspaces(requesterID uuid.UUID, workspaces []database.Workspace, d
 			build,
 			template,
 			data.allowRenames,
-			appStatus,
 		)
 		if err != nil {
 			return nil, xerrors.Errorf("convert workspace: %w", err)
@@ -2136,7 +1992,6 @@ func convertWorkspace(
 	workspaceBuild codersdk.WorkspaceBuild,
 	template database.Template,
 	allowRenames bool,
-	latestAppStatus codersdk.WorkspaceAppStatus,
 ) (codersdk.Workspace, error) {
 	if requesterID == uuid.Nil {
 		return codersdk.Workspace{}, xerrors.Errorf("developer error: requesterID cannot be uuid.Nil!")
@@ -2180,10 +2035,6 @@ func convertWorkspace(
 	// Only show favorite status if you own the workspace.
 	requesterFavorite := workspace.OwnerID == requesterID && workspace.Favorite
 
-	appStatus := &latestAppStatus
-	if latestAppStatus.ID == uuid.Nil {
-		appStatus = nil
-	}
 	return codersdk.Workspace{
 		ID:                                   workspace.ID,
 		CreatedAt:                            workspace.CreatedAt,
@@ -2195,7 +2046,6 @@ func convertWorkspace(
 		OrganizationName:                     workspace.OrganizationName,
 		TemplateID:                           workspace.TemplateID,
 		LatestBuild:                          workspaceBuild,
-		LatestAppStatus:                      appStatus,
 		TemplateName:                         workspace.TemplateName,
 		TemplateIcon:                         workspace.TemplateIcon,
 		TemplateDisplayName:                  workspace.TemplateDisplayName,

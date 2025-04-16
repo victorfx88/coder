@@ -10,18 +10,16 @@ import { login } from "../../helpers";
 import { beforeCoderTest } from "../../hooks";
 
 test.beforeEach(async ({ page }) => {
-	requiresLicense();
 	beforeCoderTest(page);
 	await login(page);
 	await setupApiCalls(page);
 });
 
 test.describe("IdpRoleSyncPage", () => {
-	test.describe.configure({ retries: 1 });
-
 	test("show empty table when no role mappings are present", async ({
 		page,
 	}) => {
+		requiresLicense();
 		const org = await createOrganizationWithName(randomName());
 		await page.goto(`/organizations/${org.name}/idp-sync?tab=roles`, {
 			waitUntil: "domcontentloaded",
@@ -38,6 +36,7 @@ test.describe("IdpRoleSyncPage", () => {
 	});
 
 	test("add new IdP role mapping with API", async ({ page }) => {
+		requiresLicense();
 		const org = await createOrganizationWithName(randomName());
 		await createRoleSyncSettings(org.id);
 
@@ -59,6 +58,7 @@ test.describe("IdpRoleSyncPage", () => {
 	});
 
 	test("delete a IdP role to coder role mapping row", async ({ page }) => {
+		requiresLicense();
 		const org = await createOrganizationWithName(randomName());
 		await createRoleSyncSettings(org.id);
 
@@ -79,6 +79,7 @@ test.describe("IdpRoleSyncPage", () => {
 	});
 
 	test("update sync field", async ({ page }) => {
+		requiresLicense();
 		const org = await createOrganizationWithName(randomName());
 		await page.goto(`/organizations/${org.name}/idp-sync?tab=roles`, {
 			waitUntil: "domcontentloaded",
@@ -106,6 +107,7 @@ test.describe("IdpRoleSyncPage", () => {
 	test("export policy button is enabled when sync settings are present", async ({
 		page,
 	}) => {
+		requiresLicense();
 		const org = await createOrganizationWithName(randomName());
 		await page.goto(`/organizations/${org.name}/idp-sync?tab=roles`, {
 			waitUntil: "domcontentloaded",
@@ -119,6 +121,7 @@ test.describe("IdpRoleSyncPage", () => {
 	});
 
 	test("add new IdP role mapping with UI", async ({ page }) => {
+		requiresLicense();
 		const orgName = randomName();
 		await createOrganizationWithName(orgName);
 
@@ -127,31 +130,18 @@ test.describe("IdpRoleSyncPage", () => {
 		});
 
 		const idpOrgInput = page.getByLabel("IdP role name");
+		const roleSelector = page.getByPlaceholder("Select role");
 		const addButton = page.getByRole("button", {
 			name: /Add IdP role/i,
 		});
 
 		await expect(addButton).toBeDisabled();
 
-		const idpRoleName = randomName();
-		await idpOrgInput.fill(idpRoleName);
+		await idpOrgInput.fill("new-idp-role");
 
 		// Select Coder role from combobox
-		const roleSelector = page.getByPlaceholder("Select role");
-		await expect(roleSelector).toBeAttached();
-		await expect(roleSelector).toBeVisible();
 		await roleSelector.click();
-
-		await page.getByRole("combobox").click();
-		await page.waitForTimeout(1000);
-
-		const option = await page.getByRole("option", {
-			name: /Organization Admin/i,
-		});
-
-		await expect(option).toBeAttached({ timeout: 30000 });
-		await expect(option).toBeVisible();
-		await option.click();
+		await page.getByRole("option", { name: /Organization Admin/i }).click();
 
 		// Add button should now be enabled
 		await expect(addButton).toBeEnabled();
@@ -159,9 +149,11 @@ test.describe("IdpRoleSyncPage", () => {
 		await addButton.click();
 
 		// Verify new mapping appears in table
-		const newRow = page.getByTestId(`role-${idpRoleName}`);
+		const newRow = page.getByTestId("role-new-idp-role");
 		await expect(newRow).toBeVisible();
-		await expect(newRow.getByRole("cell", { name: idpRoleName })).toBeVisible();
+		await expect(
+			newRow.getByRole("cell", { name: "new-idp-role" }),
+		).toBeVisible();
 		await expect(
 			newRow.getByRole("cell", { name: "organization-admin" }),
 		).toBeVisible();

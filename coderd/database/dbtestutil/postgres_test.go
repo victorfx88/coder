@@ -1,3 +1,5 @@
+//go:build linux
+
 package dbtestutil_test
 
 import (
@@ -19,9 +21,6 @@ func TestMain(m *testing.M) {
 
 func TestOpen(t *testing.T) {
 	t.Parallel()
-	if !dbtestutil.WillUsePostgres() {
-		t.Skip("this test requires postgres")
-	}
 
 	connect, err := dbtestutil.Open(t)
 	require.NoError(t, err)
@@ -36,9 +35,6 @@ func TestOpen(t *testing.T) {
 
 func TestOpen_InvalidDBFrom(t *testing.T) {
 	t.Parallel()
-	if !dbtestutil.WillUsePostgres() {
-		t.Skip("this test requires postgres")
-	}
 
 	_, err := dbtestutil.Open(t, dbtestutil.WithDBFrom("__invalid__"))
 	require.Error(t, err)
@@ -48,9 +44,6 @@ func TestOpen_InvalidDBFrom(t *testing.T) {
 
 func TestOpen_ValidDBFrom(t *testing.T) {
 	t.Parallel()
-	if !dbtestutil.WillUsePostgres() {
-		t.Skip("this test requires postgres")
-	}
 
 	// first check if we can create a new template db
 	dsn, err := dbtestutil.Open(t, dbtestutil.WithDBFrom(""))

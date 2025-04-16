@@ -38,18 +38,12 @@ const findFeaturedExamples = (examples: TemplateExample[]) => {
 interface EmptyTemplatesProps {
 	canCreateTemplates: boolean;
 	examples: TemplateExample[];
-	isUsingFilter: boolean;
 }
 
 export const EmptyTemplates: FC<EmptyTemplatesProps> = ({
 	canCreateTemplates,
 	examples,
-	isUsingFilter,
 }) => {
-	if (isUsingFilter) {
-		return <TableEmpty message="No results matched your search" />;
-	}
-
 	const featuredExamples = findFeaturedExamples(examples);
 
 	if (canCreateTemplates) {

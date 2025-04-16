@@ -205,7 +205,7 @@ func (r *RootCmd) proxyServer() *serpent.Command {
 			httpClient.Transport = headerTransport
 
 			accessURL := cfg.AccessURL.String()
-			cliui.Info(inv.Stdout, lipgloss.NewStyle().
+			cliui.Infof(inv.Stdout, lipgloss.NewStyle().
 				Border(lipgloss.DoubleBorder()).
 				Align(lipgloss.Center).
 				Padding(0, 3).
@@ -264,7 +264,7 @@ func (r *RootCmd) proxyServer() *serpent.Command {
 				Tracing:                tracer,
 				PrometheusRegistry:     prometheusRegistry,
 				APIRateLimit:           int(cfg.RateLimit.API.Value()),
-				CookieConfig:           cfg.HTTPCookies,
+				SecureAuthCookie:       cfg.SecureAuthCookie.Value(),
 				DisablePathApps:        cfg.DisablePathApps.Value(),
 				ProxySessionToken:      proxySessionToken.Value(),
 				AllowAllCors:           cfg.Dangerous.AllowAllCors.Value(),
@@ -308,7 +308,7 @@ func (r *RootCmd) proxyServer() *serpent.Command {
 
 			// TODO: So this obviously is not going to work well.
 			errCh := make(chan error, 1)
-			go rpprof.Do(ctx, rpprof.Labels("service", "workspace-proxy"), func(_ context.Context) {
+			go rpprof.Do(ctx, rpprof.Labels("service", "workspace-proxy"), func(ctx context.Context) {
 				errCh <- httpServers.Serve(httpServer)
 			})
 

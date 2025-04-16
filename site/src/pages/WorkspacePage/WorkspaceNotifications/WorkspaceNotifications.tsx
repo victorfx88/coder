@@ -2,12 +2,7 @@ import type { Interpolation, Theme } from "@emotion/react";
 import InfoOutlined from "@mui/icons-material/InfoOutlined";
 import WarningRounded from "@mui/icons-material/WarningRounded";
 import { workspaceResolveAutostart } from "api/queries/workspaceQuota";
-import type {
-	Template,
-	TemplateVersion,
-	Workspace,
-	WorkspaceBuild,
-} from "api/typesGenerated";
+import type { Template, TemplateVersion, Workspace } from "api/typesGenerated";
 import { MemoizedInlineMarkdown } from "components/Markdown/Markdown";
 import formatDistanceToNow from "date-fns/formatDistanceToNow";
 import dayjs from "dayjs";
@@ -87,9 +82,6 @@ export const WorkspaceNotifications: FC<WorkspaceNotificationsProps> = ({
 		workspace.latest_build.status === "running" &&
 		!workspace.health.healthy
 	) {
-		const troubleshootingURL = findTroubleshootingURL(workspace.latest_build);
-		const hasActions = permissions.updateWorkspace || troubleshootingURL;
-
 		notifications.push({
 			title: "Workspace is unhealthy",
 			severity: "warning",
@@ -102,21 +94,10 @@ export const WorkspaceNotifications: FC<WorkspaceNotificationsProps> = ({
 					.
 				</>
 			),
-			actions: hasActions ? (
-				<>
-					{permissions.updateWorkspace && (
-						<NotificationActionButton onClick={onRestartWorkspace}>
-							Restart
-						</NotificationActionButton>
-					)}
-					{troubleshootingURL && (
-						<NotificationActionButton
-							onClick={() => window.open(troubleshootingURL, "_blank")}
-						>
-							Troubleshooting
-						</NotificationActionButton>
-					)}
-				</>
+			actions: permissions.updateWorkspace ? (
+				<NotificationActionButton onClick={onRestartWorkspace}>
+					Restart
+				</NotificationActionButton>
 			) : undefined,
 		});
 	}
@@ -273,18 +254,3 @@ const styles = {
 		gap: 12,
 	},
 } satisfies Record<string, Interpolation<Theme>>;
-
-const findTroubleshootingURL = (
-	workspaceBuild: WorkspaceBuild,
-): string | undefined => {
-	for (const resource of workspaceBuild.resources) {
-		if (resource.agents) {
-			for (const agent of resource.agents) {
-				if (agent.troubleshooting_url) {
-					return agent.troubleshooting_url;
-				}
-			}
-		}
-	}
-	return undefined;
-};

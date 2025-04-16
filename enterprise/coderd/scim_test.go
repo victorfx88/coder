@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	"github.com/golang-jwt/jwt/v4"
-	"github.com/google/uuid"
 	"github.com/imulab/go-scim/pkg/v2/handlerutil"
 	"github.com/imulab/go-scim/pkg/v2/spec"
 	"github.com/stretchr/testify/assert"
@@ -569,7 +568,6 @@ func TestScim(t *testing.T) {
 			//nolint:bodyclose
 			scimUserClient, _ := fake.Login(t, client, jwt.MapClaims{
 				"email": sUser.Emails[0].Value,
-				"sub":   uuid.NewString(),
 			})
 			scimUser, err = scimUserClient.User(ctx, codersdk.Me)
 			require.NoError(t, err)
@@ -838,7 +836,6 @@ func TestScim(t *testing.T) {
 			//nolint:bodyclose
 			scimUserClient, _ := fake.Login(t, client, jwt.MapClaims{
 				"email": sUser.Emails[0].Value,
-				"sub":   uuid.NewString(),
 			})
 			scimUser, err = scimUserClient.User(ctx, codersdk.Me)
 			require.NoError(t, err)

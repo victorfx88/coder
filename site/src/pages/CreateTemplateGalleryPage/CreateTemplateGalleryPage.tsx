@@ -1,4 +1,5 @@
 import { templateExamples } from "api/queries/templates";
+import type { TemplateExample } from "api/typesGenerated";
 import type { FC } from "react";
 import { Helmet } from "react-helmet-async";
 import { useQuery } from "react-query";
@@ -9,7 +10,8 @@ import { CreateTemplateGalleryPageView } from "./CreateTemplateGalleryPageView";
 const CreateTemplatesGalleryPage: FC = () => {
 	const templateExamplesQuery = useQuery(templateExamples());
 	const starterTemplatesByTag = templateExamplesQuery.data
-		? getTemplatesByTag(templateExamplesQuery.data)
+		? // Currently, the scratch template should not be displayed on the starter templates page.
+			getTemplatesByTag(removeScratchExample(templateExamplesQuery.data))
 		: undefined;
 
 	return (
@@ -23,6 +25,10 @@ const CreateTemplatesGalleryPage: FC = () => {
 			/>
 		</>
 	);
+};
+
+const removeScratchExample = (data: TemplateExample[]) => {
+	return data.filter((example) => example.id !== "scratch");
 };
 
 export default CreateTemplatesGalleryPage;

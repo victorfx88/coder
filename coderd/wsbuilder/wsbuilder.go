@@ -51,10 +51,9 @@ type Builder struct {
 	logLevel         string
 	deploymentValues *codersdk.DeploymentValues
 
-	richParameterValues     []codersdk.WorkspaceBuildParameter
-	initiator               uuid.UUID
-	reason                  database.BuildReason
-	templateVersionPresetID uuid.UUID
+	richParameterValues []codersdk.WorkspaceBuildParameter
+	initiator           uuid.UUID
+	reason              database.BuildReason
 
 	// used during build, makes function arguments less verbose
 	ctx   context.Context
@@ -73,8 +72,6 @@ type Builder struct {
 	lastBuildJob                 *database.ProvisionerJob
 	parameterNames               *[]string
 	parameterValues              *[]string
-
-	prebuild bool
 
 	verifyNoLegacyParametersOnce bool
 }
@@ -171,12 +168,6 @@ func (b Builder) RichParameterValues(p []codersdk.WorkspaceBuildParameter) Build
 	return b
 }
 
-func (b Builder) MarkPrebuild() Builder {
-	// nolint: revive
-	b.prebuild = true
-	return b
-}
-
 // SetLastWorkspaceBuildInTx prepopulates the Builder's cache with the last workspace build.  This allows us
 // to avoid a repeated database query when the Builder's caller also needs the workspace build, e.g. auto-start &
 // auto-stop.
@@ -198,12 +189,6 @@ func (b Builder) SetLastWorkspaceBuildInTx(build *database.WorkspaceBuild) Build
 func (b Builder) SetLastWorkspaceBuildJobInTx(job *database.ProvisionerJob) Builder {
 	// nolint: revive
 	b.lastBuildJob = job
-	return b
-}
-
-func (b Builder) TemplateVersionPresetID(id uuid.UUID) Builder {
-	// nolint: revive
-	b.templateVersionPresetID = id
 	return b
 }
 
@@ -310,7 +295,6 @@ func (b *Builder) buildTx(authFunc func(action policy.Action, object rbac.Object
 	input, err := json.Marshal(provisionerdserver.WorkspaceProvisionJob{
 		WorkspaceBuildID: workspaceBuildID,
 		LogLevel:         b.logLevel,
-		IsPrebuild:       b.prebuild,
 	})
 	if err != nil {
 		return nil, nil, nil, BuildError{
@@ -392,10 +376,6 @@ func (b *Builder) buildTx(authFunc func(action policy.Action, object rbac.Object
 			Reason:            b.reason,
 			Deadline:          time.Time{}, // set by provisioner upon completion
 			MaxDeadline:       time.Time{}, // set by provisioner upon completion
-			TemplateVersionPresetID: uuid.NullUUID{
-				UUID:  b.templateVersionPresetID,
-				Valid: b.templateVersionPresetID != uuid.Nil,
-			},
 		})
 		if err != nil {
 			code := http.StatusInternalServerError
@@ -809,15 +789,6 @@ func (b *Builder) authorize(authFunc func(action policy.Action, object rbac.Obje
 		return BuildError{http.StatusBadRequest, msg, xerrors.New(msg)}
 	}
 	if !authFunc(action, b.workspace) {
-		if authFunc(policy.ActionRead, b.workspace) {
-			// If the user can read the workspace, but not delete/create/update. Show
-			// a more helpful error. They are allowed to know the workspace exists.
-			return BuildError{
-				Status:  http.StatusForbidden,
-				Message: fmt.Sprintf("You do not have permission to %s this workspace.", action),
-				Wrapped: xerrors.New(httpapi.ResourceForbiddenResponse.Detail),
-			}
-		}
 		// We use the same wording as the httpapi to avoid leaking the existence of the workspace
 		return BuildError{http.StatusNotFound, httpapi.ResourceNotFoundResponse.Message, xerrors.New(httpapi.ResourceNotFoundResponse.Message)}
 	}

@@ -61,7 +61,6 @@ curl -X GET http://coder-server:8080/api/v2/buildinfo \
   "telemetry": true,
   "upgrade_message": "string",
   "version": "string",
-  "webpush_public_key": "string",
   "workspace_proxy": true
 }
 ```
@@ -260,10 +259,6 @@ curl -X GET http://coder-server:8080/api/v2/deployment/config \
       "threshold_database": 0
     },
     "http_address": "string",
-    "http_cookies": {
-      "same_site": "string",
-      "secure_auth_cookie": true
-    },
     "in_memory_database": true,
     "job_hang_detector_interval": 0,
     "logging": {
@@ -298,9 +293,6 @@ curl -X GET http://coder-server:8080/api/v2/deployment/config \
         }
       },
       "fetch_interval": 0,
-      "inbox": {
-        "enabled": true
-      },
       "lease_count": 0,
       "lease_period": 0,
       "max_send_attempts": 0,
@@ -336,8 +328,6 @@ curl -X GET http://coder-server:8080/api/v2/deployment/config \
         ],
         "client_id": "string",
         "client_secret": "string",
-        "default_provider_enable": true,
-        "device_flow": true,
         "enterprise_base_url": "string"
       }
     },
@@ -385,7 +375,6 @@ curl -X GET http://coder-server:8080/api/v2/deployment/config \
       "sign_in_text": "string",
       "signups_disabled_text": "string",
       "skip_issuer_checks": true,
-      "source_user_info_from_access_token": true,
       "user_role_field": "string",
       "user_role_mapping": {},
       "user_roles_default": [
@@ -437,6 +426,7 @@ curl -X GET http://coder-server:8080/api/v2/deployment/config \
     },
     "redirect_to_access_url": true,
     "scim_api_key": "string",
+    "secure_auth_cookie": true,
     "session_lifetime": {
       "default_duration": 0,
       "default_token_lifetime": 0,
@@ -518,7 +508,6 @@ curl -X GET http://coder-server:8080/api/v2/deployment/config \
     "web_terminal_renderer": "string",
     "wgtunnel_host": "string",
     "wildcard_access_url": "string",
-    "workspace_hostname_suffix": "string",
     "write_config": true
   },
   "options": [
@@ -585,7 +574,6 @@ curl -X GET http://coder-server:8080/api/v2/deployment/ssh \
 ```json
 {
   "hostname_prefix": "string",
-  "hostname_suffix": "string",
   "ssh_config_options": {
     "property1": "string",
     "property2": "string"

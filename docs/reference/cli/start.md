@@ -11,14 +11,6 @@ coder start [flags] <workspace>
 
 ## Options
 
-### --no-wait
-
-|      |                   |
-|------|-------------------|
-| Type | <code>bool</code> |
-
-Return immediately after starting the workspace.
-
 ### -y, --yes
 
 |      |                   |

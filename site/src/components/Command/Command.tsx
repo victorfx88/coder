@@ -53,7 +53,7 @@ export const CommandInput = forwardRef<
 		<CommandPrimitive.Input
 			ref={ref}
 			className={cn(
-				`flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none border-none
+				`flex h-10 w-full rounded-md bg-transparent py-3 text-sm outline-none
 				placeholder:text-content-secondary
 				disabled:cursor-not-allowed disabled:opacity-50`,
 				className,
@@ -69,10 +69,7 @@ export const CommandList = forwardRef<
 >(({ className, ...props }, ref) => (
 	<CommandPrimitive.List
 		ref={ref}
-		className={cn(
-			"max-h-96 overflow-y-auto overflow-x-hidden border-0 border-t border-solid border-border",
-			className,
-		)}
+		className={cn("max-h-96 overflow-y-auto overflow-x-hidden", className)}
 		{...props}
 	/>
 ));
