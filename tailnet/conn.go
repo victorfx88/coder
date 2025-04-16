@@ -52,7 +52,6 @@ const (
 	WorkspaceAgentSSHPort             = 1
 	WorkspaceAgentReconnectingPTYPort = 2
 	WorkspaceAgentSpeedtestPort       = 3
-	WorkspaceAgentStandardSSHPort     = 22
 )
 
 // EnvMagicsockDebugLogging enables super-verbose logging for the magicsock
@@ -117,9 +116,6 @@ type Options struct {
 	Router router.Router
 	// TUNDev is optional, and is passed to the underlying wireguard engine.
 	TUNDev tun.Device
-	// WireguardMonitor is optional, and is passed to the underlying wireguard
-	// engine.
-	WireguardMonitor *netmon.Monitor
 }
 
 // TelemetrySink allows tailnet.Conn to send network telemetry to the Coder
@@ -132,7 +128,6 @@ type TelemetrySink interface {
 // NodeID creates a Tailscale NodeID from the last 8 bytes of a UUID. It ensures
 // the returned NodeID is always positive.
 func NodeID(uid uuid.UUID) tailcfg.NodeID {
-	// #nosec G115 - This is safe because the next lines ensure the ID is always positive
 	id := int64(binary.BigEndian.Uint64(uid[8:]))
 
 	// ensure id is positive
@@ -176,15 +171,13 @@ func NewConn(options *Options) (conn *Conn, err error) {
 		nodeID = tailcfg.NodeID(uid)
 	}
 
-	if options.WireguardMonitor == nil {
-		options.WireguardMonitor, err = netmon.New(Logger(options.Logger.Named("net.wgmonitor")))
-		if err != nil {
-			return nil, xerrors.Errorf("create wireguard link monitor: %w", err)
-		}
+	wireguardMonitor, err := netmon.New(Logger(options.Logger.Named("net.wgmonitor")))
+	if err != nil {
+		return nil, xerrors.Errorf("create wireguard link monitor: %w", err)
 	}
 	defer func() {
 		if err != nil {
-			options.WireguardMonitor.Close()
+			wireguardMonitor.Close()
 		}
 	}()
 
@@ -193,7 +186,7 @@ func NewConn(options *Options) (conn *Conn, err error) {
 	}
 	sys := new(tsd.System)
 	wireguardEngine, err := wgengine.NewUserspaceEngine(Logger(options.Logger.Named("net.wgengine")), wgengine.Config{
-		NetMon:       options.WireguardMonitor,
+		NetMon:       wireguardMonitor,
 		Dialer:       dialer,
 		ListenPort:   options.ListenPort,
 		SetSubsystem: sys.Set,
@@ -300,7 +293,7 @@ func NewConn(options *Options) (conn *Conn, err error) {
 		listeners:        map[listenKey]*listener{},
 		tunDevice:        sys.Tun.Get(),
 		netStack:         netStack,
-		wireguardMonitor: options.WireguardMonitor,
+		wireguardMonitor: wireguardMonitor,
 		wireguardRouter: &router.Config{
 			LocalAddrs: options.Addresses,
 		},
@@ -747,7 +740,7 @@ func (c *Conn) forwardTCP(src, dst netip.AddrPort) (handler func(net.Conn), opts
 		return nil, nil, false
 	}
 	// See: https://github.com/tailscale/tailscale/blob/c7cea825aea39a00aca71ea02bab7266afc03e7c/wgengine/netstack/netstack.go#L888
-	if dst.Port() == WorkspaceAgentSSHPort || dst.Port() == WorkspaceAgentStandardSSHPort {
+	if dst.Port() == WorkspaceAgentSSHPort || dst.Port() == 22 {
 		opt := tcpip.KeepaliveIdleOption(72 * time.Hour)
 		opts = append(opts, &opt)
 	}

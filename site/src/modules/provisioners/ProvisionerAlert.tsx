@@ -2,6 +2,7 @@ import type { Theme } from "@emotion/react";
 import AlertTitle from "@mui/material/AlertTitle";
 import { Alert, type AlertColor } from "components/Alert/Alert";
 import { AlertDetail } from "components/Alert/Alert";
+import { Stack } from "components/Stack/Stack";
 import { ProvisionerTag } from "modules/provisioners/ProvisionerTag";
 import type { FC } from "react";
 
@@ -51,13 +52,13 @@ export const ProvisionerAlert: FC<ProvisionerAlertProps> = ({
 			<AlertTitle>{title}</AlertTitle>
 			<AlertDetail>
 				<div>{detail}</div>
-				<div className="flex items-center gap-2 flex-wrap mt-2">
+				<Stack direction="row" spacing={1} wrap="wrap">
 					{Object.entries(tags ?? {})
 						.filter(([key]) => key !== "owner")
 						.map(([key, value]) => (
 							<ProvisionerTag key={key} tagName={key} tagValue={value} />
 						))}
-				</div>
+				</Stack>
 			</AlertDetail>
 		</Alert>
 	);

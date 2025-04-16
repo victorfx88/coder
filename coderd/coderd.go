@@ -45,7 +45,6 @@ import (
 	"github.com/coder/coder/v2/coderd/entitlements"
 	"github.com/coder/coder/v2/coderd/idpsync"
 	"github.com/coder/coder/v2/coderd/runtimeconfig"
-	"github.com/coder/coder/v2/coderd/webpush"
 
 	agentproto "github.com/coder/coder/v2/agent/proto"
 	"github.com/coder/coder/v2/buildinfo"
@@ -227,10 +226,6 @@ type Options struct {
 	UpdateAgentMetrics func(ctx context.Context, labels prometheusmetrics.AgentMetricLabels, metrics []*agentproto.Stats_Metric)
 	StatsBatcher       workspacestats.Batcher
 
-	// WorkspaceAppAuditSessionTimeout allows changing the timeout for audit
-	// sessions. Raising or lowering this value will directly affect the write
-	// load of the audit log table. This is used for testing. Default 1 hour.
-	WorkspaceAppAuditSessionTimeout    time.Duration
 	WorkspaceAppsStatsCollectorOptions workspaceapps.StatsCollectorOptions
 
 	// This janky function is used in telemetry to parse fields out of the raw
@@ -261,9 +256,6 @@ type Options struct {
 	AppEncryptionKeyCache cryptokeys.EncryptionKeycache
 	OIDCConvertKeyCache   cryptokeys.SigningKeycache
 	Clock                 quartz.Clock
-
-	// WebPushDispatcher is a way to send notifications over Web Push.
-	WebPushDispatcher webpush.Dispatcher
 }
 
 // @title Coder API
@@ -430,7 +422,6 @@ func New(options *Options) *API {
 	metricsCache := metricscache.New(
 		options.Database,
 		options.Logger.Named("metrics_cache"),
-		options.Clock,
 		metricscache.Intervals{
 			TemplateBuildTimes: options.MetricsCacheRefreshInterval,
 			DeploymentStats:    options.AgentStatsRefreshInterval,
@@ -542,6 +533,16 @@ func New(options *Options) *API {
 			Authorizer: options.Authorizer,
 			Logger:     options.Logger,
 		},
+		WorkspaceAppsProvider: workspaceapps.NewDBTokenProvider(
+			options.Logger.Named("workspaceapps"),
+			options.AccessURL,
+			options.Authorizer,
+			options.Database,
+			options.DeploymentValues,
+			oauthConfigs,
+			options.AgentInactiveDisconnectTimeout,
+			options.AppSigningKeyCache,
+		),
 		metricsCache:                metricsCache,
 		Auditor:                     atomic.Pointer[audit.Auditor]{},
 		TailnetCoordinator:          atomic.Pointer[tailnet.Coordinator]{},
@@ -550,7 +551,6 @@ func New(options *Options) *API {
 		UserQuietHoursScheduleStore: options.UserQuietHoursScheduleStore,
 		AccessControlStore:          options.AccessControlStore,
 		Experiments:                 experiments,
-		WebpushDispatcher:           options.WebPushDispatcher,
 		healthCheckGroup:            &singleflight.Group[string, *healthsdk.HealthcheckReport]{},
 		Acquirer: provisionerdserver.NewAcquirer(
 			ctx,
@@ -560,18 +560,6 @@ func New(options *Options) *API {
 		),
 		dbRolluper: options.DatabaseRolluper,
 	}
-	api.WorkspaceAppsProvider = workspaceapps.NewDBTokenProvider(
-		options.Logger.Named("workspaceapps"),
-		options.AccessURL,
-		options.Authorizer,
-		&api.Auditor,
-		options.Database,
-		options.DeploymentValues,
-		oauthConfigs,
-		options.AgentInactiveDisconnectTimeout,
-		options.WorkspaceAppAuditSessionTimeout,
-		options.AppSigningKeyCache,
-	)
 
 	f := appearance.NewDefaultFetcher(api.DeploymentValues.DocsURL.String())
 	api.AppearanceFetcher.Store(&f)
@@ -585,7 +573,6 @@ func New(options *Options) *API {
 		WorkspaceProxy:        false,
 		UpgradeMessage:        api.DeploymentValues.CLIUpgradeMessage.String(),
 		DeploymentID:          api.DeploymentID,
-		WebPushPublicKey:      api.WebpushDispatcher.PublicKey(),
 		Telemetry:             api.Telemetry.Enabled(),
 	}
 	api.SiteHandler = site.New(&site.Options{
@@ -801,7 +788,6 @@ func New(options *Options) *API {
 		httpmw.AttachRequestID,
 		httpmw.ExtractRealIP(api.RealIPConfig),
 		httpmw.Logger(api.Logger),
-		singleSlashMW,
 		rolestore.CustomRoleMW,
 		prometheusMW,
 		// Build-Version is helpful for debugging.
@@ -835,7 +821,7 @@ func New(options *Options) *API {
 	// we do not override subdomain app routes.
 	r.Get("/latency-check", tracing.StatusWriterMiddleware(prometheusMW(LatencyCheck())).ServeHTTP)
 
-	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("OK")) })
+	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("OK")) })
 
 	// Attach workspace apps routes.
 	r.Group(func(r chi.Router) {
@@ -850,7 +836,7 @@ func New(options *Options) *API {
 		r.Route("/derp", func(r chi.Router) {
 			r.Get("/", derpHandler.ServeHTTP)
 			// This is used when UDP is blocked, and latency must be checked via HTTP(s).
-			r.Get("/latency-check", func(w http.ResponseWriter, _ *http.Request) {
+			r.Get("/latency-check", func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
 		})
@@ -907,7 +893,7 @@ func New(options *Options) *API {
 	r.Route("/api/v2", func(r chi.Router) {
 		api.APIHandler = r
 
-		r.NotFound(func(rw http.ResponseWriter, _ *http.Request) { httpapi.RouteNotFound(rw) })
+		r.NotFound(func(rw http.ResponseWriter, r *http.Request) { httpapi.RouteNotFound(rw) })
 		r.Use(
 			// Specific routes can specify different limits, but every rate
 			// limit must be configurable by the admin.
@@ -943,25 +929,6 @@ func New(options *Options) *API {
 		r.Route("/audit", func(r chi.Router) {
 			r.Use(
 				apiKeyMiddleware,
-				// This middleware only checks the site and orgs for the audit_log read
-				// permission.
-				// In the future if it makes sense to have this permission on the user as
-				// well we will need to update this middleware to include that check.
-				func(next http.Handler) http.Handler {
-					return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-						if api.Authorize(r, policy.ActionRead, rbac.ResourceAuditLog) {
-							next.ServeHTTP(rw, r)
-							return
-						}
-
-						if api.Authorize(r, policy.ActionRead, rbac.ResourceAuditLog.AnyOrganization()) {
-							next.ServeHTTP(rw, r)
-							return
-						}
-
-						httpapi.Forbidden(rw)
-					})
-				},
 			)
 
 			r.Get("/", api.auditLogs)
@@ -1014,7 +981,6 @@ func New(options *Options) *API {
 						})
 					})
 				})
-				r.Get("/paginated-members", api.paginatedMembers)
 				r.Route("/members", func(r chi.Router) {
 					r.Get("/", api.listMembers)
 					r.Route("/roles", func(r chi.Router) {
@@ -1091,7 +1057,6 @@ func New(options *Options) *API {
 			r.Get("/rich-parameters", api.templateVersionRichParameters)
 			r.Get("/external-auth", api.templateVersionExternalAuth)
 			r.Get("/variables", api.templateVersionVariables)
-			r.Get("/presets", api.templateVersionPresets)
 			r.Get("/resources", api.templateVersionResources)
 			r.Get("/logs", api.templateVersionLogs)
 			r.Route("/dry-run", func(r chi.Router) {
@@ -1120,7 +1085,6 @@ func New(options *Options) *API {
 				r.Post("/validate-password", api.validateUserPassword)
 				r.Post("/otp/change-password", api.postChangePasswordWithOneTimePasscode)
 				r.Route("/oauth2", func(r chi.Router) {
-					r.Get("/github/device", api.userOAuth2GithubDevice)
 					r.Route("/github", func(r chi.Router) {
 						r.Use(
 							httpmw.ExtractOAuth2(options.GithubOAuth2Config, options.HTTPClient, nil),
@@ -1158,7 +1122,6 @@ func New(options *Options) *API {
 						r.Put("/suspend", api.putSuspendUserAccount())
 						r.Put("/activate", api.putActivateUserAccount())
 					})
-					r.Get("/appearance", api.userAppearanceSettings)
 					r.Put("/appearance", api.putUserAppearanceSettings)
 					r.Route("/password", func(r chi.Router) {
 						r.Use(httpmw.RateLimit(options.LoginRateLimit, time.Minute))
@@ -1201,11 +1164,6 @@ func New(options *Options) *API {
 							r.Put("/", api.putUserNotificationPreferences)
 						})
 					})
-					r.Route("/webpush", func(r chi.Router) {
-						r.Post("/subscription", api.postUserWebpushSubscription)
-						r.Delete("/subscription", api.deleteUserWebpushSubscription)
-						r.Post("/test", api.postUserPushNotificationTest)
-					})
 				})
 			})
 		})
@@ -1228,7 +1186,6 @@ func New(options *Options) *API {
 				}))
 				r.Get("/rpc", api.workspaceAgentRPC)
 				r.Patch("/logs", api.patchWorkspaceAgentLogs)
-				r.Patch("/app-status", api.patchWorkspaceAgentAppStatus)
 				// Deprecated: Required to support legacy agents
 				r.Get("/gitauth", api.workspaceAgentsGitAuth)
 				r.Get("/external-auth", api.workspaceAgentsExternalAuth)
@@ -1249,13 +1206,11 @@ func New(options *Options) *API {
 					httpmw.ExtractWorkspaceParam(options.Database),
 				)
 				r.Get("/", api.workspaceAgent)
-				r.Get("/watch-metadata", api.watchWorkspaceAgentMetadataSSE)
-				r.Get("/watch-metadata-ws", api.watchWorkspaceAgentMetadataWS)
+				r.Get("/watch-metadata", api.watchWorkspaceAgentMetadata)
 				r.Get("/startup-logs", api.workspaceAgentLogsDeprecated)
 				r.Get("/logs", api.workspaceAgentLogs)
 				r.Get("/listening-ports", api.workspaceAgentListeningPorts)
 				r.Get("/connection", api.workspaceAgentConnection)
-				r.Get("/containers", api.workspaceAgentListContainers)
 				r.Get("/coordinate", api.workspaceAgentClientCoordinate)
 
 				// PTY is part of workspaceAppServer.
@@ -1282,8 +1237,7 @@ func New(options *Options) *API {
 				r.Route("/ttl", func(r chi.Router) {
 					r.Put("/", api.putWorkspaceTTL)
 				})
-				r.Get("/watch", api.watchWorkspaceSSE)
-				r.Get("/watch-ws", api.watchWorkspaceWS)
+				r.Get("/watch", api.watchWorkspace)
 				r.Put("/extend", api.putExtendWorkspace)
 				r.Post("/usage", api.postWorkspaceUsage)
 				r.Put("/dormant", api.putWorkspaceDormant)
@@ -1347,7 +1301,7 @@ func New(options *Options) *API {
 				func(next http.Handler) http.Handler {
 					return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 						if !api.Authorize(r, policy.ActionRead, rbac.ResourceDebugInfo) {
-							httpapi.Forbidden(rw)
+							httpapi.ResourceNotFound(rw)
 							return
 						}
 
@@ -1407,19 +1361,12 @@ func New(options *Options) *API {
 		})
 		r.Route("/notifications", func(r chi.Router) {
 			r.Use(apiKeyMiddleware)
-			r.Route("/inbox", func(r chi.Router) {
-				r.Get("/", api.listInboxNotifications)
-				r.Put("/mark-all-as-read", api.markAllInboxNotificationsAsRead)
-				r.Get("/watch", api.watchInboxNotifications)
-				r.Put("/{id}/read-status", api.updateInboxNotificationReadStatus)
-			})
 			r.Get("/settings", api.notificationsSettings)
 			r.Put("/settings", api.putNotificationsSettings)
 			r.Route("/templates", func(r chi.Router) {
 				r.Get("/system", api.systemNotificationTemplates)
 			})
 			r.Get("/dispatch-methods", api.notificationDispatchMethods)
-			r.Post("/test", api.postTestNotification)
 		})
 		r.Route("/tailnet", func(r chi.Router) {
 			r.Use(apiKeyMiddleware)
@@ -1435,7 +1382,7 @@ func New(options *Options) *API {
 		// global variable here.
 		r.Get("/swagger/*", globalHTTPSwaggerHandler)
 	} else {
-		swaggerDisabled := http.HandlerFunc(func(rw http.ResponseWriter, _ *http.Request) {
+		swaggerDisabled := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			httpapi.Write(context.Background(), rw, http.StatusNotFound, codersdk.Response{
 				Message: "Swagger documentation is disabled.",
 			})
@@ -1508,10 +1455,8 @@ type API struct {
 	TailnetCoordinator                atomic.Pointer[tailnet.Coordinator]
 	NetworkTelemetryBatcher           *tailnet.NetworkTelemetryBatcher
 	TailnetClientService              *tailnet.ClientService
-	// WebpushDispatcher is a way to send notifications to users via Web Push.
-	WebpushDispatcher webpush.Dispatcher
-	QuotaCommitter    atomic.Pointer[proto.QuotaCommitter]
-	AppearanceFetcher atomic.Pointer[appearance.Fetcher]
+	QuotaCommitter                    atomic.Pointer[proto.QuotaCommitter]
+	AppearanceFetcher                 atomic.Pointer[appearance.Fetcher]
 	// WorkspaceProxyHostsFn returns the hosts of healthy workspace proxies
 	// for header reasons.
 	WorkspaceProxyHostsFn atomic.Pointer[func() []string]
@@ -1784,32 +1729,4 @@ func ReadExperiments(log slog.Logger, raw []string) codersdk.Experiments {
 		}
 	}
 	return exps
-}
-
-var multipleSlashesRe = regexp.MustCompile(`/+`)
-
-func singleSlashMW(next http.Handler) http.Handler {
-	fn := func(w http.ResponseWriter, r *http.Request) {
-		var path string
-		rctx := chi.RouteContext(r.Context())
-		if rctx != nil && rctx.RoutePath != "" {
-			path = rctx.RoutePath
-		} else {
-			path = r.URL.Path
-		}
-
-		// Normalize multiple slashes to a single slash
-		newPath := multipleSlashesRe.ReplaceAllString(path, "/")
-
-		// Apply the cleaned path
-		// The approach is consistent with: https://github.com/go-chi/chi/blob/e846b8304c769c4f1a51c9de06bebfaa4576bd88/middleware/strip.go#L24-L28
-		if rctx != nil {
-			rctx.RoutePath = newPath
-		} else {
-			r.URL.Path = newPath
-		}
-
-		next.ServeHTTP(w, r)
-	}
-	return http.HandlerFunc(fn)
 }

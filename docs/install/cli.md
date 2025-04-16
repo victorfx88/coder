@@ -3,7 +3,7 @@
 A single CLI (`coder`) is used for both the Coder server and the client.
 
 We support two release channels: mainline and stable - read the
-[Releases](./releases/index.md) page to learn more about which best suits your team.
+[Releases](./releases.md) page to learn more about which best suits your team.
 
 ## Download the latest release from GitHub
 
@@ -22,8 +22,7 @@ alternate installation methods (e.g. standalone binaries, system packages).
 
 ## Windows
 
-> [!IMPORTANT]
-> If you plan to use the built-in PostgreSQL database, you will
+> **Important:** If you plan to use the built-in PostgreSQL database, you will
 > need to ensure that the
 > [Visual C++ Runtime](https://learn.microsoft.com/en-US/cpp/windows/latest-supported-vc-redist#latest-microsoft-visual-c-redistributable-version)
 > is installed.
@@ -49,7 +48,7 @@ To start the Coder server:
 coder server
 ```
 
-![Coder install](../images/screenshots/welcome-create-admin-user.png)
+![Coder install](../images/install/coder-setup.png)
 
 To log in to an existing Coder deployment:
 
@@ -59,8 +58,11 @@ coder login https://coder.example.com
 
 ## Download the CLI from your deployment
 
-> [!NOTE]
-> Available in Coder 2.19 and newer.
+<blockquote class="admonition note">
+
+Available in Coder 2.19 and newer.
+
+</blockquote>
 
 Every Coder server hosts CLI binaries for all supported platforms. You can run a
 script to download the appropriate CLI for your machine from your Coder

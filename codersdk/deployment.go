@@ -393,12 +393,11 @@ type DeploymentValues struct {
 	TermsOfServiceURL               serpent.String                       `json:"terms_of_service_url,omitempty" typescript:",notnull"`
 	Notifications                   NotificationsConfig                  `json:"notifications,omitempty" typescript:",notnull"`
 	AdditionalCSPPolicy             serpent.StringArray                  `json:"additional_csp_policy,omitempty" typescript:",notnull"`
-	WorkspaceHostnameSuffix         serpent.String                       `json:"workspace_hostname_suffix,omitempty" typescript:",notnull"`
 
 	Config      serpent.YAMLConfigPath `json:"config,omitempty" typescript:",notnull"`
 	WriteConfig serpent.Bool           `json:"write_config,omitempty" typescript:",notnull"`
 
-	// Deprecated: Use HTTPAddress or TLS.Address instead.
+	// DEPRECATED: Use HTTPAddress or TLS.Address instead.
 	Address serpent.HostPort `json:"address,omitempty" typescript:",notnull"`
 }
 
@@ -504,15 +503,13 @@ type OAuth2Config struct {
 }
 
 type OAuth2GithubConfig struct {
-	ClientID              serpent.String      `json:"client_id" typescript:",notnull"`
-	ClientSecret          serpent.String      `json:"client_secret" typescript:",notnull"`
-	DeviceFlow            serpent.Bool        `json:"device_flow" typescript:",notnull"`
-	DefaultProviderEnable serpent.Bool        `json:"default_provider_enable" typescript:",notnull"`
-	AllowedOrgs           serpent.StringArray `json:"allowed_orgs" typescript:",notnull"`
-	AllowedTeams          serpent.StringArray `json:"allowed_teams" typescript:",notnull"`
-	AllowSignups          serpent.Bool        `json:"allow_signups" typescript:",notnull"`
-	AllowEveryone         serpent.Bool        `json:"allow_everyone" typescript:",notnull"`
-	EnterpriseBaseURL     serpent.String      `json:"enterprise_base_url" typescript:",notnull"`
+	ClientID          serpent.String      `json:"client_id" typescript:",notnull"`
+	ClientSecret      serpent.String      `json:"client_secret" typescript:",notnull"`
+	AllowedOrgs       serpent.StringArray `json:"allowed_orgs" typescript:",notnull"`
+	AllowedTeams      serpent.StringArray `json:"allowed_teams" typescript:",notnull"`
+	AllowSignups      serpent.Bool        `json:"allow_signups" typescript:",notnull"`
+	AllowEveryone     serpent.Bool        `json:"allow_everyone" typescript:",notnull"`
+	EnterpriseBaseURL serpent.String      `json:"enterprise_base_url" typescript:",notnull"`
 }
 
 type OIDCConfig struct {
@@ -520,27 +517,17 @@ type OIDCConfig struct {
 	ClientID     serpent.String `json:"client_id" typescript:",notnull"`
 	ClientSecret serpent.String `json:"client_secret" typescript:",notnull"`
 	// ClientKeyFile & ClientCertFile are used in place of ClientSecret for PKI auth.
-	ClientKeyFile       serpent.String                    `json:"client_key_file" typescript:",notnull"`
-	ClientCertFile      serpent.String                    `json:"client_cert_file" typescript:",notnull"`
-	EmailDomain         serpent.StringArray               `json:"email_domain" typescript:",notnull"`
-	IssuerURL           serpent.String                    `json:"issuer_url" typescript:",notnull"`
-	Scopes              serpent.StringArray               `json:"scopes" typescript:",notnull"`
-	IgnoreEmailVerified serpent.Bool                      `json:"ignore_email_verified" typescript:",notnull"`
-	UsernameField       serpent.String                    `json:"username_field" typescript:",notnull"`
-	NameField           serpent.String                    `json:"name_field" typescript:",notnull"`
-	EmailField          serpent.String                    `json:"email_field" typescript:",notnull"`
-	AuthURLParams       serpent.Struct[map[string]string] `json:"auth_url_params" typescript:",notnull"`
-	// IgnoreUserInfo & UserInfoFromAccessToken are mutually exclusive. Only 1
-	// can be set to true. Ideally this would be an enum with 3 states, ['none',
-	// 'userinfo', 'access_token']. However, for backward compatibility,
-	// `ignore_user_info` must remain. And `access_token` is a niche, non-spec
-	// compliant edge case. So it's use is rare, and should not be advised.
-	IgnoreUserInfo serpent.Bool `json:"ignore_user_info" typescript:",notnull"`
-	// UserInfoFromAccessToken as mentioned above is an edge case. This allows
-	// sourcing the user_info from the access token itself instead of a user_info
-	// endpoint. This assumes the access token is a valid JWT with a set of claims to
-	// be merged with the id_token.
-	UserInfoFromAccessToken   serpent.Bool                           `json:"source_user_info_from_access_token" typescript:",notnull"`
+	ClientKeyFile             serpent.String                         `json:"client_key_file" typescript:",notnull"`
+	ClientCertFile            serpent.String                         `json:"client_cert_file" typescript:",notnull"`
+	EmailDomain               serpent.StringArray                    `json:"email_domain" typescript:",notnull"`
+	IssuerURL                 serpent.String                         `json:"issuer_url" typescript:",notnull"`
+	Scopes                    serpent.StringArray                    `json:"scopes" typescript:",notnull"`
+	IgnoreEmailVerified       serpent.Bool                           `json:"ignore_email_verified" typescript:",notnull"`
+	UsernameField             serpent.String                         `json:"username_field" typescript:",notnull"`
+	NameField                 serpent.String                         `json:"name_field" typescript:",notnull"`
+	EmailField                serpent.String                         `json:"email_field" typescript:",notnull"`
+	AuthURLParams             serpent.Struct[map[string]string]      `json:"auth_url_params" typescript:",notnull"`
+	IgnoreUserInfo            serpent.Bool                           `json:"ignore_user_info" typescript:",notnull"`
 	OrganizationField         serpent.String                         `json:"organization_field" typescript:",notnull"`
 	OrganizationMapping       serpent.Struct[map[string][]uuid.UUID] `json:"organization_mapping" typescript:",notnull"`
 	OrganizationAssignDefault serpent.Bool                           `json:"organization_assign_default" typescript:",notnull"`
@@ -699,17 +686,10 @@ type NotificationsConfig struct {
 	SMTP NotificationsEmailConfig `json:"email" typescript:",notnull"`
 	// Webhook settings.
 	Webhook NotificationsWebhookConfig `json:"webhook" typescript:",notnull"`
-	// Inbox settings.
-	Inbox NotificationsInboxConfig `json:"inbox" typescript:",notnull"`
 }
 
-// Are either of the notification methods enabled?
 func (n *NotificationsConfig) Enabled() bool {
 	return n.SMTP.Smarthost != "" || n.Webhook.Endpoint != serpent.URL{}
-}
-
-type NotificationsInboxConfig struct {
-	Enabled serpent.Bool `json:"enabled" typescript:",notnull"`
 }
 
 type NotificationsEmailConfig struct {
@@ -945,7 +925,7 @@ func (c *DeploymentValues) Options() serpent.OptionSet {
 		deploymentGroupClient = serpent.Group{
 			Name: "Client",
 			Description: "These options change the behavior of how clients interact with the Coder. " +
-				"Clients include the Coder CLI, Coder Desktop, IDE extensions, and the web UI.",
+				"Clients include the coder cli, vs code extension, and the web UI.",
 			YAML: "client",
 		}
 		deploymentGroupConfig = serpent.Group{
@@ -996,11 +976,6 @@ func (c *DeploymentValues) Options() serpent.OptionSet {
 			Name:   "Webhook",
 			Parent: &deploymentGroupNotifications,
 			YAML:   "webhook",
-		}
-		deploymentGroupInbox = serpent.Group{
-			Name:   "Inbox",
-			Parent: &deploymentGroupNotifications,
-			YAML:   "inbox",
 		}
 	)
 
@@ -1598,26 +1573,6 @@ func (c *DeploymentValues) Options() serpent.OptionSet {
 			Group:       &deploymentGroupOAuth2GitHub,
 		},
 		{
-			Name:        "OAuth2 GitHub Device Flow",
-			Description: "Enable device flow for Login with GitHub.",
-			Flag:        "oauth2-github-device-flow",
-			Env:         "CODER_OAUTH2_GITHUB_DEVICE_FLOW",
-			Value:       &c.OAuth2.Github.DeviceFlow,
-			Group:       &deploymentGroupOAuth2GitHub,
-			YAML:        "deviceFlow",
-			Default:     "false",
-		},
-		{
-			Name:        "OAuth2 GitHub Default Provider Enable",
-			Description: "Enable the default GitHub OAuth2 provider managed by Coder.",
-			Flag:        "oauth2-github-default-provider-enable",
-			Env:         "CODER_OAUTH2_GITHUB_DEFAULT_PROVIDER_ENABLE",
-			Value:       &c.OAuth2.Github.DefaultProviderEnable,
-			Group:       &deploymentGroupOAuth2GitHub,
-			YAML:        "defaultProviderEnable",
-			Default:     "true",
-		},
-		{
 			Name:        "OAuth2 GitHub Allowed Orgs",
 			Description: "Organizations the user must be a member of to Login with GitHub.",
 			Flag:        "oauth2-github-allowed-orgs",
@@ -1797,23 +1752,6 @@ func (c *DeploymentValues) Options() serpent.OptionSet {
 			Value:       &c.OIDC.IgnoreUserInfo,
 			Group:       &deploymentGroupOIDC,
 			YAML:        "ignoreUserInfo",
-		},
-		{
-			Name: "OIDC Access Token Claims",
-			// This is a niche edge case that should not be advertised. Alternatives should
-			// be investigated before turning this on. A properly configured IdP should
-			// always have a userinfo endpoint which is preferred.
-			Hidden: true,
-			Description: "Source supplemental user claims from the 'access_token'. This assumes the " +
-				"token is a jwt signed by the same issuer as the id_token. Using this requires setting " +
-				"'oidc-ignore-userinfo' to true. This setting is not compliant with the OIDC specification " +
-				"and is not recommended. Use at your own risk.",
-			Flag:    "oidc-access-token-claims",
-			Env:     "CODER_OIDC_ACCESS_TOKEN_CLAIMS",
-			Default: "false",
-			Value:   &c.OIDC.UserInfoFromAccessToken,
-			Group:   &deploymentGroupOIDC,
-			YAML:    "accessTokenClaims",
 		},
 		{
 			Name: "OIDC Organization Field",
@@ -2551,17 +2489,6 @@ func (c *DeploymentValues) Options() serpent.OptionSet {
 			Default:     "coder.",
 		},
 		{
-			Name:        "Workspace Hostname Suffix",
-			Description: "Workspace hostnames use this suffix in SSH config and Coder Connect on Coder Desktop. By default it is coder, resulting in names like myworkspace.coder.",
-			Flag:        "workspace-hostname-suffix",
-			Env:         "CODER_WORKSPACE_HOSTNAME_SUFFIX",
-			YAML:        "workspaceHostnameSuffix",
-			Group:       &deploymentGroupClient,
-			Value:       &c.WorkspaceHostnameSuffix,
-			Hidden:      false,
-			Default:     "coder",
-		},
-		{
 			Name: "SSH Config Options",
 			Description: "These SSH config options will override the default SSH config options. " +
 				"Provide options in \"key=value\" or \"key value\" format separated by commas." +
@@ -2881,16 +2808,6 @@ Write out the current server config as YAML to stdout.`,
 			YAML:        "endpoint",
 		},
 		{
-			Name:        "Notifications: Inbox: Enabled",
-			Description: "Enable Coder Inbox.",
-			Flag:        "notifications-inbox-enabled",
-			Env:         "CODER_NOTIFICATIONS_INBOX_ENABLED",
-			Value:       &c.Notifications.Inbox.Enabled,
-			Default:     "true",
-			Group:       &deploymentGroupInbox,
-			YAML:        "enabled",
-		},
-		{
 			Name:        "Notifications: Max Send Attempts",
 			Description: "The upper limit of attempts to send a notification.",
 			Flag:        "notifications-max-send-attempts",
@@ -2980,7 +2897,6 @@ Write out the current server config as YAML to stdout.`,
 			Annotations: serpent.Annotations{}.Mark(annotationFormatDuration, "true"),
 			Hidden:      true, // Hidden because most operators should not need to modify this.
 		},
-		// Push notifications.
 	}
 
 	return opts
@@ -3160,9 +3076,6 @@ type BuildInfoResponse struct {
 
 	// DeploymentID is the unique identifier for this deployment.
 	DeploymentID string `json:"deployment_id"`
-
-	// WebPushPublicKey is the public key for push notifications via Web Push.
-	WebPushPublicKey string `json:"webpush_public_key,omitempty"`
 }
 
 type WorkspaceProxyBuildInfo struct {
@@ -3205,8 +3118,6 @@ const (
 	ExperimentAutoFillParameters Experiment = "auto-fill-parameters" // This should not be taken out of experiments until we have redesigned the feature.
 	ExperimentNotifications      Experiment = "notifications"        // Sends notifications via SMTP and webhooks following certain events.
 	ExperimentWorkspaceUsage     Experiment = "workspace-usage"      // Enables the new workspace usage tracking.
-	ExperimentWebPush            Experiment = "web-push"             // Enables web push notifications through the browser.
-	ExperimentDynamicParameters  Experiment = "dynamic-parameters"   // Enables dynamic parameters when creating a workspace.
 )
 
 // ExperimentsAll should include all experiments that are safe for
@@ -3393,12 +3304,7 @@ type DeploymentStats struct {
 }
 
 type SSHConfigResponse struct {
-	// HostnamePrefix is the prefix we append to workspace names for SSH hostnames.
-	// Deprecated: use HostnameSuffix instead.
-	HostnamePrefix string `json:"hostname_prefix"`
-
-	// HostnameSuffix is the suffix to append to workspace names for SSH hostnames.
-	HostnameSuffix   string            `json:"hostname_suffix"`
+	HostnamePrefix   string            `json:"hostname_prefix"`
 	SSHConfigOptions map[string]string `json:"ssh_config_options"`
 }
 

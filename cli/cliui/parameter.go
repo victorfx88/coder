@@ -33,8 +33,7 @@ func RichParameter(inv *serpent.Invocation, templateVersionParameter codersdk.Te
 
 	var err error
 	var value string
-	switch {
-	case templateVersionParameter.Type == "list(string)":
+	if templateVersionParameter.Type == "list(string)" {
 		// Move the cursor up a single line for nicer display!
 		_, _ = fmt.Fprint(inv.Stdout, "\033[1A")
 
@@ -61,7 +60,7 @@ func RichParameter(inv *serpent.Invocation, templateVersionParameter codersdk.Te
 			)
 			value = string(v)
 		}
-	case len(templateVersionParameter.Options) > 0:
+	} else if len(templateVersionParameter.Options) > 0 {
 		// Move the cursor up a single line for nicer display!
 		_, _ = fmt.Fprint(inv.Stdout, "\033[1A")
 		var richParameterOption *codersdk.TemplateVersionParameterOption
@@ -75,7 +74,7 @@ func RichParameter(inv *serpent.Invocation, templateVersionParameter codersdk.Te
 			pretty.Fprintf(inv.Stdout, DefaultStyles.Prompt, "%s\n", richParameterOption.Name)
 			value = richParameterOption.Value
 		}
-	default:
+	} else {
 		text := "Enter a value"
 		if !templateVersionParameter.Required {
 			text += fmt.Sprintf(" (default: %q)", defaultValue)

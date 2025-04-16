@@ -26,8 +26,7 @@ func (r *RootCmd) organizationRoles(orgContext *OrganizationContext) *serpent.Co
 		},
 		Children: []*serpent.Command{
 			r.showOrganizationRoles(orgContext),
-			r.updateOrganizationRole(orgContext),
-			r.createOrganizationRole(orgContext),
+			r.editOrganizationRole(orgContext),
 		},
 	}
 	return cmd
@@ -100,7 +99,7 @@ func (r *RootCmd) showOrganizationRoles(orgContext *OrganizationContext) *serpen
 	return cmd
 }
 
-func (r *RootCmd) createOrganizationRole(orgContext *OrganizationContext) *serpent.Command {
+func (r *RootCmd) editOrganizationRole(orgContext *OrganizationContext) *serpent.Command {
 	formatter := cliui.NewOutputFormatter(
 		cliui.ChangeFormatterData(
 			cliui.TableFormat([]roleTableRow{}, []string{"name", "display name", "site permissions", "organization permissions", "user permissions"}),
@@ -119,12 +118,12 @@ func (r *RootCmd) createOrganizationRole(orgContext *OrganizationContext) *serpe
 
 	client := new(codersdk.Client)
 	cmd := &serpent.Command{
-		Use:   "create <role_name>",
-		Short: "Create a new organization custom role",
+		Use:   "edit <role_name>",
+		Short: "Edit an organization custom role",
 		Long: FormatExamples(
 			Example{
 				Description: "Run with an input.json file",
-				Command:     "coder organization -O <organization_name> roles create --stidin < role.json",
+				Command:     "coder roles edit --stdin < role.json",
 			},
 		),
 		Options: []serpent.Option{
@@ -153,13 +152,10 @@ func (r *RootCmd) createOrganizationRole(orgContext *OrganizationContext) *serpe
 				return err
 			}
 
-			existingRoles, err := client.ListOrganizationRoles(ctx, org.ID)
-			if err != nil {
-				return xerrors.Errorf("listing existing roles: %w", err)
-			}
-
+			createNewRole := true
 			var customRole codersdk.Role
 			if jsonInput {
+				// JSON Upload mode
 				bytes, err := io.ReadAll(inv.Stdin)
 				if err != nil {
 					return xerrors.Errorf("reading stdin: %w", err)
@@ -179,148 +175,29 @@ func (r *RootCmd) createOrganizationRole(orgContext *OrganizationContext) *serpe
 					return xerrors.Errorf("json input does not appear to be a valid role")
 				}
 
-				if role := existingRole(customRole.Name, existingRoles); role != nil {
-					return xerrors.Errorf("The role %s already exists. If you'd like to edit this role use the update command instead", customRole.Name)
-				}
-			} else {
-				if len(inv.Args) == 0 {
-					return xerrors.Errorf("missing role name argument, usage: \"coder organizations roles create <role_name>\"")
-				}
-
-				if role := existingRole(inv.Args[0], existingRoles); role != nil {
-					return xerrors.Errorf("The role %s already exists. If you'd like to edit this role use the update command instead", inv.Args[0])
-				}
-
-				interactiveRole, err := interactiveOrgRoleEdit(inv, org.ID, nil)
+				existingRoles, err := client.ListOrganizationRoles(ctx, org.ID)
 				if err != nil {
-					return xerrors.Errorf("editing role: %w", err)
+					return xerrors.Errorf("listing existing roles: %w", err)
 				}
-
-				customRole = *interactiveRole
-			}
-
-			var updated codersdk.Role
-			if dryRun {
-				// Do not actually post
-				updated = customRole
-			} else {
-				updated, err = client.CreateOrganizationRole(ctx, customRole)
-				if err != nil {
-					return xerrors.Errorf("patch role: %w", err)
-				}
-			}
-
-			output, err := formatter.Format(ctx, updated)
-			if err != nil {
-				return xerrors.Errorf("formatting: %w", err)
-			}
-
-			_, err = fmt.Fprintln(inv.Stdout, output)
-			return err
-		},
-	}
-
-	return cmd
-}
-
-func (r *RootCmd) updateOrganizationRole(orgContext *OrganizationContext) *serpent.Command {
-	formatter := cliui.NewOutputFormatter(
-		cliui.ChangeFormatterData(
-			cliui.TableFormat([]roleTableRow{}, []string{"name", "display name", "site permissions", "organization permissions", "user permissions"}),
-			func(data any) (any, error) {
-				typed, _ := data.(codersdk.Role)
-				return []roleTableRow{roleToTableView(typed)}, nil
-			},
-		),
-		cliui.JSONFormat(),
-	)
-
-	var (
-		dryRun    bool
-		jsonInput bool
-	)
-
-	client := new(codersdk.Client)
-	cmd := &serpent.Command{
-		Use:   "update <role_name>",
-		Short: "Update an organization custom role",
-		Long: FormatExamples(
-			Example{
-				Description: "Run with an input.json file",
-				Command:     "coder roles update --stdin < role.json",
-			},
-		),
-		Options: []serpent.Option{
-			cliui.SkipPromptOption(),
-			{
-				Name:        "dry-run",
-				Description: "Does all the work, but does not submit the final updated role.",
-				Flag:        "dry-run",
-				Value:       serpent.BoolOf(&dryRun),
-			},
-			{
-				Name:        "stdin",
-				Description: "Reads stdin for the json role definition to upload.",
-				Flag:        "stdin",
-				Value:       serpent.BoolOf(&jsonInput),
-			},
-		},
-		Middleware: serpent.Chain(
-			serpent.RequireRangeArgs(0, 1),
-			r.InitClient(client),
-		),
-		Handler: func(inv *serpent.Invocation) error {
-			ctx := inv.Context()
-			org, err := orgContext.Selected(inv, client)
-			if err != nil {
-				return err
-			}
-
-			existingRoles, err := client.ListOrganizationRoles(ctx, org.ID)
-			if err != nil {
-				return xerrors.Errorf("listing existing roles: %w", err)
-			}
-
-			var customRole codersdk.Role
-			if jsonInput {
-				bytes, err := io.ReadAll(inv.Stdin)
-				if err != nil {
-					return xerrors.Errorf("reading stdin: %w", err)
-				}
-
-				err = json.Unmarshal(bytes, &customRole)
-				if err != nil {
-					return xerrors.Errorf("parsing stdin json: %w", err)
-				}
-
-				if customRole.Name == "" {
-					arr := make([]json.RawMessage, 0)
-					err = json.Unmarshal(bytes, &arr)
-					if err == nil && len(arr) > 0 {
-						return xerrors.Errorf("only 1 role can be sent at a time")
+				for _, existingRole := range existingRoles {
+					if strings.EqualFold(customRole.Name, existingRole.Name) {
+						// Editing an existing role
+						createNewRole = false
+						break
 					}
-					return xerrors.Errorf("json input does not appear to be a valid role")
-				}
-
-				if role := existingRole(customRole.Name, existingRoles); role == nil {
-					return xerrors.Errorf("The role %s does not exist. If you'd like to create this role use the create command instead", customRole.Name)
 				}
 			} else {
 				if len(inv.Args) == 0 {
 					return xerrors.Errorf("missing role name argument, usage: \"coder organizations roles edit <role_name>\"")
 				}
 
-				role := existingRole(inv.Args[0], existingRoles)
-				if role == nil {
-					return xerrors.Errorf("The role %s does not exist. If you'd like to create this role use the create command instead", inv.Args[0])
-				}
-
-				interactiveRole, err := interactiveOrgRoleEdit(inv, org.ID, &role.Role)
+				interactiveRole, newRole, err := interactiveOrgRoleEdit(inv, org.ID, client)
 				if err != nil {
 					return xerrors.Errorf("editing role: %w", err)
 				}
 
 				customRole = *interactiveRole
+				createNewRole = newRole
 
 				preview := fmt.Sprintf("permissions: %d site, %d org, %d user",
 					len(customRole.SitePermissions), len(customRole.OrganizationPermissions), len(customRole.UserPermissions))
@@ -339,7 +216,12 @@ func (r *RootCmd) updateOrganizationRole(orgContext *OrganizationContext) *serpe
 				// Do not actually post
 				updated = customRole
 			} else {
-				updated, err = client.UpdateOrganizationRole(ctx, customRole)
+				switch createNewRole {
+				case true:
+					updated, err = client.CreateOrganizationRole(ctx, customRole)
+				default:
+					updated, err = client.UpdateOrganizationRole(ctx, customRole)
+				}
 				if err != nil {
 					return xerrors.Errorf("patch role: %w", err)
 				}
@@ -359,27 +241,50 @@ func (r *RootCmd) updateOrganizationRole(orgContext *OrganizationContext) *serpe
 	return cmd
 }
 
-func interactiveOrgRoleEdit(inv *serpent.Invocation, orgID uuid.UUID, updateRole *codersdk.Role) (*codersdk.Role, error) {
-	var originalRole codersdk.Role
-	if updateRole == nil {
-		originalRole = codersdk.Role{
+func interactiveOrgRoleEdit(inv *serpent.Invocation, orgID uuid.UUID, client *codersdk.Client) (*codersdk.Role, bool, error) {
+	newRole := false
+	ctx := inv.Context()
+	roles, err := client.ListOrganizationRoles(ctx, orgID)
+	if err != nil {
+		return nil, newRole, xerrors.Errorf("listing roles: %w", err)
+	}
+
+	// Make sure the role actually exists first
+	var originalRole codersdk.AssignableRoles
+	for _, r := range roles {
+		if strings.EqualFold(inv.Args[0], r.Name) {
+			originalRole = r
+			break
+		}
+	}
+
+	if originalRole.Name == "" {
+		_, err = cliui.Prompt(inv, cliui.PromptOptions{
+			Text:      "No organization role exists with that name, do you want to create one?",
+			Default:   "yes",
+			IsConfirm: true,
+		})
+		if err != nil {
+			return nil, newRole, xerrors.Errorf("abort: %w", err)
+		}
+
+		originalRole.Role = codersdk.Role{
 			Name:           inv.Args[0],
 			OrganizationID: orgID.String(),
 		}
-	} else {
-		originalRole = *updateRole
+		newRole = true
 	}
 
 	// Some checks since interactive mode is limited in what it currently sees
 	if len(originalRole.SitePermissions) > 0 {
-		return nil, xerrors.Errorf("unable to edit role in interactive mode, it contains site wide permissions")
+		return nil, newRole, xerrors.Errorf("unable to edit role in interactive mode, it contains site wide permissions")
 	}
 
 	if len(originalRole.UserPermissions) > 0 {
-		return nil, xerrors.Errorf("unable to edit role in interactive mode, it contains user permissions")
+		return nil, newRole, xerrors.Errorf("unable to edit role in interactive mode, it contains user permissions")
 	}
 
-	role := &originalRole
+	role := &originalRole.Role
 	allowedResources := []codersdk.RBACResource{
 		codersdk.ResourceTemplate,
 		codersdk.ResourceWorkspace,
@@ -398,13 +303,13 @@ customRoleLoop:
 			Options: append(permissionPreviews(role, allowedResources), done, abort),
 		})
 		if err != nil {
-			return role, xerrors.Errorf("selecting resource: %w", err)
+			return role, newRole, xerrors.Errorf("selecting resource: %w", err)
 		}
 		switch selected {
 		case done:
 			break customRoleLoop
 		case abort:
-			return role, xerrors.Errorf("edit role %q aborted", role.Name)
+			return role, newRole, xerrors.Errorf("edit role %q aborted", role.Name)
 		default:
 			strs := strings.Split(selected, "::")
 			resource := strings.TrimSpace(strs[0])
@@ -415,7 +320,7 @@ customRoleLoop:
 				Defaults: defaultActions(role, resource),
 			})
 			if err != nil {
-				return role, xerrors.Errorf("selecting actions for resource %q: %w", resource, err)
+				return role, newRole, xerrors.Errorf("selecting actions for resource %q: %w", resource, err)
 			}
 			applyOrgResourceActions(role, resource, actions)
 			// back to resources!
@@ -424,7 +329,7 @@ customRoleLoop:
 	// This println is required because the prompt ends us on the same line as some text.
 	_, _ = fmt.Println()
 
-	return role, nil
+	return role, newRole, nil
 }
 
 func applyOrgResourceActions(role *codersdk.Role, resource string, actions []string) {
@@ -498,16 +403,6 @@ func roleToTableView(role codersdk.Role) roleTableRow {
 		OrganizationPermissions: fmt.Sprintf("%d permissions", len(role.OrganizationPermissions)),
 		UserPermissions:         fmt.Sprintf("%d permissions", len(role.UserPermissions)),
 	}
-}
-
-func existingRole(newRoleName string, existingRoles []codersdk.AssignableRoles) *codersdk.AssignableRoles {
-	for _, existingRole := range existingRoles {
-		if strings.EqualFold(newRoleName, existingRole.Name) {
-			return &existingRole
-		}
-	}
-
-	return nil
 }
 
 type roleTableRow struct {

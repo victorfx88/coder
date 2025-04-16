@@ -16,9 +16,7 @@ export const BuildAuditDescription: FC<BuildAuditDescriptionProps> = ({
 		auditLog.additional_fields?.build_reason &&
 		auditLog.additional_fields?.build_reason !== "initiator"
 			? "Coder automatically"
-			: auditLog.user
-				? auditLog.user.username.trim()
-				: "Unauthenticated user";
+			: auditLog.user?.username.trim();
 
 	const action = useMemo(() => {
 		switch (auditLog.action) {

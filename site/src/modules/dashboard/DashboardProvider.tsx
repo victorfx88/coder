@@ -10,9 +10,7 @@ import type {
 } from "api/typesGenerated";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { Loader } from "components/Loader/Loader";
-import { useAuthenticated } from "contexts/auth/RequireAuth";
 import { useEmbeddedMetadata } from "hooks/useEmbeddedMetadata";
-import { canViewAnyOrganization } from "modules/permissions";
 import { type FC, type PropsWithChildren, createContext } from "react";
 import { useQuery } from "react-query";
 import { selectFeatureVisibility } from "./entitlements";
@@ -23,7 +21,6 @@ export interface DashboardValue {
 	appearance: AppearanceConfig;
 	organizations: readonly Organization[];
 	showOrganizations: boolean;
-	canViewOrganizationSettings: boolean;
 }
 
 export const DashboardContext = createContext<DashboardValue | undefined>(
@@ -32,7 +29,6 @@ export const DashboardContext = createContext<DashboardValue | undefined>(
 
 export const DashboardProvider: FC<PropsWithChildren> = ({ children }) => {
 	const { metadata } = useEmbeddedMetadata();
-	const { permissions } = useAuthenticated();
 	const entitlementsQuery = useQuery(entitlements(metadata.entitlements));
 	const experimentsQuery = useQuery(experiments(metadata.experiments));
 	const appearanceQuery = useQuery(appearance(metadata.appearance));
@@ -62,7 +58,6 @@ export const DashboardProvider: FC<PropsWithChildren> = ({ children }) => {
 	const organizationsEnabled = selectFeatureVisibility(
 		entitlementsQuery.data,
 	).multiple_organizations;
-	const showOrganizations = hasMultipleOrganizations || organizationsEnabled;
 
 	return (
 		<DashboardContext.Provider
@@ -71,9 +66,7 @@ export const DashboardProvider: FC<PropsWithChildren> = ({ children }) => {
 				experiments: experimentsQuery.data,
 				appearance: appearanceQuery.data,
 				organizations: organizationsQuery.data,
-				showOrganizations,
-				canViewOrganizationSettings:
-					showOrganizations && canViewAnyOrganization(permissions),
+				showOrganizations: hasMultipleOrganizations || organizationsEnabled,
 			}}
 		>
 			{children}

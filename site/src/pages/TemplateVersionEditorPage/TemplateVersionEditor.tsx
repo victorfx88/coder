@@ -272,7 +272,17 @@ export const TemplateVersionEditor: FC<TemplateVersionEditorProps> = ({
 							</TopbarButton>
 							<ProvisionerTagsPopover
 								tags={provisionerTags}
-								onTagsChange={onUpdateProvisionerTags}
+								onSubmit={({ key, value }) => {
+									onUpdateProvisionerTags({
+										...provisionerTags,
+										[key]: value,
+									});
+								}}
+								onDelete={(key) => {
+									const newTags = { ...provisionerTags };
+									delete newTags[key];
+									onUpdateProvisionerTags(newTags);
+								}}
 							/>
 						</div>
 

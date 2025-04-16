@@ -5,10 +5,9 @@ import {
 } from "api/api";
 import type { FieldError } from "api/errors";
 import type * as TypesGen from "api/typesGenerated";
+import type { Permissions } from "contexts/auth/permissions";
 import type { ProxyLatencyReport } from "contexts/useProxyLatency";
 import range from "lodash/range";
-import type { Permissions } from "modules/permissions";
-import type { OrganizationPermissions } from "modules/permissions/organizations";
 import type { FileTree } from "utils/filetree";
 import type { TemplateVersionFiles } from "utils/templateVersion";
 
@@ -227,7 +226,6 @@ export const MockBuildInfo: TypesGen.BuildInfoResponse = {
 	workspace_proxy: false,
 	upgrade_message: "My custom upgrade message",
 	deployment_id: "510d407f-e521-4180-b559-eab4a6d802b8",
-	webpush_public_key: "fake-public-key",
 	telemetry: true,
 };
 
@@ -246,11 +244,6 @@ export const MockSupportLinks: TypesGen.LinkConfig[] = [
 		name: "Third link",
 		target:
 			"https://github.com/coder/coder/issues/new?labels=needs+grooming&body={CODER_BUILD_INFO}",
-		icon: "",
-	},
-	{
-		name: "Fourth link",
-		target: "/icons",
 		icon: "",
 	},
 ];
@@ -291,15 +284,6 @@ export const MockTemplateAdminRole: TypesGen.Role = {
 export const MockAuditorRole: TypesGen.Role = {
 	name: "auditor",
 	display_name: "Auditor",
-	site_permissions: [],
-	organization_permissions: [],
-	user_permissions: [],
-	organization_id: "",
-};
-
-export const MockWorkspaceCreationBanRole: TypesGen.Role = {
-	name: "organization-workspace-creation-ban",
-	display_name: "Organization Workspace Creation Ban",
 	site_permissions: [],
 	organization_permissions: [],
 	user_permissions: [],
@@ -469,15 +453,10 @@ export function assignableRole(
 	};
 }
 
-export const MockSiteRoles = [
-	MockUserAdminRole,
-	MockAuditorRole,
-	MockWorkspaceCreationBanRole,
-];
+export const MockSiteRoles = [MockUserAdminRole, MockAuditorRole];
 export const MockAssignableSiteRoles = [
 	assignableRole(MockUserAdminRole, true),
 	assignableRole(MockAuditorRole, true),
-	assignableRole(MockWorkspaceCreationBanRole, true),
 ];
 
 export const MockMemberPermissions = {
@@ -496,6 +475,7 @@ export const MockUser: TypesGen.User = {
 	avatar_url: "https://avatars.githubusercontent.com/u/95932066?s=200&v=4",
 	last_seen_at: "",
 	login_type: "password",
+	theme_preference: "",
 	name: "",
 };
 
@@ -516,6 +496,7 @@ export const MockUser2: TypesGen.User = {
 	avatar_url: "",
 	last_seen_at: "2022-09-14T19:12:21Z",
 	login_type: "oidc",
+	theme_preference: "",
 	name: "Mock User The Second",
 };
 
@@ -531,12 +512,8 @@ export const SuspendedMockUser: TypesGen.User = {
 	avatar_url: "",
 	last_seen_at: "",
 	login_type: "password",
+	theme_preference: "",
 	name: "",
-};
-
-export const MockUserAppearanceSettings: TypesGen.UserAppearanceSettings = {
-	theme_preference: "dark",
-	terminal_font: "",
 };
 
 export const MockOrganizationMember: TypesGen.OrganizationMemberWithUserData = {
@@ -683,15 +660,6 @@ export const MockProvisionerJob: TypesGen.ProvisionerJob = {
 	},
 	organization_id: MockOrganization.id,
 	type: "template_version_dry_run",
-	metadata: {
-		workspace_id: "test-workspace",
-		template_display_name: "Test Template",
-		template_icon: "/icon/code.svg",
-		template_id: "test-template",
-		template_name: "test-template",
-		template_version_name: "test-version",
-		workspace_name: "test-workspace",
-	},
 };
 
 export const MockFailedProvisionerJob: TypesGen.ProvisionerJob = {
@@ -914,7 +882,6 @@ export const MockWorkspaceApp: TypesGen.WorkspaceApp = {
 	},
 	hidden: false,
 	open_in: "slim-window",
-	statuses: [],
 };
 
 export const MockWorkspaceAgentLogSource: TypesGen.WorkspaceAgentLogSource = {
@@ -976,19 +943,6 @@ export const MockWorkspaceAgent: TypesGen.WorkspaceAgent = {
 		"vscode_insiders",
 		"web_terminal",
 	],
-};
-
-export const MockWorkspaceAppStatus: TypesGen.WorkspaceAppStatus = {
-	id: "test-app-status",
-	created_at: "2022-05-17T17:39:01.382927298Z",
-	agent_id: "test-workspace-agent",
-	workspace_id: "test-workspace",
-	app_id: MockWorkspaceApp.id,
-	needs_user_attention: false,
-	icon: "/emojis/1f957.png",
-	uri: "https://github.com/coder/coder/pull/1234",
-	message: "Your competitors page is completed!",
-	state: "complete",
 };
 
 export const MockWorkspaceAgentDisconnected: TypesGen.WorkspaceAgent = {
@@ -1386,7 +1340,6 @@ export const MockWorkspace: TypesGen.Workspace = {
 		healthy: true,
 		failing_agents: [],
 	},
-	latest_app_status: null,
 	automatic_updates: "never",
 	allow_renames: true,
 	favorite: false,
@@ -1716,20 +1669,20 @@ export const MockUserAgent = {
 
 export const MockAuthMethodsPasswordOnly: TypesGen.AuthMethods = {
 	password: { enabled: true },
-	github: { enabled: false, default_provider_configured: true },
+	github: { enabled: false },
 	oidc: { enabled: false, signInText: "", iconUrl: "" },
 };
 
 export const MockAuthMethodsPasswordTermsOfService: TypesGen.AuthMethods = {
 	terms_of_service_url: "https://www.youtube.com/watch?v=C2f37Vb2NAE",
 	password: { enabled: true },
-	github: { enabled: false, default_provider_configured: true },
+	github: { enabled: false },
 	oidc: { enabled: false, signInText: "", iconUrl: "" },
 };
 
 export const MockAuthMethodsExternal: TypesGen.AuthMethods = {
 	password: { enabled: false },
-	github: { enabled: true, default_provider_configured: true },
+	github: { enabled: true },
 	oidc: {
 		enabled: true,
 		signInText: "Google",
@@ -1739,7 +1692,7 @@ export const MockAuthMethodsExternal: TypesGen.AuthMethods = {
 
 export const MockAuthMethodsAll: TypesGen.AuthMethods = {
 	password: { enabled: true },
-	github: { enabled: true, default_provider_configured: true },
+	github: { enabled: true },
 	oidc: {
 		enabled: true,
 		signInText: "Google",
@@ -2715,14 +2668,14 @@ export const MockGroupSyncSettings: TypesGen.GroupSyncSettings = {
 	auto_create_missing_groups: false,
 };
 
-export const MockLegacyMappingGroupSyncSettings = {
+export const MockLegacyMappingGroupSyncSettings: TypesGen.GroupSyncSettings = {
 	...MockGroupSyncSettings,
 	mapping: {},
 	legacy_group_name_mapping: {
 		"idp-group-1": "fbd2116a-8961-4954-87ae-e4575bd29ce0",
 		"idp-group-2": "13de3eb4-9b4f-49e7-b0f8-0c3728a0d2e2",
 	},
-} satisfies TypesGen.GroupSyncSettings;
+};
 
 export const MockGroupSyncSettings2: TypesGen.GroupSyncSettings = {
 	field: "group-test",
@@ -2764,13 +2717,6 @@ export const MockOrganizationSyncSettings2: TypesGen.OrganizationSyncSettings =
 			"idp-org-1": ["my-organization-id", "my-organization-2-id"],
 			"idp-org-2": ["my-organization-id"],
 		},
-		organization_assign_default: true,
-	};
-
-export const MockOrganizationSyncSettingsEmpty: TypesGen.OrganizationSyncSettings =
-	{
-		field: "",
-		mapping: {},
 		organization_assign_default: true,
 	};
 
@@ -2861,23 +2807,20 @@ export const MockPermissions: Permissions = {
 	viewAllUsers: true,
 	updateUsers: true,
 	viewAnyAuditLog: true,
-	viewDeploymentConfig: true,
-	editDeploymentConfig: true,
+	viewDeploymentValues: true,
+	editDeploymentValues: true,
+	viewUpdateCheck: true,
 	viewDeploymentStats: true,
+	viewExternalAuthConfig: true,
 	readWorkspaceProxies: true,
 	editWorkspaceProxies: true,
 	createOrganization: true,
+	editAnyOrganization: true,
 	viewAnyGroup: true,
 	createGroup: true,
 	viewAllLicenses: true,
 	viewNotificationTemplate: true,
 	viewOrganizationIDPSyncSettings: true,
-	viewDebugInfo: true,
-	assignAnyRoles: true,
-	editAnyGroups: true,
-	editAnySettings: true,
-	viewAnyIdpSyncSettings: true,
-	viewAnyMembers: true,
 };
 
 export const MockNoPermissions: Permissions = {
@@ -2888,59 +2831,20 @@ export const MockNoPermissions: Permissions = {
 	viewAllUsers: false,
 	updateUsers: false,
 	viewAnyAuditLog: false,
-	viewDeploymentConfig: false,
-	editDeploymentConfig: false,
+	viewDeploymentValues: false,
+	editDeploymentValues: false,
+	viewUpdateCheck: false,
 	viewDeploymentStats: false,
+	viewExternalAuthConfig: false,
 	readWorkspaceProxies: false,
 	editWorkspaceProxies: false,
 	createOrganization: false,
+	editAnyOrganization: false,
 	viewAnyGroup: false,
 	createGroup: false,
 	viewAllLicenses: false,
 	viewNotificationTemplate: false,
 	viewOrganizationIDPSyncSettings: false,
-	viewDebugInfo: false,
-	assignAnyRoles: false,
-	editAnyGroups: false,
-	editAnySettings: false,
-	viewAnyIdpSyncSettings: false,
-	viewAnyMembers: false,
-};
-
-export const MockOrganizationPermissions: OrganizationPermissions = {
-	viewMembers: true,
-	editMembers: true,
-	createGroup: true,
-	viewGroups: true,
-	editGroups: true,
-	editSettings: true,
-	viewOrgRoles: true,
-	createOrgRoles: true,
-	assignOrgRoles: true,
-	updateOrgRoles: true,
-	deleteOrgRoles: true,
-	viewProvisioners: true,
-	viewProvisionerJobs: true,
-	viewIdpSyncSettings: true,
-	editIdpSyncSettings: true,
-};
-
-export const MockNoOrganizationPermissions: OrganizationPermissions = {
-	viewMembers: false,
-	editMembers: false,
-	createGroup: false,
-	viewGroups: false,
-	editGroups: false,
-	editSettings: false,
-	viewOrgRoles: false,
-	createOrgRoles: false,
-	assignOrgRoles: false,
-	updateOrgRoles: false,
-	deleteOrgRoles: false,
-	viewProvisioners: false,
-	viewProvisionerJobs: false,
-	viewIdpSyncSettings: false,
-	editIdpSyncSettings: false,
 };
 
 export const MockDeploymentConfig: DeploymentConfig = {
@@ -3033,7 +2937,6 @@ export const MockDeploymentStats: TypesGen.DeploymentStats = {
 export const MockDeploymentSSH: TypesGen.SSHConfigResponse = {
 	hostname_prefix: " coder.",
 	ssh_config_options: {},
-	hostname_suffix: "coder",
 };
 
 export const MockWorkspaceAgentLogs: TypesGen.WorkspaceAgentLog[] = [
@@ -4261,78 +4164,3 @@ export const MockNotificationTemplates: TypesGen.NotificationTemplate[] = [
 
 export const MockNotificationMethodsResponse: TypesGen.NotificationMethodsResponse =
 	{ available: ["smtp", "webhook"], default: "smtp" };
-
-export const MockNotification: TypesGen.InboxNotification = {
-	id: "1",
-	read_at: null,
-	content:
-		"New user account testuser has been created. This new user account was created for Test User by Kira Pilot.",
-	created_at: mockTwoDaysAgo(),
-	actions: [
-		{
-			label: "View template",
-			url: "https://dev.coder.com/templates/coder/coder",
-		},
-	],
-	user_id: MockUser.id,
-	template_id: MockTemplate.id,
-	targets: [],
-	title: "User account created",
-	icon: "DEFAULT_ICON_ACCOUNT",
-};
-
-export const MockNotifications: TypesGen.InboxNotification[] = [
-	MockNotification,
-	{ ...MockNotification, id: "2", read_at: null },
-	{ ...MockNotification, id: "3", read_at: mockTwoDaysAgo() },
-	{ ...MockNotification, id: "4", read_at: mockTwoDaysAgo() },
-	{ ...MockNotification, id: "5", read_at: mockTwoDaysAgo() },
-];
-
-function mockTwoDaysAgo() {
-	const date = new Date();
-	date.setDate(date.getDate() - 2);
-	return date.toISOString();
-}
-
-export const MockWorkspaceAgentContainerPorts: TypesGen.WorkspaceAgentContainerPort[] =
-	[
-		{
-			port: 1000,
-			network: "tcp",
-			host_port: 1000,
-			host_ip: "0.0.0.0",
-		},
-		{
-			port: 2001,
-			network: "tcp",
-			host_port: 2000,
-			host_ip: "::1",
-		},
-		{
-			port: 8888,
-			network: "tcp",
-		},
-	];
-
-export const MockWorkspaceAgentContainer: TypesGen.WorkspaceAgentContainer = {
-	created_at: "2024-01-04T15:53:03.21563Z",
-	id: "abcd1234",
-	name: "container-1",
-	image: "ubuntu:latest",
-	labels: {
-		foo: "bar",
-	},
-	ports: [],
-	running: true,
-	status: "running",
-	volumes: {
-		"/mnt/volume1": "/volume1",
-	},
-};
-
-export const MockWorkspaceAgentListContainersResponse: TypesGen.WorkspaceAgentListContainersResponse =
-	{
-		containers: [MockWorkspaceAgentContainer],
-		warnings: ["This is a warning"],
-	};

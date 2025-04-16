@@ -10,26 +10,23 @@ import (
 	"net/netip"
 	"net/url"
 	"reflect"
-	"sort"
 	"strconv"
 	"sync"
 	"time"
 	"unicode"
 
-	"github.com/google/uuid"
-	"github.com/tailscale/wireguard-go/tun"
 	"golang.org/x/xerrors"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"tailscale.com/net/dns"
-	"tailscale.com/net/netmon"
 	"tailscale.com/util/dnsname"
 	"tailscale.com/wgengine/router"
 
-	"cdr.dev/slog"
-	"github.com/coder/quartz"
+	"github.com/google/uuid"
 
-	"github.com/coder/coder/v2/codersdk"
+	"cdr.dev/slog"
+	"github.com/coder/coder/v2/coderd/util/ptr"
 	"github.com/coder/coder/v2/tailnet"
+	"github.com/coder/quartz"
 )
 
 // netStatusInterval is the interval at which the tunnel sends network status updates to the manager.
@@ -54,8 +51,9 @@ type Tunnel struct {
 	// option is used, to avoid the tunnel using itself as a sink for it's own
 	// logs, which could lead to deadlocks.
 	clientLogger slog.Logger
-	// the following may be nil
-	networkingStackFn func(*Tunnel, *StartRequest, slog.Logger) (NetworkStack, error)
+	// router and dnsConfigurator may be nil
+	router          router.Router
+	dnsConfigurator dns.OSConfigurator
 }
 
 type TunnelOption func(t *Tunnel)
@@ -73,9 +71,8 @@ func NewTunnel(
 	if err != nil {
 		return nil, err
 	}
-	uCtx, uCancel := context.WithCancel(ctx)
 	t := &Tunnel{
-		//nolint:govet // safe to copy the locks here because we haven't started the speaker
+		// nolint: govet // safe to copy the locks here because we haven't started the speaker
 		speaker:         *(s),
 		ctx:             ctx,
 		logger:          logger,
@@ -83,8 +80,7 @@ func NewTunnel(
 		requestLoopDone: make(chan struct{}),
 		client:          client,
 		updater: updater{
-			ctx:         uCtx,
-			cancel:      uCancel,
+			ctx:         ctx,
 			netLoopDone: make(chan struct{}),
 			uSendCh:     s.sendCh,
 			agents:      map[uuid.UUID]tailnet.Agent{},
@@ -173,28 +169,21 @@ func (t *Tunnel) handleRPC(req *request[*TunnelMessage, *ManagerMessage]) {
 	}
 }
 
-type NetworkStack struct {
-	WireguardMonitor *netmon.Monitor
-	TUNDevice        tun.Device
-	Router           router.Router
-	DNSConfigurator  dns.OSConfigurator
-}
-
-func UseOSNetworkingStack() TunnelOption {
+func UseAsRouter() TunnelOption {
 	return func(t *Tunnel) {
-		t.networkingStackFn = GetNetworkingStack
+		t.router = NewRouter(t)
 	}
 }
 
 func UseAsLogger() TunnelOption {
 	return func(t *Tunnel) {
-		t.clientLogger = t.clientLogger.AppendSinks(t)
+		t.clientLogger = slog.Make(t)
 	}
 }
 
-func UseCustomLogSinks(sinks ...slog.Sink) TunnelOption {
+func UseAsDNSConfig() TunnelOption {
 	return func(t *Tunnel) {
-		t.clientLogger = t.clientLogger.AppendSinks(sinks...)
+		t.dnsConfigurator = NewDNSConfigurator(t)
 	}
 }
 
@@ -234,36 +223,9 @@ func (t *Tunnel) start(req *StartRequest) error {
 	if apiToken == "" {
 		return xerrors.New("missing api token")
 	}
-	header := make(http.Header)
+	var header http.Header
 	for _, h := range req.GetHeaders() {
 		header.Add(h.GetName(), h.GetValue())
-	}
-
-	// Add desktop telemetry if any fields are provided
-	telemetryData := codersdk.CoderDesktopTelemetry{
-		DeviceID:            req.GetDeviceId(),
-		DeviceOS:            req.GetDeviceOs(),
-		CoderDesktopVersion: req.GetCoderDesktopVersion(),
-	}
-	if !telemetryData.IsEmpty() {
-		headerValue, err := json.Marshal(telemetryData)
-		if err == nil {
-			header.Set(codersdk.CoderDesktopTelemetryHeader, string(headerValue))
-			t.logger.Debug(t.ctx, "added desktop telemetry header",
-				slog.F("data", telemetryData))
-		} else {
-			t.logger.Warn(t.ctx, "failed to marshal telemetry data")
-		}
-	}
-
-	var networkingStack NetworkStack
-	if t.networkingStackFn != nil {
-		networkingStack, err = t.networkingStackFn(t, req, t.clientLogger)
-		if err != nil {
-			return xerrors.Errorf("failed to create networking stack dependencies: %w", err)
-		}
-	} else {
-		t.logger.Debug(t.ctx, "using default networking stack as no custom stack was provided")
 	}
 
 	conn, err := t.client.NewConn(
@@ -271,13 +233,12 @@ func (t *Tunnel) start(req *StartRequest) error {
 		svrURL,
 		apiToken,
 		&Options{
-			Headers:          header,
-			Logger:           t.clientLogger,
-			DNSConfigurator:  networkingStack.DNSConfigurator,
-			Router:           networkingStack.Router,
-			TUNDevice:        networkingStack.TUNDevice,
-			WireguardMonitor: networkingStack.WireguardMonitor,
-			UpdateHandler:    t,
+			Headers:           header,
+			Logger:            t.clientLogger,
+			DNSConfigurator:   t.dnsConfigurator,
+			Router:            t.router,
+			TUNFileDescriptor: ptr.Ref(int(req.GetTunnelFileDescriptor())),
+			UpdateHandler:     t,
 		},
 	)
 	if err != nil {
@@ -322,7 +283,6 @@ func (t *Tunnel) Sync() {
 
 func sinkEntryToPb(e slog.SinkEntry) *Log {
 	l := &Log{
-		// #nosec G115 - Safe conversion for log levels which are small positive integers
 		Level:       Log_Level(e.Level),
 		Message:     e.Message,
 		LoggerNames: e.LoggerNames,
@@ -340,7 +300,6 @@ func sinkEntryToPb(e slog.SinkEntry) *Log {
 // updates to the manager.
 type updater struct {
 	ctx         context.Context
-	cancel      context.CancelFunc
 	netLoopDone chan struct{}
 
 	mu      sync.Mutex
@@ -427,9 +386,6 @@ func (u *updater) createPeerUpdateLocked(update tailnet.WorkspaceUpdate) *PeerUp
 		for name := range agent.Hosts {
 			fqdn = append(fqdn, name.WithTrailingDot())
 		}
-		sort.Slice(fqdn, func(i, j int) bool {
-			return len(fqdn[i]) < len(fqdn[j])
-		})
 		out.DeletedAgents[i] = &Agent{
 			Id:            tailnet.UUIDToByteSlice(agent.ID),
 			Name:          agent.Name,
@@ -452,9 +408,6 @@ func (u *updater) convertAgentsLocked(agents []*tailnet.Agent) []*Agent {
 		for name := range agent.Hosts {
 			fqdn = append(fqdn, name.WithTrailingDot())
 		}
-		sort.Slice(fqdn, func(i, j int) bool {
-			return len(fqdn[i]) < len(fqdn[j])
-		})
 		protoAgent := &Agent{
 			Id:          tailnet.UUIDToByteSlice(agent.ID),
 			Name:        agent.Name,
@@ -504,7 +457,6 @@ func (u *updater) stop() error {
 	}
 	err := u.conn.Close()
 	u.conn = nil
-	u.cancel()
 	return err
 }
 

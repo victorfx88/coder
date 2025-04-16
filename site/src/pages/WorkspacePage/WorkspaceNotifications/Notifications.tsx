@@ -100,10 +100,7 @@ export const NotificationActionButton: FC<ButtonProps> = (props) => {
 			variant="text"
 			css={{
 				textDecoration: "underline",
-				paddingLeft: 0,
-				paddingRight: 8,
-				paddingTop: 0,
-				paddingBottom: 0,
+				padding: 0,
 				height: "auto",
 				minWidth: "auto",
 				"&:hover": { background: "none", textDecoration: "underline" },

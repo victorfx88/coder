@@ -12,7 +12,7 @@ import (
 	"github.com/coder/pretty"
 )
 
-var ErrCanceled = xerrors.New("canceled")
+var Canceled = xerrors.New("canceled")
 
 // DefaultStyles compose visual elements of the UI.
 var DefaultStyles Styles

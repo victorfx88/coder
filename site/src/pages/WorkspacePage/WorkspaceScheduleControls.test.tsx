@@ -1,13 +1,15 @@
-import { screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { API } from "api/api";
 import { workspaceByOwnerAndName } from "api/queries/workspaces";
+import { GlobalSnackbar } from "components/GlobalSnackbar/GlobalSnackbar";
+import { ThemeProvider } from "contexts/ThemeProvider";
 import dayjs from "dayjs";
 import { http, HttpResponse } from "msw";
 import type { FC } from "react";
-import { useQuery } from "react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "react-query";
+import { RouterProvider, createMemoryRouter } from "react-router-dom";
 import { MockTemplate, MockWorkspace } from "testHelpers/entities";
-import { render } from "testHelpers/renderHelpers";
 import { server } from "testHelpers/server";
 import { WorkspaceScheduleControls } from "./WorkspaceScheduleControls";
 
@@ -43,7 +45,16 @@ const renderScheduleControls = async () => {
 			});
 		}),
 	);
-	render(<Wrapper />);
+	render(
+		<ThemeProvider>
+			<QueryClientProvider client={new QueryClient()}>
+				<RouterProvider
+					router={createMemoryRouter([{ path: "/", element: <Wrapper /> }])}
+				/>
+			</QueryClientProvider>
+			<GlobalSnackbar />
+		</ThemeProvider>,
+	);
 	await screen.findByTestId("schedule-controls");
 	expect(screen.getByText("Stop in 3 hours")).toBeInTheDocument();
 };

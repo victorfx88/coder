@@ -829,7 +829,6 @@ func TestTemplateVersionResources(t *testing.T) {
 							Type: "example",
 							Agents: []*proto.Agent{{
 								Id:   "something",
-								Name: "dev",
 								Auth: &proto.Agent_Token{},
 							}},
 						}, {
@@ -876,8 +875,7 @@ func TestTemplateVersionLogs(t *testing.T) {
 						Name: "some",
 						Type: "example",
 						Agents: []*proto.Agent{{
-							Id:   "something",
-							Name: "dev",
+							Id: "something",
 							Auth: &proto.Agent_Token{
 								Token: uuid.NewString(),
 							},

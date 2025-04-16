@@ -256,7 +256,6 @@ export const timeToCron = (time: string, tz?: string) => {
 };
 
 export const quietHoursDisplay = (
-	browserLocale: string,
 	time: string,
 	tz: string,
 	now: Date | undefined,
@@ -277,14 +276,7 @@ export const quietHoursDisplay = (
 
 	const today = dayjs(now).tz(tz);
 	const day = dayjs(parsed.next().toDate()).tz(tz);
-
-	const formattedTime = new Intl.DateTimeFormat(browserLocale, {
-		hour: "numeric",
-		minute: "numeric",
-		timeZone: tz,
-	}).format(day.toDate());
-
-	let display = formattedTime;
+	let display = day.format("h:mmA");
 
 	if (day.isSame(today, "day")) {
 		display += " today";

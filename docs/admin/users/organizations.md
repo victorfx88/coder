@@ -1,7 +1,6 @@
 # Organizations (Premium)
 
-> [!NOTE]
-> Organizations requires a
+> Note: Organizations requires a
 > [Premium license](https://coder.com/pricing#compare-plans). For more details,
 > [contact your account team](https://coder.com/contact).
 
@@ -24,20 +23,20 @@ guide.
 All Coder deployments start with one organization called `coder`. All new users
 are added to this organization by default.
 
-To edit the organization details, select **Admin settings** from the top bar, then
+To edit the organization details, select **Deployment** from the top bar, then
 **Organizations**:
 
-<Image height="255px" src="../../images/admin/users/organizations/admin-settings-orgs.png" alt="Organizations Menu" align="center" />
+![Organizations Menu](../../images/admin/users/organizations/deployment-organizations.png)
 
 From there, you can manage the name, icon, description, users, and groups:
 
-![Organization Settings](../../images/admin/users/organizations/default-organization-settings.png)
+![Organization Settings](../../images/admin/users/organizations/default-organization.png)
 
 ## Additional organizations
 
 Any additional organizations have unique admins, users, templates, provisioners,
 groups, and workspaces. Each organization must have at least one dedicated
-[provisioner](../provisioners/index.md) since the built-in provisioners only apply to
+[provisioner](../provisioners.md) since the built-in provisioners only apply to
 the default organization.
 
 You can configure [organization/role/group sync](./idp-sync.md) from your
@@ -53,25 +52,16 @@ identity provider to avoid manually assigning users to organizations.
 
 ### 1. Create the organization
 
-To create a new organization:
+In the sidebar, select **New organization** to create an organization. In this
+example, we'll create the `data-platform` org.
 
-1. Select **Admin settings** from the top bar, then **Organizations**.
-
-1. Select the current organization to expand the organizations dropdown, then select **Create Organization**:
-
-   <Image height="212px" src="../../images/admin/users/organizations/org-dropdown-create.png" alt="Organizations dropdown and Create Organization" align="center" />
-
-1. Enter the details and select **Save** to continue:
-
-   <Image height="579px" src="../../images/admin/users/organizations/new-organization.png" alt="New Organization" align="center" />
-
-In this example, we'll create the `data-platform` org.
+![New Organization](../../images/admin/users/organizations/new-organization.png)
 
 Next deploy a provisioner and template for this organization.
 
 ### 2. Deploy a provisioner
 
-[Provisioners](../provisioners/index.md) are organization-scoped and are responsible
+[Provisioners](../provisioners.md) are organization-scoped and are responsible
 for executing Terraform/OpenTofu to provision the infrastructure for workspaces
 and testing templates. Before creating templates, we must deploy at least one
 provisioner as the built-in provisioners are scoped to the default organization.
@@ -90,7 +80,7 @@ provisioner as the built-in provisioners are scoped to the default organization.
 
    In this example, start the provisioner using the Coder CLI on a host with
    Docker. For instructions on using other platforms like Kubernetes, see our
-   [provisioner documentation](../provisioners/index.md).
+   [provisioner documentation](../provisioners.md).
 
    ```sh
    export CODER_URL=https://<your-coder-url>
@@ -107,11 +97,11 @@ Once you've started a provisioner, you can create a template. You'll notice the
 
 ### 4. Add members
 
-From **Admin settings**, select **Organizations**, then **Members** to add members to
-your organization. Once added, members will be able to see the
+From **Administration > Settings**, select **Organizations** to add members to
+your organization. Once added, they will be able to see the
 organization-specific templates.
 
-<Image height="365px" src="../../images/admin/users/organizations/organization-members.png" alt="Add members" align="center" />
+![Add members](../../images/admin/users/organizations/organization-members.png)
 
 ### 5. Create a workspace
 
@@ -119,6 +109,12 @@ Now, users in the data platform organization will see the templates related to
 their organization. Users can be in multiple organizations.
 
 ![Workspace List](../../images/admin/users/organizations/workspace-list.png)
+
+## Beta
+
+Organizations is in beta. If you encounter any issues, please
+[file an issue](https://github.com/coder/internal/issues/new?title=request%28orgs%29%3A+request+title+here&labels=["customer-feedback"]&body=please+enter+your+issue+or+request+here)
+or contact your account team.
 
 ## Next steps
 

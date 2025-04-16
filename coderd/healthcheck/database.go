@@ -2,8 +2,9 @@ package healthcheck
 
 import (
 	"context"
-	"slices"
 	"time"
+
+	"golang.org/x/exp/slices"
 
 	"github.com/coder/coder/v2/coderd/database"
 	"github.com/coder/coder/v2/coderd/healthcheck/health"

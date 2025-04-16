@@ -50,6 +50,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		defer cancel()
 		daemonName := testutil.MustRandString(t, 63)
 		srv, err := templateAdminClient.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         daemonName,
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -179,6 +180,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		defer cancel()
 		daemonName := testutil.MustRandString(t, 63)
 		_, err := templateAdminClient.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         daemonName,
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -203,6 +205,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
 		defer cancel()
 		_, err := another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         testutil.MustRandString(t, 63),
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -226,6 +229,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
 		defer cancel()
 		_, err := another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         testutil.MustRandString(t, 63),
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -356,6 +360,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
 		defer cancel()
 		req := codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         testutil.MustRandString(t, 63),
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -420,6 +425,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		another := codersdk.New(client.URL)
 		pd := provisionerd.New(func(ctx context.Context) (proto.DRPCProvisionerDaemonClient, error) {
 			return another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+				ID:           uuid.New(),
 				Name:         testutil.MustRandString(t, 63),
 				Organization: user.OrganizationID,
 				Provisioners: []codersdk.ProvisionerType{
@@ -497,6 +503,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
 		defer cancel()
 		_, err := another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         testutil.MustRandString(t, 32),
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -531,6 +538,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		defer cancel()
 		another := codersdk.New(client.URL)
 		_, err := another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         testutil.MustRandString(t, 63),
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -563,6 +571,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		defer cancel()
 		another := codersdk.New(client.URL)
 		_, err := another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         testutil.MustRandString(t, 63),
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -689,6 +698,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 
 				another := codersdk.New(client.URL)
 				srv, err := another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+					ID:           uuid.New(),
 					Name:         testutil.MustRandString(t, 63),
 					Organization: user.OrganizationID,
 					Provisioners: []codersdk.ProvisionerType{
@@ -748,6 +758,7 @@ func TestGetProvisionerDaemons(t *testing.T) {
 		defer cancel()
 		daemonName := testutil.MustRandString(t, 63)
 		srv, err := orgAdmin.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         daemonName,
 			Organization: org.ID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -771,14 +782,10 @@ func TestGetProvisionerDaemons(t *testing.T) {
 		pkDaemons, err := orgAdmin.ListProvisionerKeyDaemons(ctx, org.ID)
 		require.NoError(t, err)
 
-		require.Len(t, pkDaemons, 2)
+		require.Len(t, pkDaemons, 1)
 		require.Len(t, pkDaemons[0].Daemons, 1)
 		assert.Equal(t, keys[0].ID, pkDaemons[0].Key.ID)
 		assert.Equal(t, keys[0].Name, pkDaemons[0].Key.Name)
-		// user-auth provisioners
-		require.Len(t, pkDaemons[1].Daemons, 0)
-		assert.Equal(t, codersdk.ProvisionerKeyUUIDUserAuth, pkDaemons[1].Key.ID)
-		assert.Equal(t, codersdk.ProvisionerKeyNameUserAuth, pkDaemons[1].Key.Name)
 
 		assert.Equal(t, daemonName, pkDaemons[0].Daemons[0].Name)
 		assert.Equal(t, buildinfo.Version(), pkDaemons[0].Daemons[0].Version)
@@ -942,7 +949,7 @@ func TestGetProvisionerDaemons(t *testing.T) {
 				org := coderdenttest.CreateOrganization(t, client, coderdenttest.CreateOrganizationOptions{
 					IncludeProvisionerDaemon: false,
 				})
-				orgTemplateAdmin, _ := coderdtest.CreateAnotherUser(t, client, org.ID, rbac.ScopedRoleOrgTemplateAdmin(org.ID))
+				orgAdmin, _ := coderdtest.CreateAnotherUser(t, client, org.ID, rbac.ScopedRoleOrgMember(org.ID))
 
 				daemonCreatedAt := time.Now()
 
@@ -975,13 +982,11 @@ func TestGetProvisionerDaemons(t *testing.T) {
 				require.NoError(t, err, "should be able to create provisioner daemon")
 				daemonAsCreated := db2sdk.ProvisionerDaemon(pd)
 
-				allDaemons, err := orgTemplateAdmin.OrganizationProvisionerDaemons(ctx, org.ID, nil)
+				allDaemons, err := orgAdmin.OrganizationProvisionerDaemons(ctx, org.ID, nil)
 				require.NoError(t, err)
 				require.Len(t, allDaemons, 1)
 
-				daemonsAsFound, err := orgTemplateAdmin.OrganizationProvisionerDaemons(ctx, org.ID, &codersdk.OrganizationProvisionerDaemonsOptions{
-					Tags: tt.tagsToFilterBy,
-				})
+				daemonsAsFound, err := orgAdmin.OrganizationProvisionerDaemons(ctx, org.ID, tt.tagsToFilterBy)
 				if tt.expectToGetDaemon {
 					require.NoError(t, err)
 					require.Len(t, daemonsAsFound, 1)

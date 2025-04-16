@@ -50,15 +50,6 @@ curl -X GET http://coder-server:8080/api/v2/users/{user}/workspace/{workspacenam
       "template_version_id": "0ba39c92-1f1b-4c32-aa3e-9925d7713eb1",
       "workspace_build_id": "badaf2eb-96c5-4050-9f1d-db2d39ca5478"
     },
-    "metadata": {
-      "template_display_name": "string",
-      "template_icon": "string",
-      "template_id": "c6d67e98-83ea-49f0-8812-e4abae2b68bc",
-      "template_name": "string",
-      "template_version_name": "string",
-      "workspace_id": "0967198e-ec7b-4c6b-b4d3-f71244cadbe9",
-      "workspace_name": "string"
-    },
     "organization_id": "7c60d51f-b44e-4682-87d6-449835ea4de6",
     "queue_position": 0,
     "queue_size": 0,
@@ -100,20 +91,6 @@ curl -X GET http://coder-server:8080/api/v2/users/{user}/workspace/{workspacenam
               "open_in": "slim-window",
               "sharing_level": "owner",
               "slug": "string",
-              "statuses": [
-                {
-                  "agent_id": "2b1e3b65-2c04-4fa2-a2d7-467901e98978",
-                  "app_id": "affd1d10-9538-4fc8-9e0b-4594a28c1335",
-                  "created_at": "2019-08-24T14:15:22Z",
-                  "icon": "string",
-                  "id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
-                  "message": "string",
-                  "needs_user_attention": true,
-                  "state": "working",
-                  "uri": "string",
-                  "workspace_id": "0967198e-ec7b-4c6b-b4d3-f71244cadbe9"
-                }
-              ],
               "subdomain": true,
               "subdomain_name": "string",
               "url": "string"
@@ -278,15 +255,6 @@ curl -X GET http://coder-server:8080/api/v2/workspacebuilds/{workspacebuild} \
       "template_version_id": "0ba39c92-1f1b-4c32-aa3e-9925d7713eb1",
       "workspace_build_id": "badaf2eb-96c5-4050-9f1d-db2d39ca5478"
     },
-    "metadata": {
-      "template_display_name": "string",
-      "template_icon": "string",
-      "template_id": "c6d67e98-83ea-49f0-8812-e4abae2b68bc",
-      "template_name": "string",
-      "template_version_name": "string",
-      "workspace_id": "0967198e-ec7b-4c6b-b4d3-f71244cadbe9",
-      "workspace_name": "string"
-    },
     "organization_id": "7c60d51f-b44e-4682-87d6-449835ea4de6",
     "queue_position": 0,
     "queue_size": 0,
@@ -328,20 +296,6 @@ curl -X GET http://coder-server:8080/api/v2/workspacebuilds/{workspacebuild} \
               "open_in": "slim-window",
               "sharing_level": "owner",
               "slug": "string",
-              "statuses": [
-                {
-                  "agent_id": "2b1e3b65-2c04-4fa2-a2d7-467901e98978",
-                  "app_id": "affd1d10-9538-4fc8-9e0b-4594a28c1335",
-                  "created_at": "2019-08-24T14:15:22Z",
-                  "icon": "string",
-                  "id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
-                  "message": "string",
-                  "needs_user_attention": true,
-                  "state": "working",
-                  "uri": "string",
-                  "workspace_id": "0967198e-ec7b-4c6b-b4d3-f71244cadbe9"
-                }
-              ],
               "subdomain": true,
               "subdomain_name": "string",
               "url": "string"
@@ -671,20 +625,6 @@ curl -X GET http://coder-server:8080/api/v2/workspacebuilds/{workspacebuild}/res
             "open_in": "slim-window",
             "sharing_level": "owner",
             "slug": "string",
-            "statuses": [
-              {
-                "agent_id": "2b1e3b65-2c04-4fa2-a2d7-467901e98978",
-                "app_id": "affd1d10-9538-4fc8-9e0b-4594a28c1335",
-                "created_at": "2019-08-24T14:15:22Z",
-                "icon": "string",
-                "id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
-                "message": "string",
-                "needs_user_attention": true,
-                "state": "working",
-                "uri": "string",
-                "workspace_id": "0967198e-ec7b-4c6b-b4d3-f71244cadbe9"
-              }
-            ],
             "subdomain": true,
             "subdomain_name": "string",
             "url": "string"
@@ -812,17 +752,6 @@ Status Code **200**
 | `»»» open_in`                   | [codersdk.WorkspaceAppOpenIn](schemas.md#codersdkworkspaceappopenin)                                   | false    |              |                                                                                                                                                                                                                                                |
 | `»»» sharing_level`             | [codersdk.WorkspaceAppSharingLevel](schemas.md#codersdkworkspaceappsharinglevel)                       | false    |              |                                                                                                                                                                                                                                                |
 | `»»» slug`                      | string                                                                                                 | false    |              | Slug is a unique identifier within the agent.                                                                                                                                                                                                  |
-| `»»» statuses`                  | array                                                                                                  | false    |              | Statuses is a list of statuses for the app.                                                                                                                                                                                                    |
-| `»»»» agent_id`                 | string(uuid)                                                                                           | false    |              |                                                                                                                                                                                                                                                |
-| `»»»» app_id`                   | string(uuid)                                                                                           | false    |              |                                                                                                                                                                                                                                                |
-| `»»»» created_at`               | string(date-time)                                                                                      | false    |              |                                                                                                                                                                                                                                                |
-| `»»»» icon`                     | string                                                                                                 | false    |              | Icon is an external URL to an icon that will be rendered in the UI.                                                                                                                                                                            |
-| `»»»» id`                       | string(uuid)                                                                                           | false    |              |                                                                                                                                                                                                                                                |
-| `»»»» message`                  | string                                                                                                 | false    |              |                                                                                                                                                                                                                                                |
-| `»»»» needs_user_attention`     | boolean                                                                                                | false    |              |                                                                                                                                                                                                                                                |
-| `»»»» state`                    | [codersdk.WorkspaceAppStatusState](schemas.md#codersdkworkspaceappstatusstate)                         | false    |              |                                                                                                                                                                                                                                                |
-| `»»»» uri`                      | string                                                                                                 | false    |              | Uri is the URI of the resource that the status is for. e.g. https://github.com/org/repo/pull/123 e.g. file:///path/to/file                                                                                                                     |
-| `»»»» workspace_id`             | string(uuid)                                                                                           | false    |              |                                                                                                                                                                                                                                                |
 | `»»» subdomain`                 | boolean                                                                                                | false    |              | Subdomain denotes whether the app should be accessed via a path on the `coder server` or via a hostname-based dev URL. If this is set to true and there is no app wildcard configured on the server, the app will not be accessible in the UI. |
 | `»»» subdomain_name`            | string                                                                                                 | false    |              | Subdomain name is the application domain exposed on the `coder server`.                                                                                                                                                                        |
 | `»»» url`                       | string                                                                                                 | false    |              | URL is the address being proxied to inside the workspace. If external is specified, this will be opened on the client.                                                                                                                         |
@@ -904,9 +833,6 @@ Status Code **200**
 | `sharing_level`           | `owner`            |
 | `sharing_level`           | `authenticated`    |
 | `sharing_level`           | `public`           |
-| `state`                   | `working`          |
-| `state`                   | `complete`         |
-| `state`                   | `failure`          |
 | `lifecycle_state`         | `created`          |
 | `lifecycle_state`         | `starting`         |
 | `lifecycle_state`         | `start_timeout`    |
@@ -976,15 +902,6 @@ curl -X GET http://coder-server:8080/api/v2/workspacebuilds/{workspacebuild}/sta
       "template_version_id": "0ba39c92-1f1b-4c32-aa3e-9925d7713eb1",
       "workspace_build_id": "badaf2eb-96c5-4050-9f1d-db2d39ca5478"
     },
-    "metadata": {
-      "template_display_name": "string",
-      "template_icon": "string",
-      "template_id": "c6d67e98-83ea-49f0-8812-e4abae2b68bc",
-      "template_name": "string",
-      "template_version_name": "string",
-      "workspace_id": "0967198e-ec7b-4c6b-b4d3-f71244cadbe9",
-      "workspace_name": "string"
-    },
     "organization_id": "7c60d51f-b44e-4682-87d6-449835ea4de6",
     "queue_position": 0,
     "queue_size": 0,
@@ -1026,20 +943,6 @@ curl -X GET http://coder-server:8080/api/v2/workspacebuilds/{workspacebuild}/sta
               "open_in": "slim-window",
               "sharing_level": "owner",
               "slug": "string",
-              "statuses": [
-                {
-                  "agent_id": "2b1e3b65-2c04-4fa2-a2d7-467901e98978",
-                  "app_id": "affd1d10-9538-4fc8-9e0b-4594a28c1335",
-                  "created_at": "2019-08-24T14:15:22Z",
-                  "icon": "string",
-                  "id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
-                  "message": "string",
-                  "needs_user_attention": true,
-                  "state": "working",
-                  "uri": "string",
-                  "workspace_id": "0967198e-ec7b-4c6b-b4d3-f71244cadbe9"
-                }
-              ],
               "subdomain": true,
               "subdomain_name": "string",
               "url": "string"
@@ -1277,15 +1180,6 @@ curl -X GET http://coder-server:8080/api/v2/workspaces/{workspace}/builds \
         "template_version_id": "0ba39c92-1f1b-4c32-aa3e-9925d7713eb1",
         "workspace_build_id": "badaf2eb-96c5-4050-9f1d-db2d39ca5478"
       },
-      "metadata": {
-        "template_display_name": "string",
-        "template_icon": "string",
-        "template_id": "c6d67e98-83ea-49f0-8812-e4abae2b68bc",
-        "template_name": "string",
-        "template_version_name": "string",
-        "workspace_id": "0967198e-ec7b-4c6b-b4d3-f71244cadbe9",
-        "workspace_name": "string"
-      },
       "organization_id": "7c60d51f-b44e-4682-87d6-449835ea4de6",
       "queue_position": 0,
       "queue_size": 0,
@@ -1327,20 +1221,6 @@ curl -X GET http://coder-server:8080/api/v2/workspaces/{workspace}/builds \
                 "open_in": "slim-window",
                 "sharing_level": "owner",
                 "slug": "string",
-                "statuses": [
-                  {
-                    "agent_id": "2b1e3b65-2c04-4fa2-a2d7-467901e98978",
-                    "app_id": "affd1d10-9538-4fc8-9e0b-4594a28c1335",
-                    "created_at": "2019-08-24T14:15:22Z",
-                    "icon": "string",
-                    "id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
-                    "message": "string",
-                    "needs_user_attention": true,
-                    "state": "working",
-                    "uri": "string",
-                    "workspace_id": "0967198e-ec7b-4c6b-b4d3-f71244cadbe9"
-                  }
-                ],
                 "subdomain": true,
                 "subdomain_name": "string",
                 "url": "string"
@@ -1483,14 +1363,6 @@ Status Code **200**
 | `»»» error`                      | string                                                                                                 | false    |              |                                                                                                                                                                                                                                                |
 | `»»» template_version_id`        | string(uuid)                                                                                           | false    |              |                                                                                                                                                                                                                                                |
 | `»»» workspace_build_id`         | string(uuid)                                                                                           | false    |              |                                                                                                                                                                                                                                                |
-| `»» metadata`                    | [codersdk.ProvisionerJobMetadata](schemas.md#codersdkprovisionerjobmetadata)                           | false    |              |                                                                                                                                                                                                                                                |
-| `»»» template_display_name`      | string                                                                                                 | false    |              |                                                                                                                                                                                                                                                |
-| `»»» template_icon`              | string                                                                                                 | false    |              |                                                                                                                                                                                                                                                |
-| `»»» template_id`                | string(uuid)                                                                                           | false    |              |                                                                                                                                                                                                                                                |
-| `»»» template_name`              | string                                                                                                 | false    |              |                                                                                                                                                                                                                                                |
-| `»»» template_version_name`      | string                                                                                                 | false    |              |                                                                                                                                                                                                                                                |
-| `»»» workspace_id`               | string(uuid)                                                                                           | false    |              |                                                                                                                                                                                                                                                |
-| `»»» workspace_name`             | string                                                                                                 | false    |              |                                                                                                                                                                                                                                                |
 | `»» organization_id`             | string(uuid)                                                                                           | false    |              |                                                                                                                                                                                                                                                |
 | `»» queue_position`              | integer                                                                                                | false    |              |                                                                                                                                                                                                                                                |
 | `»» queue_size`                  | integer                                                                                                | false    |              |                                                                                                                                                                                                                                                |
@@ -1524,17 +1396,6 @@ Status Code **200**
 | `»»»» open_in`                   | [codersdk.WorkspaceAppOpenIn](schemas.md#codersdkworkspaceappopenin)                                   | false    |              |                                                                                                                                                                                                                                                |
 | `»»»» sharing_level`             | [codersdk.WorkspaceAppSharingLevel](schemas.md#codersdkworkspaceappsharinglevel)                       | false    |              |                                                                                                                                                                                                                                                |
 | `»»»» slug`                      | string                                                                                                 | false    |              | Slug is a unique identifier within the agent.                                                                                                                                                                                                  |
-| `»»»» statuses`                  | array                                                                                                  | false    |              | Statuses is a list of statuses for the app.                                                                                                                                                                                                    |
-| `»»»»» agent_id`                 | string(uuid)                                                                                           | false    |              |                                                                                                                                                                                                                                                |
-| `»»»»» app_id`                   | string(uuid)                                                                                           | false    |              |                                                                                                                                                                                                                                                |
-| `»»»»» created_at`               | string(date-time)                                                                                      | false    |              |                                                                                                                                                                                                                                                |
-| `»»»»» icon`                     | string                                                                                                 | false    |              | Icon is an external URL to an icon that will be rendered in the UI.                                                                                                                                                                            |
-| `»»»»» id`                       | string(uuid)                                                                                           | false    |              |                                                                                                                                                                                                                                                |
-| `»»»»» message`                  | string                                                                                                 | false    |              |                                                                                                                                                                                                                                                |
-| `»»»»» needs_user_attention`     | boolean                                                                                                | false    |              |                                                                                                                                                                                                                                                |
-| `»»»»» state`                    | [codersdk.WorkspaceAppStatusState](schemas.md#codersdkworkspaceappstatusstate)                         | false    |              |                                                                                                                                                                                                                                                |
-| `»»»»» uri`                      | string                                                                                                 | false    |              | Uri is the URI of the resource that the status is for. e.g. https://github.com/org/repo/pull/123 e.g. file:///path/to/file                                                                                                                     |
-| `»»»»» workspace_id`             | string(uuid)                                                                                           | false    |              |                                                                                                                                                                                                                                                |
 | `»»»» subdomain`                 | boolean                                                                                                | false    |              | Subdomain denotes whether the app should be accessed via a path on the `coder server` or via a hostname-based dev URL. If this is set to true and there is no app wildcard configured on the server, the app will not be accessible in the UI. |
 | `»»»» subdomain_name`            | string                                                                                                 | false    |              | Subdomain name is the application domain exposed on the `coder server`.                                                                                                                                                                        |
 | `»»»» url`                       | string                                                                                                 | false    |              | URL is the address being proxied to inside the workspace. If external is specified, this will be opened on the client.                                                                                                                         |
@@ -1639,9 +1500,6 @@ Status Code **200**
 | `sharing_level`           | `owner`                       |
 | `sharing_level`           | `authenticated`               |
 | `sharing_level`           | `public`                      |
-| `state`                   | `working`                     |
-| `state`                   | `complete`                    |
-| `state`                   | `failure`                     |
 | `lifecycle_state`         | `created`                     |
 | `lifecycle_state`         | `starting`                    |
 | `lifecycle_state`         | `start_timeout`               |
@@ -1747,15 +1605,6 @@ curl -X POST http://coder-server:8080/api/v2/workspaces/{workspace}/builds \
       "template_version_id": "0ba39c92-1f1b-4c32-aa3e-9925d7713eb1",
       "workspace_build_id": "badaf2eb-96c5-4050-9f1d-db2d39ca5478"
     },
-    "metadata": {
-      "template_display_name": "string",
-      "template_icon": "string",
-      "template_id": "c6d67e98-83ea-49f0-8812-e4abae2b68bc",
-      "template_name": "string",
-      "template_version_name": "string",
-      "workspace_id": "0967198e-ec7b-4c6b-b4d3-f71244cadbe9",
-      "workspace_name": "string"
-    },
     "organization_id": "7c60d51f-b44e-4682-87d6-449835ea4de6",
     "queue_position": 0,
     "queue_size": 0,
@@ -1797,20 +1646,6 @@ curl -X POST http://coder-server:8080/api/v2/workspaces/{workspace}/builds \
               "open_in": "slim-window",
               "sharing_level": "owner",
               "slug": "string",
-              "statuses": [
-                {
-                  "agent_id": "2b1e3b65-2c04-4fa2-a2d7-467901e98978",
-                  "app_id": "affd1d10-9538-4fc8-9e0b-4594a28c1335",
-                  "created_at": "2019-08-24T14:15:22Z",
-                  "icon": "string",
-                  "id": "497f6eca-6276-4993-bfeb-53cbbbba6f08",
-                  "message": "string",
-                  "needs_user_attention": true,
-                  "state": "working",
-                  "uri": "string",
-                  "workspace_id": "0967198e-ec7b-4c6b-b4d3-f71244cadbe9"
-                }
-              ],
               "subdomain": true,
               "subdomain_name": "string",
               "url": "string"

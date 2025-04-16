@@ -18,8 +18,7 @@ networking logic.
 
 In order for clients and workspaces to be able to connect:
 
-> [!NOTE]
-> We strongly recommend that clients connect to Coder and their
+> **Note:** We strongly recommend that clients connect to Coder and their
 > workspaces over a good quality, broadband network connection. The following
 > are minimum requirements:
 >
@@ -32,10 +31,17 @@ In order for clients and workspaces to be able to connect:
 - Any reverse proxy or ingress between the Coder control plane and
   clients/agents must support WebSockets.
 
+> **Note:** We strongly recommend that clients connect to Coder and their
+> workspaces over a good quality, broadband network connection. The following
+> are minimum requirements:
+>
+> - better than 400ms round-trip latency to the Coder server and to their
+>   workspace
+> - better than 0.5% random packet loss
+
 In order for clients to be able to establish direct connections:
 
-> [!NOTE]
-> Direct connections via the web browser are not supported. To improve
+> **Note:** Direct connections via the web browser are not supported. To improve
 > latency for browser-based applications running inside Coder workspaces in
 > regions far from the Coder control plane, consider deploying one or more
 > [workspace proxies](./workspace-proxies.md).
@@ -78,7 +84,7 @@ as well. There must not be a NAT between users and the coder server.
 
 Template admins can overwrite the site-wide access URL at the template level by
 leveraging the `url` argument when
-[defining the Coder provider](https://registry.terraform.io/providers/coder/coder/latest/docs#url-1):
+[defining the Coder provider](https://registry.terraform.io/providers/coder/coder/latest/docs#url):
 
 ```terraform
 provider "coder" {
@@ -174,9 +180,12 @@ more.
 
 ## Browser-only connections
 
-> [!NOTE]
-> Browser-only connections is a Premium feature.
-> [Learn more](https://coder.com/pricing#compare-plans).
+<blockquote class="info">
+
+Browser-only connections is an Enterprise and Premium feature.
+[Learn more](https://coder.com/pricing#compare-plans).
+
+</blockquote>
 
 Some Coder deployments require that all access is through the browser to comply
 with security policies. In these cases, pass the `--browser-only` flag to
@@ -188,72 +197,17 @@ via the web terminal and
 
 ### Workspace Proxies
 
-> [!NOTE]
-> Workspace proxies are a Premium feature.
-> [Learn more](https://coder.com/pricing#compare-plans).
+<blockquote class="info">
 
-Workspace proxies are a Coder Premium feature that allows you to provide
+Workspace proxies are an Enterprise and Premium feature.
+[Learn more](https://coder.com/pricing#compare-plans).
+
+</blockquote>
+
+Workspace proxies are a Coder Enterprise feature that allows you to provide
 low-latency browser experiences for geo-distributed teams.
 
 To learn more, see [Workspace Proxies](./workspace-proxies.md).
-
-## Latency
-
-Coder measures and reports several types of latency, providing insights into the performance of your deployment. Understanding these metrics can help you diagnose issues and optimize the user experience.
-
-There are three main types of latency metrics for your Coder deployment:
-
-- Dashboard-to-server latency:
-
-  The Coder UI measures round-trip time to the Coder server or workspace proxy using built-in browser timing capabilities.
-
-  This appears in the user interface next to your username, showing how responsive the dashboard is.
-
-- Workspace connection latency:
-
-  The latency shown on the workspace dashboard measures the round-trip time between the workspace agent and its DERP relay server.
-
-  This metric is displayed in milliseconds on the workspace dashboard and specifically shows the agent-to-relay latency, not direct P2P connections.
-
-  To estimate the total end-to-end latency experienced by a user, add the dashboard-to-server latency to this agent-to-relay latency.
-
-- Database latency:
-
-  For administrators, Coder monitors and reports database query performance in the health dashboard.
-
-### How latency is classified
-
-Latency measurements are color-coded in the dashboard:
-
-- **Green** (<150ms): Good performance.
-- **Yellow** (150-300ms): Moderate latency that might affect user experience.
-- **Red** (>300ms): High latency that will noticeably affect user experience.
-
-### View latency information
-
-- **Dashboard**: The global latency indicator appears in the top navigation bar.
-- **Workspace list**: Each workspace shows its connection latency.
-- **Health dashboard**: Administrators can view advanced metrics including database latency.
-- **CLI**: Use `coder ping <workspace>` to measure and analyze latency from the command line.
-
-### Factors that affect latency
-
-- **Geographic distance**: Physical distance between users, Coder server, and workspaces.
-- **Network connectivity**: Quality of internet connections and routing.
-- **Infrastructure**: Cloud provider regions and network optimization.
-- **P2P connectivity**: Whether direct connections can be established or relays are needed.
-
-### How to optimize latency
-
-To improve latency and user experience:
-
-- **Deploy workspace proxies**: Place [proxies](./workspace-proxies.md) in regions closer to users, connecting back to your single Coder server deployment.
-- **Use P2P connections**: Ensure network configurations permit direct connections.
-- **Strategic placement**: Deploy your Coder server in a region where most users work.
-- **Network configuration**: Optimize routing between users and workspaces.
-- **Check firewall rules**: Ensure they don't block necessary Coder connections.
-
-For help troubleshooting connection issues, including latency problems, refer to the [networking troubleshooting guide](./troubleshooting.md).
 
 ## Up next
 

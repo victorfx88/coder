@@ -25,7 +25,6 @@ import (
 	"cdr.dev/slog/sloggers/slogjson"
 	"cdr.dev/slog/sloggers/slogstackdriver"
 	"github.com/coder/coder/v2/agent"
-	"github.com/coder/coder/v2/agent/agentcontainers"
 	"github.com/coder/coder/v2/agent/agentexec"
 	"github.com/coder/coder/v2/agent/agentssh"
 	"github.com/coder/coder/v2/agent/reaper"
@@ -53,8 +52,6 @@ func (r *RootCmd) workspaceAgent() *serpent.Command {
 		blockFileTransfer   bool
 		agentHeaderCommand  string
 		agentHeader         []string
-
-		experimentalDevcontainersEnabled bool
 	)
 	cmd := &serpent.Command{
 		Use:   "agent",
@@ -127,7 +124,6 @@ func (r *RootCmd) workspaceAgent() *serpent.Command {
 				logger.Info(ctx, "spawning reaper process")
 				// Do not start a reaper on the child process. It's important
 				// to do this else we fork bomb ourselves.
-				//nolint:gocritic
 				args := append(os.Args, "--no-reap")
 				err := reaper.ForkReap(
 					reaper.WithExecArgs(args...),
@@ -318,21 +314,11 @@ func (r *RootCmd) workspaceAgent() *serpent.Command {
 				return xerrors.Errorf("create agent execer: %w", err)
 			}
 
-			var containerLister agentcontainers.Lister
-			if !experimentalDevcontainersEnabled {
-				logger.Info(ctx, "agent devcontainer detection not enabled")
-				containerLister = &agentcontainers.NoopLister{}
-			} else {
-				logger.Info(ctx, "agent devcontainer detection enabled")
-				containerLister = agentcontainers.NewDocker(execer)
-			}
-
 			agnt := agent.New(agent.Options{
-				Client:        client,
-				Logger:        logger,
-				LogDir:        logDir,
-				ScriptDataDir: scriptDataDir,
-				// #nosec G115 - Safe conversion as tailnet listen port is within uint16 range (0-65535)
+				Client:            client,
+				Logger:            logger,
+				LogDir:            logDir,
+				ScriptDataDir:     scriptDataDir,
 				TailnetListenPort: uint16(tailnetListenPort),
 				ExchangeToken: func(ctx context.Context) (string, error) {
 					if exchangeToken == nil {
@@ -353,9 +339,6 @@ func (r *RootCmd) workspaceAgent() *serpent.Command {
 				PrometheusRegistry: prometheusRegistry,
 				BlockFileTransfer:  blockFileTransfer,
 				Execer:             execer,
-				ContainerLister:    containerLister,
-
-				ExperimentalDevcontainersEnabled: experimentalDevcontainersEnabled,
 			})
 
 			promHandler := agent.PrometheusMetricsHandler(prometheusRegistry, logger)
@@ -477,13 +460,6 @@ func (r *RootCmd) workspaceAgent() *serpent.Command {
 			Env:         "CODER_AGENT_BLOCK_FILE_TRANSFER",
 			Description: fmt.Sprintf("Block file transfer using known applications: %s.", strings.Join(agentssh.BlockedFileTransferCommands, ",")),
 			Value:       serpent.BoolOf(&blockFileTransfer),
-		},
-		{
-			Flag:        "devcontainers-enable",
-			Default:     "false",
-			Env:         "CODER_AGENT_DEVCONTAINERS_ENABLE",
-			Description: "Allow the agent to automatically detect running devcontainers.",
-			Value:       serpent.BoolOf(&experimentalDevcontainersEnabled),
 		},
 	}
 

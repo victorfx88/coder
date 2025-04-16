@@ -91,7 +91,7 @@ fi
 				if err != nil {
 					return err
 				}
-				return cliui.ErrCanceled
+				return cliui.Canceled
 			}
 			if extra != "" {
 				if extAuth.TokenExtra == nil {

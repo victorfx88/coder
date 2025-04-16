@@ -1,0 +1,209 @@
+{
+  "format_version": "1.0",
+  "terraform_version": "1.10.5",
+  "values": {
+    "root_module": {
+      "resources": [
+        {
+          "address": "coder_agent.dev1",
+          "mode": "managed",
+          "type": "coder_agent",
+          "name": "dev1",
+          "provider_name": "registry.terraform.io/coder/coder",
+          "schema_version": 0,
+          "values": {
+            "arch": "amd64",
+            "auth": "token",
+            "connection_timeout": 120,
+            "dir": null,
+            "display_apps": [
+              {
+                "port_forwarding_helper": true,
+                "ssh_helper": true,
+                "vscode": true,
+                "vscode_insiders": false,
+                "web_terminal": true
+              }
+            ],
+            "env": null,
+            "id": "996be323-1195-4cee-9d00-778a025fbaf9",
+            "init_script": "",
+            "login_before_ready": true,
+            "metadata": [],
+            "motd_file": null,
+            "order": null,
+            "os": "linux",
+            "shutdown_script": null,
+            "shutdown_script_timeout": 300,
+            "startup_script": null,
+            "startup_script_behavior": null,
+            "startup_script_timeout": 300,
+            "token": "df89f5a4-3349-40eb-a628-d20f5e8ffb93",
+            "troubleshooting_url": null
+          },
+          "sensitive_values": {
+            "display_apps": [
+              {}
+            ],
+            "metadata": [],
+            "token": true
+          }
+        },
+        {
+          "address": "coder_agent.dev2",
+          "mode": "managed",
+          "type": "coder_agent",
+          "name": "dev2",
+          "provider_name": "registry.terraform.io/coder/coder",
+          "schema_version": 0,
+          "values": {
+            "arch": "amd64",
+            "auth": "token",
+            "connection_timeout": 1,
+            "dir": null,
+            "display_apps": [
+              {
+                "port_forwarding_helper": true,
+                "ssh_helper": true,
+                "vscode": true,
+                "vscode_insiders": false,
+                "web_terminal": true
+              }
+            ],
+            "env": null,
+            "id": "8c9bbbf8-0049-47d6-afef-555f2e4c8f31",
+            "init_script": "",
+            "login_before_ready": true,
+            "metadata": [],
+            "motd_file": "/etc/motd",
+            "order": null,
+            "os": "darwin",
+            "shutdown_script": "echo bye bye",
+            "shutdown_script_timeout": 30,
+            "startup_script": null,
+            "startup_script_behavior": "non-blocking",
+            "startup_script_timeout": 30,
+            "token": "26d616b2-9df3-43b2-b89b-dc8665dbcff4",
+            "troubleshooting_url": null
+          },
+          "sensitive_values": {
+            "display_apps": [
+              {}
+            ],
+            "metadata": [],
+            "token": true
+          }
+        },
+        {
+          "address": "coder_agent.dev3",
+          "mode": "managed",
+          "type": "coder_agent",
+          "name": "dev3",
+          "provider_name": "registry.terraform.io/coder/coder",
+          "schema_version": 0,
+          "values": {
+            "arch": "arm64",
+            "auth": "token",
+            "connection_timeout": 120,
+            "dir": null,
+            "display_apps": [
+              {
+                "port_forwarding_helper": true,
+                "ssh_helper": true,
+                "vscode": true,
+                "vscode_insiders": false,
+                "web_terminal": true
+              }
+            ],
+            "env": null,
+            "id": "33ed3e88-edf5-4bc8-a0bb-1f743ffb169d",
+            "init_script": "",
+            "login_before_ready": true,
+            "metadata": [],
+            "motd_file": null,
+            "order": null,
+            "os": "windows",
+            "shutdown_script": null,
+            "shutdown_script_timeout": 300,
+            "startup_script": null,
+            "startup_script_behavior": "blocking",
+            "startup_script_timeout": 300,
+            "token": "42292f6c-6fc4-43f4-8de9-219990cc4a93",
+            "troubleshooting_url": "https://coder.com/troubleshoot"
+          },
+          "sensitive_values": {
+            "display_apps": [
+              {}
+            ],
+            "metadata": [],
+            "token": true
+          }
+        },
+        {
+          "address": "coder_agent.dev4",
+          "mode": "managed",
+          "type": "coder_agent",
+          "name": "dev4",
+          "provider_name": "registry.terraform.io/coder/coder",
+          "schema_version": 0,
+          "values": {
+            "arch": "amd64",
+            "auth": "token",
+            "connection_timeout": 120,
+            "dir": null,
+            "display_apps": [
+              {
+                "port_forwarding_helper": true,
+                "ssh_helper": true,
+                "vscode": true,
+                "vscode_insiders": false,
+                "web_terminal": true
+              }
+            ],
+            "env": null,
+            "id": "f1ff7240-3700-494d-a0fd-6a88459d8ab7",
+            "init_script": "",
+            "login_before_ready": false,
+            "metadata": [],
+            "motd_file": null,
+            "order": null,
+            "os": "linux",
+            "shutdown_script": null,
+            "shutdown_script_timeout": 300,
+            "startup_script": null,
+            "startup_script_behavior": null,
+            "startup_script_timeout": 300,
+            "token": "2d133297-d1b2-486e-8b3e-078df4ed0de7",
+            "troubleshooting_url": null
+          },
+          "sensitive_values": {
+            "display_apps": [
+              {}
+            ],
+            "metadata": [],
+            "token": true
+          }
+        },
+        {
+          "address": "null_resource.dev",
+          "mode": "managed",
+          "type": "null_resource",
+          "name": "dev",
+          "provider_name": "registry.terraform.io/hashicorp/null",
+          "schema_version": 0,
+          "values": {
+            "id": "1432868857711807382",
+            "triggers": null
+          },
+          "sensitive_values": {},
+          "depends_on": [
+            "coder_agent.dev1",
+            "coder_agent.dev2",
+            "coder_agent.dev3",
+            "coder_agent.dev4"
+          ]
+        }
+      ]
+    }
+  }
+}

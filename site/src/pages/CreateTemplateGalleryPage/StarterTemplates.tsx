@@ -1,5 +1,4 @@
 import type { Interpolation, Theme } from "@emotion/react";
-import type { TemplateExample } from "api/typesGenerated";
 import { Stack } from "components/Stack/Stack";
 import { TemplateExampleCard } from "modules/templates/TemplateExampleCard/TemplateExampleCard";
 import type { FC } from "react";
@@ -22,21 +21,6 @@ const selectTags = (starterTemplatesByTag: StarterTemplatesByTag) => {
 		: undefined;
 };
 
-const sortVisibleTemplates = (templates: TemplateExample[]) => {
-	// The docker template should be the first template in the list,
-	// as it's the easiest way to get started with Coder.
-	const dockerTemplateId = "docker";
-	return templates.sort((a, b) => {
-		if (a.id === dockerTemplateId) {
-			return -1;
-		}
-		if (b.id === dockerTemplateId) {
-			return 1;
-		}
-		return a.name.localeCompare(b.name);
-	});
-};
-
 export interface StarterTemplatesProps {
 	starterTemplatesByTag?: StarterTemplatesByTag;
 }
@@ -50,7 +34,7 @@ export const StarterTemplates: FC<StarterTemplatesProps> = ({
 		: undefined;
 	const activeTag = urlParams.get("tag") ?? "all";
 	const visibleTemplates = starterTemplatesByTag
-		? sortVisibleTemplates(starterTemplatesByTag[activeTag])
+		? starterTemplatesByTag[activeTag]
 		: undefined;
 
 	return (

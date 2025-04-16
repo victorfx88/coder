@@ -1,5 +1,4 @@
 import { paginatedAudits } from "api/queries/audits";
-import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { useFilter } from "components/Filter/Filter";
 import { useUserFilterMenu } from "components/Filter/UserFilter";
 import { isNonInitialPage } from "components/PaginationWidget/utils";
@@ -16,12 +15,6 @@ import { AuditPageView } from "./AuditPageView";
 
 const AuditPage: FC = () => {
 	const feats = useFeatureVisibility();
-	// The "else false" is required if audit_log is undefined.
-	// It may happen if owner removes the license.
-	//
-	// see: https://github.com/coder/coder/issues/14798
-	const isAuditLogVisible = feats.audit_log || false;
-
 	const { showOrganizations } = useDashboard();
 
 	/**
@@ -83,7 +76,7 @@ const AuditPage: FC = () => {
 			<AuditPageView
 				auditLogs={auditsQuery.data?.audit_logs}
 				isNonInitialPage={isNonInitialPage(searchParams)}
-				isAuditLogVisible={isAuditLogVisible}
+				isAuditLogVisible={feats.audit_log}
 				auditsQuery={auditsQuery}
 				error={auditsQuery.error}
 				showOrgDetails={showOrganizations}

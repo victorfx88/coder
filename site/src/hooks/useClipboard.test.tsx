@@ -11,8 +11,7 @@
  */
 import { act, renderHook, screen } from "@testing-library/react";
 import { GlobalSnackbar } from "components/GlobalSnackbar/GlobalSnackbar";
-import { ThemeOverride } from "contexts/ThemeProvider";
-import themes, { DEFAULT_THEME } from "theme";
+import { ThemeProvider } from "contexts/ThemeProvider";
 import {
 	COPY_FAILED_MESSAGE,
 	HTTP_FALLBACK_DATA_ID,
@@ -122,10 +121,10 @@ function renderUseClipboard<TInput extends UseClipboardInput>(inputs: TInput) {
 			initialProps: inputs,
 			wrapper: ({ children }) => (
 				// Need ThemeProvider because GlobalSnackbar uses theme
-				<ThemeOverride theme={themes[DEFAULT_THEME]}>
+				<ThemeProvider>
 					{children}
 					<GlobalSnackbar />
-				</ThemeOverride>
+				</ThemeProvider>
 			),
 		},
 	);

@@ -10,10 +10,10 @@ import (
 
 // New returns an *APIVersion with the given major.minor and
 // additional supported major versions.
-func New(maj, minor int) *APIVersion {
+func New(maj, min int) *APIVersion {
 	v := &APIVersion{
 		supportedMajor:   maj,
-		supportedMinor:   minor,
+		supportedMinor:   min,
 		additionalMajors: make([]int, 0),
 	}
 	return v

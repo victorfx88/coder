@@ -5,17 +5,18 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
-	"slices"
 	"strings"
 	"time"
 
+	"github.com/coder/coder/v2/coderd/database/dbtime"
+
 	"github.com/google/uuid"
+	"golang.org/x/exp/slices"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/coder/coder/v2/coderd/database"
 	"github.com/coder/coder/v2/coderd/database/db2sdk"
-	"github.com/coder/coder/v2/coderd/database/dbtime"
 	"github.com/coder/coder/v2/coderd/httpapi"
 	"github.com/coder/coder/v2/coderd/rbac"
 	"github.com/coder/coder/v2/coderd/rbac/policy"
@@ -325,8 +326,7 @@ func (api *API) insightsUserStatusCounts(rw http.ResponseWriter, r *http.Request
 	rows, err := api.Database.GetUserStatusCounts(ctx, database.GetUserStatusCountsParams{
 		StartTime: sixtyDaysAgo,
 		EndTime:   nextHourInLoc,
-		// #nosec G115 - Interval value is small and fits in int32 (typically days or hours)
-		Interval: int32(interval),
+		Interval:  int32(interval),
 	})
 	if err != nil {
 		if httpapi.IsUnauthorizedError(err) {

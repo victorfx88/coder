@@ -11,13 +11,46 @@ Your OIDC provider will ask you for the following parameter:
 
 ## Step 2: Configure Coder with the OpenID Connect credentials
 
-Set the following environment variables on your Coder deployment and restart Coder:
+Navigate to your Coder host and run the following command to start up the Coder
+server:
+
+```shell
+coder server --oidc-issuer-url="https://issuer.corp.com" --oidc-email-domain="your-domain-1,your-domain-2" --oidc-client-id="533...des" --oidc-client-secret="G0CSP...7qSM"
+```
+
+If you are running Coder as a system service, you can achieve the same result as
+the command above by adding the following environment variables to the
+`/etc/coder.d/coder.env` file:
 
 ```env
 CODER_OIDC_ISSUER_URL="https://issuer.corp.com"
 CODER_OIDC_EMAIL_DOMAIN="your-domain-1,your-domain-2"
 CODER_OIDC_CLIENT_ID="533...des"
 CODER_OIDC_CLIENT_SECRET="G0CSP...7qSM"
+```
+
+Once complete, run `sudo service coder restart` to reboot Coder.
+
+If deploying Coder via Helm, you can set the above environment variables in the
+`values.yaml` file as such:
+
+```yaml
+coder:
+  env:
+    - name: CODER_OIDC_ISSUER_URL
+      value: "https://issuer.corp.com"
+    - name: CODER_OIDC_EMAIL_DOMAIN
+      value: "your-domain-1,your-domain-2"
+    - name: CODER_OIDC_CLIENT_ID
+      value: "533...des"
+    - name: CODER_OIDC_CLIENT_SECRET
+      value: "G0CSP...7qSM"
+```
+
+To upgrade Coder, run:
+
+```shell
+helm upgrade <release-name> coder-v2/coder -n <namespace> -f values.yaml
 ```
 
 ## OIDC Claims
@@ -32,8 +65,7 @@ signing in via OIDC as a new user. Coder will log the claim fields returned by
 the upstream identity provider in a message containing the string
 `got oidc claims`, as well as the user info returned.
 
-> [!NOTE]
-> If you need to ensure that Coder only uses information from the ID
+> **Note:** If you need to ensure that Coder only uses information from the ID
 > token and does not hit the UserInfo endpoint, you can set the configuration
 > option `CODER_OIDC_IGNORE_USERINFO=true`.
 
@@ -45,8 +77,7 @@ for the newly created user's email address.
 If your upstream identity provider users a different claim, you can set
 `CODER_OIDC_EMAIL_FIELD` to the desired claim.
 
-> [!NOTE]
-> If this field is not present, Coder will attempt to use the claim
+> **Note** If this field is not present, Coder will attempt to use the claim
 > field configured for `username` as an email address. If this field is not a
 > valid email address, OIDC logins will fail.
 
@@ -61,8 +92,7 @@ disable this behavior with the following setting:
 CODER_OIDC_IGNORE_EMAIL_VERIFIED=true
 ```
 
-> [!NOTE]
-> This will cause Coder to implicitly treat all OIDC emails as
+> **Note:** This will cause Coder to implicitly treat all OIDC emails as
 > "verified", regardless of what the upstream identity provider says.
 
 ### Usernames
@@ -73,8 +103,7 @@ claim field named `preferred_username` as the the username.
 If your upstream identity provider uses a different claim, you can set
 `CODER_OIDC_USERNAME_FIELD` to the desired claim.
 
-> [!NOTE]
-> If this claim is empty, the email address will be stripped of the
+> **Note:** If this claim is empty, the email address will be stripped of the
 > domain, and become the username (e.g. `example@coder.com` becomes `example`).
 > To avoid conflicts, Coder may also append a random word to the resulting
 > username.
@@ -103,9 +132,12 @@ CODER_DISABLE_PASSWORD_AUTH=true
 
 ## SCIM
 
-> [!NOTE]
-> SCIM is a Premium feature.
-> [Learn more](https://coder.com/pricing#compare-plans).
+<blockquote class="info">
+
+SCIM is an Enterprise and Premium feature.
+[Learn more](https://coder.com/pricing#compare-plans).
+
+</blockquote>
 
 Coder supports user provisioning and deprovisioning via SCIM 2.0 with header
 authentication. Upon deactivation, users are

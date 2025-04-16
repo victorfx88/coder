@@ -1,23 +1,22 @@
 import { expect, test } from "@playwright/test";
 import { createGroup, getCurrentOrgId, setupApiCalls } from "../../api";
-import { defaultOrganizationName, users } from "../../constants";
-import { login, requiresLicense } from "../../helpers";
+import { requiresLicense } from "../../helpers";
+import { login } from "../../helpers";
 import { beforeCoderTest } from "../../hooks";
 
 test.beforeEach(async ({ page }) => {
 	beforeCoderTest(page);
-	await login(page, users.userAdmin);
+	await login(page);
 	await setupApiCalls(page);
 });
 
 test("remove group", async ({ page, baseURL }) => {
 	requiresLicense();
 
-	const orgName = defaultOrganizationName;
 	const orgId = await getCurrentOrgId();
 	const group = await createGroup(orgId);
 
-	await page.goto(`${baseURL}/organizations/${orgName}/groups/${group.name}`, {
+	await page.goto(`${baseURL}/groups/${group.name}`, {
 		waitUntil: "domcontentloaded",
 	});
 	await expect(page).toHaveTitle(`${group.display_name} - Coder`);

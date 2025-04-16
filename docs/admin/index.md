@@ -1,7 +1,5 @@
 # Administration
 
-![Admin settings general page](../images/admin/admin-settings-general.png)
-
 These guides contain information on managing the Coder control plane and
 [authoring templates](./templates/index.md).
 

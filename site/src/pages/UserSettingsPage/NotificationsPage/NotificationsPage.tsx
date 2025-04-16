@@ -48,7 +48,7 @@ export const NotificationsPage: FC = () => {
 				...systemNotificationTemplates(),
 				select: (data: NotificationTemplate[]) => {
 					const groups = selectTemplatesByGroup(data);
-					return permissions.viewDeploymentConfig
+					return permissions.viewDeploymentValues
 						? groups
 						: {
 								// Members only have access to the "Workspace Notifications" group
@@ -99,6 +99,7 @@ export const NotificationsPage: FC = () => {
 				title="Notifications"
 				description="Control which notifications you receive."
 				layout="fluid"
+				featureStage="beta"
 			>
 				{ready ? (
 					<Stack spacing={4}>

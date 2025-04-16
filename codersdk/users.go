@@ -54,11 +54,9 @@ type ReducedUser struct {
 	UpdatedAt   time.Time `json:"updated_at" table:"updated at" format:"date-time"`
 	LastSeenAt  time.Time `json:"last_seen_at" format:"date-time"`
 
-	Status    UserStatus `json:"status" table:"status" enums:"active,suspended"`
-	LoginType LoginType  `json:"login_type"`
-	// Deprecated: this value should be retrieved from
-	// `codersdk.UserPreferenceSettings` instead.
-	ThemePreference string `json:"theme_preference,omitempty"`
+	Status          UserStatus `json:"status" table:"status" enums:"active,suspended"`
+	LoginType       LoginType  `json:"login_type"`
+	ThemePreference string     `json:"theme_preference"`
 }
 
 // User represents a user in Coder.
@@ -189,25 +187,8 @@ type ValidateUserPasswordResponse struct {
 	Details string `json:"details"`
 }
 
-// TerminalFontName is the name of supported terminal font
-type TerminalFontName string
-
-var TerminalFontNames = []TerminalFontName{TerminalFontUnknown, TerminalFontIBMPlexMono, TerminalFontFiraCode}
-
-const (
-	TerminalFontUnknown     TerminalFontName = ""
-	TerminalFontIBMPlexMono TerminalFontName = "ibm-plex-mono"
-	TerminalFontFiraCode    TerminalFontName = "fira-code"
-)
-
-type UserAppearanceSettings struct {
-	ThemePreference string           `json:"theme_preference"`
-	TerminalFont    TerminalFontName `json:"terminal_font"`
-}
-
 type UpdateUserAppearanceSettingsRequest struct {
-	ThemePreference string           `json:"theme_preference" validate:"required"`
-	TerminalFont    TerminalFontName `json:"terminal_font" validate:"required"`
+	ThemePreference string `json:"theme_preference" validate:"required"`
 }
 
 type UpdateUserPasswordRequest struct {
@@ -294,10 +275,10 @@ type OAuthConversionResponse struct {
 
 // AuthMethods contains authentication method information like whether they are enabled or not or custom text, etc.
 type AuthMethods struct {
-	TermsOfServiceURL string           `json:"terms_of_service_url,omitempty"`
-	Password          AuthMethod       `json:"password"`
-	Github            GithubAuthMethod `json:"github"`
-	OIDC              OIDCAuthMethod   `json:"oidc"`
+	TermsOfServiceURL string         `json:"terms_of_service_url,omitempty"`
+	Password          AuthMethod     `json:"password"`
+	Github            AuthMethod     `json:"github"`
+	OIDC              OIDCAuthMethod `json:"oidc"`
 }
 
 type AuthMethod struct {
@@ -306,11 +287,6 @@ type AuthMethod struct {
 
 type UserLoginType struct {
 	LoginType LoginType `json:"login_type"`
-}
-
-type GithubAuthMethod struct {
-	Enabled                   bool `json:"enabled"`
-	DefaultProviderConfigured bool `json:"default_provider_configured"`
 }
 
 type OIDCAuthMethod struct {
@@ -479,31 +455,17 @@ func (c *Client) UpdateUserStatus(ctx context.Context, user string, status UserS
 	return resp, json.NewDecoder(res.Body).Decode(&resp)
 }
 
-// GetUserAppearanceSettings fetches the appearance settings for a user.
-func (c *Client) GetUserAppearanceSettings(ctx context.Context, user string) (UserAppearanceSettings, error) {
-	res, err := c.Request(ctx, http.MethodGet, fmt.Sprintf("/api/v2/users/%s/appearance", user), nil)
-	if err != nil {
-		return UserAppearanceSettings{}, err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return UserAppearanceSettings{}, ReadBodyAsError(res)
-	}
-	var resp UserAppearanceSettings
-	return resp, json.NewDecoder(res.Body).Decode(&resp)
-}
-
 // UpdateUserAppearanceSettings updates the appearance settings for a user.
-func (c *Client) UpdateUserAppearanceSettings(ctx context.Context, user string, req UpdateUserAppearanceSettingsRequest) (UserAppearanceSettings, error) {
+func (c *Client) UpdateUserAppearanceSettings(ctx context.Context, user string, req UpdateUserAppearanceSettingsRequest) (User, error) {
 	res, err := c.Request(ctx, http.MethodPut, fmt.Sprintf("/api/v2/users/%s/appearance", user), req)
 	if err != nil {
-		return UserAppearanceSettings{}, err
+		return User{}, err
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return UserAppearanceSettings{}, ReadBodyAsError(res)
+		return User{}, ReadBodyAsError(res)
 	}
-	var resp UserAppearanceSettings
+	var resp User
 	return resp, json.NewDecoder(res.Body).Decode(&resp)
 }
 

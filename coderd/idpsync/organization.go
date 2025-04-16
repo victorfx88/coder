@@ -97,10 +97,7 @@ func (s AGPLIDPSync) SyncOrganizations(ctx context.Context, tx database.Store, u
 		return xerrors.Errorf("organization claims: %w", err)
 	}
 
-	existingOrgs, err := tx.GetOrganizationsByUserID(ctx, database.GetOrganizationsByUserIDParams{
-		UserID:  user.ID,
-		Deleted: false,
-	})
+	existingOrgs, err := tx.GetOrganizationsByUserID(ctx, user.ID)
 	if err != nil {
 		return xerrors.Errorf("failed to get user organizations: %w", err)
 	}

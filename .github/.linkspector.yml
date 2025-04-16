@@ -20,9 +20,5 @@ ignorePatterns:
   - pattern: "www.emacswiki.org"
   - pattern: "linux.die.net/man"
   - pattern: "www.gnu.org"
-  - pattern: "wiki.ubuntu.com"
-  - pattern: "mutagen.io"
-  - pattern: "docs.github.com"
-  - pattern: "claude.ai"
 aliveStatusCodes:
   - 200
