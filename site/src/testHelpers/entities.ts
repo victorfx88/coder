@@ -2762,6 +2762,13 @@ export const MockOrganizationSyncSettings: TypesGen.OrganizationSyncSettings = {
 	organization_assign_default: true,
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const MockOrganizationSyncSettingsWithNull: TypesGen.OrganizationSyncSettings = {
+	field: "organization-test",
+	mapping: null as any,
+	organization_assign_default: true,
+};
+
 export const MockOrganizationSyncSettings2: TypesGen.OrganizationSyncSettings =
 	{
 		field: "organization-test",

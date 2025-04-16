@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, fn, userEvent, waitFor, within } from "@storybook/test";
-import { MockOrganizationSyncSettings } from "testHelpers/entities";
+import { MockOrganizationSyncSettings, MockOrganizationSyncSettingsWithNull } from "testHelpers/entities";
 import { ExportPolicyButton } from "./ExportPolicyButton";
 
 const meta: Meta<typeof ExportPolicyButton> = {
@@ -39,3 +39,28 @@ export const ClickExportPolicy: Story = {
 		);
 	},
 };
+
+export const NullMappingExport: Story = {
+	args: {
+		syncSettings: MockOrganizationSyncSettingsWithNull,
+		download: fn(),
+	},
+	play: async ({ canvasElement, args }) => {
+		const canvas = within(canvasElement);
+		await userEvent.click(
+			canvas.getByRole("button", { name: "Export Policy" }),
+		);
+		await waitFor(() =>
+			expect(args.download).toHaveBeenCalledWith(
+				expect.anything(),
+				"organizations_policy.json",
+			),
+		);
+		const blob: Blob = (args.download as jest.Mock).mock.lastCall[0];
+		await expect(blob.type).toEqual("application/json");
+		await expect(await blob.text()).toEqual(
+			JSON.stringify(MockOrganizationSyncSettings, null, 2),
+		);
+	},
+};
+
