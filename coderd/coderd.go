@@ -43,7 +43,6 @@ import (
 
 	"github.com/coder/coder/v2/coderd/cryptokeys"
 	"github.com/coder/coder/v2/coderd/entitlements"
-	"github.com/coder/coder/v2/coderd/files"
 	"github.com/coder/coder/v2/coderd/idpsync"
 	"github.com/coder/coder/v2/coderd/runtimeconfig"
 	"github.com/coder/coder/v2/coderd/webpush"
@@ -65,7 +64,6 @@ import (
 	"github.com/coder/coder/v2/coderd/healthcheck/derphealth"
 	"github.com/coder/coder/v2/coderd/httpapi"
 	"github.com/coder/coder/v2/coderd/httpmw"
-	"github.com/coder/coder/v2/coderd/httpmw/loggermw"
 	"github.com/coder/coder/v2/coderd/metricscache"
 	"github.com/coder/coder/v2/coderd/notifications"
 	"github.com/coder/coder/v2/coderd/portsharing"
@@ -157,6 +155,7 @@ type Options struct {
 	GithubOAuth2Config             *GithubOAuth2Config
 	OIDCConfig                     *OIDCConfig
 	PrometheusRegistry             *prometheus.Registry
+	SecureAuthCookie               bool
 	StrictTransportSecurityCfg     httpmw.HSTSConfig
 	SSHKeygenAlgorithm             gitsshkey.Algorithm
 	Telemetry                      telemetry.Reporter
@@ -316,9 +315,6 @@ func New(options *Options) *API {
 
 	if options.Authorizer == nil {
 		options.Authorizer = rbac.NewCachingAuthorizer(options.PrometheusRegistry)
-		if buildinfo.IsDev() {
-			options.Authorizer = rbac.Recorder(options.Authorizer)
-		}
 	}
 
 	if options.AccessControlStore == nil {
@@ -461,22 +457,8 @@ func New(options *Options) *API {
 		options.NotificationsEnqueuer = notifications.NewNoopEnqueuer()
 	}
 
-	r := chi.NewRouter()
-	// We add this middleware early, to make sure that authorization checks made
-	// by other middleware get recorded.
-	//nolint:revive,staticcheck // This block will be re-enabled, not going to remove it
-	if buildinfo.IsDev() {
-		// TODO: Find another solution to opt into these checks.
-		//   If the header grows too large, it breaks `fetch()` requests.
-		//   Temporarily disabling this until we can find a better solution.
-		//	 One idea is to include checking the request for `X-Authz-Record=true`
-		//   header. To opt in on a per-request basis.
-		//   Some authz calls (like filtering lists) might be able to be
-		//   summarized better to condense the header payload.
-		// r.Use(httpmw.RecordAuthzChecks)
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
+	r := chi.NewRouter()
 
 	// nolint:gocritic // Load deployment ID. This never changes
 	depID, err := options.Database.GetDeploymentID(dbauthz.AsSystemRestricted(ctx))
@@ -567,7 +549,6 @@ func New(options *Options) *API {
 		TemplateScheduleStore:       options.TemplateScheduleStore,
 		UserQuietHoursScheduleStore: options.UserQuietHoursScheduleStore,
 		AccessControlStore:          options.AccessControlStore,
-		FileCache:                   files.NewFromStore(options.Database),
 		Experiments:                 experiments,
 		WebpushDispatcher:           options.WebPushDispatcher,
 		healthCheckGroup:            &singleflight.Group[string, *healthsdk.HealthcheckReport]{},
@@ -760,7 +741,7 @@ func New(options *Options) *API {
 		StatsCollector:      workspaceapps.NewStatsCollector(options.WorkspaceAppsStatsCollectorOptions),
 
 		DisablePathApps:          options.DeploymentValues.DisablePathApps.Value(),
-		Cookies:                  options.DeploymentValues.HTTPCookies,
+		SecureAuthCookie:         options.DeploymentValues.SecureAuthCookie.Value(),
 		APIKeyEncryptionKeycache: options.AppEncryptionKeyCache,
 	}
 
@@ -820,7 +801,7 @@ func New(options *Options) *API {
 		tracing.Middleware(api.TracerProvider),
 		httpmw.AttachRequestID,
 		httpmw.ExtractRealIP(api.RealIPConfig),
-		loggermw.Logger(api.Logger),
+		httpmw.Logger(api.Logger),
 		singleSlashMW,
 		rolestore.CustomRoleMW,
 		prometheusMW,
@@ -848,7 +829,7 @@ func New(options *Options) *API {
 				next.ServeHTTP(w, r)
 			})
 		},
-		httpmw.CSRF(options.DeploymentValues.HTTPCookies),
+		httpmw.CSRF(options.SecureAuthCookie),
 	)
 
 	// This incurs a performance hit from the middleware, but is required to make sure
@@ -888,7 +869,7 @@ func New(options *Options) *API {
 				r.Route(fmt.Sprintf("/%s/callback", externalAuthConfig.ID), func(r chi.Router) {
 					r.Use(
 						apiKeyMiddlewareRedirect,
-						httpmw.ExtractOAuth2(externalAuthConfig, options.HTTPClient, options.DeploymentValues.HTTPCookies, nil),
+						httpmw.ExtractOAuth2(externalAuthConfig, options.HTTPClient, nil),
 					)
 					r.Get("/", api.externalAuthCallback(externalAuthConfig))
 				})
@@ -1108,10 +1089,6 @@ func New(options *Options) *API {
 			// The idea is to return an empty [], so that the coder CLI won't get blocked accidentally.
 			r.Get("/schema", templateVersionSchemaDeprecated)
 			r.Get("/parameters", templateVersionParametersDeprecated)
-			r.Group(func(r chi.Router) {
-				r.Use(httpmw.RequireExperiment(api.Experiments, codersdk.ExperimentDynamicParameters))
-				r.Get("/dynamic-parameters", api.templateVersionDynamicParameters)
-			})
 			r.Get("/rich-parameters", api.templateVersionRichParameters)
 			r.Get("/external-auth", api.templateVersionExternalAuth)
 			r.Get("/variables", api.templateVersionVariables)
@@ -1147,14 +1124,14 @@ func New(options *Options) *API {
 					r.Get("/github/device", api.userOAuth2GithubDevice)
 					r.Route("/github", func(r chi.Router) {
 						r.Use(
-							httpmw.ExtractOAuth2(options.GithubOAuth2Config, options.HTTPClient, options.DeploymentValues.HTTPCookies, nil),
+							httpmw.ExtractOAuth2(options.GithubOAuth2Config, options.HTTPClient, nil),
 						)
 						r.Get("/callback", api.userOAuth2Github)
 					})
 				})
 				r.Route("/oidc/callback", func(r chi.Router) {
 					r.Use(
-						httpmw.ExtractOAuth2(options.OIDCConfig, options.HTTPClient, options.DeploymentValues.HTTPCookies, oidcAuthURLParams),
+						httpmw.ExtractOAuth2(options.OIDCConfig, options.HTTPClient, oidcAuthURLParams),
 					)
 					r.Get("/", api.userOIDC)
 				})
@@ -1283,8 +1260,7 @@ func New(options *Options) *API {
 					httpmw.ExtractWorkspaceParam(options.Database),
 				)
 				r.Get("/", api.workspaceAgent)
-				r.Get("/watch-metadata", api.watchWorkspaceAgentMetadataSSE)
-				r.Get("/watch-metadata-ws", api.watchWorkspaceAgentMetadataWS)
+				r.Get("/watch-metadata", api.watchWorkspaceAgentMetadata)
 				r.Get("/startup-logs", api.workspaceAgentLogsDeprecated)
 				r.Get("/logs", api.workspaceAgentLogs)
 				r.Get("/listening-ports", api.workspaceAgentListeningPorts)
@@ -1316,8 +1292,7 @@ func New(options *Options) *API {
 				r.Route("/ttl", func(r chi.Router) {
 					r.Put("/", api.putWorkspaceTTL)
 				})
-				r.Get("/watch", api.watchWorkspaceSSE)
-				r.Get("/watch-ws", api.watchWorkspaceWS)
+				r.Get("/watch", api.watchWorkspace)
 				r.Put("/extend", api.putExtendWorkspace)
 				r.Post("/usage", api.postWorkspaceUsage)
 				r.Put("/dormant", api.putWorkspaceDormant)
@@ -1561,7 +1536,6 @@ type API struct {
 	// passed to dbauthz.
 	AccessControlStore *atomic.Pointer[dbauthz.AccessControlStore]
 	PortSharer         atomic.Pointer[portsharing.PortSharer]
-	FileCache          files.Cache
 
 	UpdatesProvider tailnet.WorkspaceUpdatesProvider
 

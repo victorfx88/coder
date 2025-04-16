@@ -21,6 +21,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-chi/render"
 	"github.com/stretchr/testify/require"
 
 	"github.com/coder/coder/v2/testutil"
@@ -140,8 +141,8 @@ func serveScript(t *testing.T, in string) string {
 	t.Helper()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-		rw.WriteHeader(http.StatusOK)
-		_, _ = rw.Write([]byte(in))
+		render.Status(r, http.StatusOK)
+		render.Data(rw, r, []byte(in))
 	}))
 	t.Cleanup(srv.Close)
 	srvURL, err := url.Parse(srv.URL)

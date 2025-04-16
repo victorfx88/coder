@@ -101,14 +101,13 @@ func TestUpdateWithRichParameters(t *testing.T) {
 		immutableParameterValue       = "4"
 	)
 
-	echoResponses := func() *echo.Responses {
-		return prepareEchoResponses([]*proto.RichParameter{
-			{Name: firstParameterName, Description: firstParameterDescription, Mutable: true},
-			{Name: immutableParameterName, Description: immutableParameterDescription, Mutable: false},
-			{Name: secondParameterName, Description: secondParameterDescription, Mutable: true},
-			{Name: ephemeralParameterName, Description: ephemeralParameterDescription, Mutable: true, Ephemeral: true},
-		})
-	}
+	echoResponses := prepareEchoResponses([]*proto.RichParameter{
+		{Name: firstParameterName, Description: firstParameterDescription, Mutable: true},
+		{Name: immutableParameterName, Description: immutableParameterDescription, Mutable: false},
+		{Name: secondParameterName, Description: secondParameterDescription, Mutable: true},
+		{Name: ephemeralParameterName, Description: ephemeralParameterDescription, Mutable: true, Ephemeral: true},
+	},
+	)
 
 	t.Run("ImmutableCannotBeCustomized", func(t *testing.T) {
 		t.Parallel()
@@ -116,7 +115,7 @@ func TestUpdateWithRichParameters(t *testing.T) {
 		client := coderdtest.New(t, &coderdtest.Options{IncludeProvisionerDaemon: true})
 		owner := coderdtest.CreateFirstUser(t, client)
 		member, _ := coderdtest.CreateAnotherUser(t, client, owner.OrganizationID)
-		version := coderdtest.CreateTemplateVersion(t, client, owner.OrganizationID, echoResponses())
+		version := coderdtest.CreateTemplateVersion(t, client, owner.OrganizationID, echoResponses)
 		coderdtest.AwaitTemplateVersionJobCompleted(t, client, version.ID)
 
 		template := coderdtest.CreateTemplate(t, client, owner.OrganizationID, version.ID)
@@ -167,7 +166,7 @@ func TestUpdateWithRichParameters(t *testing.T) {
 		client := coderdtest.New(t, &coderdtest.Options{IncludeProvisionerDaemon: true})
 		owner := coderdtest.CreateFirstUser(t, client)
 		member, memberUser := coderdtest.CreateAnotherUser(t, client, owner.OrganizationID)
-		version := coderdtest.CreateTemplateVersion(t, client, owner.OrganizationID, echoResponses())
+		version := coderdtest.CreateTemplateVersion(t, client, owner.OrganizationID, echoResponses)
 		coderdtest.AwaitTemplateVersionJobCompleted(t, client, version.ID)
 
 		template := coderdtest.CreateTemplate(t, client, owner.OrganizationID, version.ID)
@@ -232,7 +231,7 @@ func TestUpdateWithRichParameters(t *testing.T) {
 		client := coderdtest.New(t, &coderdtest.Options{IncludeProvisionerDaemon: true})
 		owner := coderdtest.CreateFirstUser(t, client)
 		member, memberUser := coderdtest.CreateAnotherUser(t, client, owner.OrganizationID)
-		version := coderdtest.CreateTemplateVersion(t, client, owner.OrganizationID, echoResponses())
+		version := coderdtest.CreateTemplateVersion(t, client, owner.OrganizationID, echoResponses)
 		coderdtest.AwaitTemplateVersionJobCompleted(t, client, version.ID)
 
 		template := coderdtest.CreateTemplate(t, client, owner.OrganizationID, version.ID)
@@ -345,7 +344,7 @@ func TestUpdateValidateRichParameters(t *testing.T) {
 		pty.ExpectMatch("does not match")
 		pty.ExpectMatch("> Enter a value (default: \"\"): ")
 		pty.WriteLine("abc")
-		_ = testutil.TryReceive(ctx, t, doneChan)
+		_ = testutil.RequireRecvCtx(ctx, t, doneChan)
 	})
 
 	t.Run("ValidateNumber", func(t *testing.T) {
@@ -391,7 +390,7 @@ func TestUpdateValidateRichParameters(t *testing.T) {
 		pty.ExpectMatch("is not a number")
 		pty.ExpectMatch("> Enter a value (default: \"\"): ")
 		pty.WriteLine("8")
-		_ = testutil.TryReceive(ctx, t, doneChan)
+		_ = testutil.RequireRecvCtx(ctx, t, doneChan)
 	})
 
 	t.Run("ValidateBool", func(t *testing.T) {
@@ -437,7 +436,7 @@ func TestUpdateValidateRichParameters(t *testing.T) {
 		pty.ExpectMatch("boolean value can be either \"true\" or \"false\"")
 		pty.ExpectMatch("> Enter a value (default: \"\"): ")
 		pty.WriteLine("false")
-		_ = testutil.TryReceive(ctx, t, doneChan)
+		_ = testutil.RequireRecvCtx(ctx, t, doneChan)
 	})
 
 	t.Run("RequiredParameterAdded", func(t *testing.T) {
@@ -508,7 +507,7 @@ func TestUpdateValidateRichParameters(t *testing.T) {
 				pty.WriteLine(value)
 			}
 		}
-		_ = testutil.TryReceive(ctx, t, doneChan)
+		_ = testutil.RequireRecvCtx(ctx, t, doneChan)
 	})
 
 	t.Run("OptionalParameterAdded", func(t *testing.T) {
@@ -568,7 +567,7 @@ func TestUpdateValidateRichParameters(t *testing.T) {
 		}()
 
 		pty.ExpectMatch("Planning workspace...")
-		_ = testutil.TryReceive(ctx, t, doneChan)
+		_ = testutil.RequireRecvCtx(ctx, t, doneChan)
 	})
 
 	t.Run("ParameterOptionChanged", func(t *testing.T) {
@@ -640,7 +639,7 @@ func TestUpdateValidateRichParameters(t *testing.T) {
 			}
 		}
 
-		_ = testutil.TryReceive(ctx, t, doneChan)
+		_ = testutil.RequireRecvCtx(ctx, t, doneChan)
 	})
 
 	t.Run("ParameterOptionDisappeared", func(t *testing.T) {
@@ -713,7 +712,7 @@ func TestUpdateValidateRichParameters(t *testing.T) {
 			}
 		}
 
-		_ = testutil.TryReceive(ctx, t, doneChan)
+		_ = testutil.RequireRecvCtx(ctx, t, doneChan)
 	})
 
 	t.Run("ParameterOptionFailsMonotonicValidation", func(t *testing.T) {
@@ -770,7 +769,7 @@ func TestUpdateValidateRichParameters(t *testing.T) {
 			pty.ExpectMatch(match)
 		}
 
-		_ = testutil.TryReceive(ctx, t, doneChan)
+		_ = testutil.RequireRecvCtx(ctx, t, doneChan)
 	})
 
 	t.Run("ImmutableRequiredParameterExists_MutableRequiredParameterAdded", func(t *testing.T) {
@@ -838,7 +837,7 @@ func TestUpdateValidateRichParameters(t *testing.T) {
 			}
 		}
 
-		_ = testutil.TryReceive(ctx, t, doneChan)
+		_ = testutil.RequireRecvCtx(ctx, t, doneChan)
 	})
 
 	t.Run("MutableRequiredParameterExists_ImmutableRequiredParameterAdded", func(t *testing.T) {
@@ -910,6 +909,6 @@ func TestUpdateValidateRichParameters(t *testing.T) {
 			}
 		}
 
-		_ = testutil.TryReceive(ctx, t, doneChan)
+		_ = testutil.RequireRecvCtx(ctx, t, doneChan)
 	})
 }

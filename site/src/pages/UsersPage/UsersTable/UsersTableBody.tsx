@@ -87,7 +87,9 @@ export const UsersTableBody: FC<UsersTableBodyProps> = ({
 				<TableLoaderSkeleton>
 					<TableRowSkeleton>
 						<TableCell>
-							<AvatarDataSkeleton />
+							<div css={{ display: "flex", alignItems: "center", gap: 8 }}>
+								<AvatarDataSkeleton />
+							</div>
 						</TableCell>
 
 						<TableCell>

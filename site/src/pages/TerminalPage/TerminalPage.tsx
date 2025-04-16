@@ -7,20 +7,18 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { Terminal } from "@xterm/xterm";
 import { deploymentConfig } from "api/queries/deployment";
-import { appearanceSettings } from "api/queries/users";
 import {
 	workspaceByOwnerAndName,
 	workspaceUsage,
 } from "api/queries/workspaces";
 import { useProxy } from "contexts/ProxyContext";
 import { ThemeOverride } from "contexts/ThemeProvider";
-import { useEmbeddedMetadata } from "hooks/useEmbeddedMetadata";
 import { type FC, useCallback, useEffect, useRef, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useQuery } from "react-query";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import themes from "theme";
-import { DEFAULT_TERMINAL_FONT, terminalFonts } from "theme/constants";
+import { MONOSPACE_FONT_FAMILY } from "theme/constants";
 import { pageTitle } from "utils/page";
 import { openMaybePortForwardedURL } from "utils/portForward";
 import { terminalWebsocketUrl } from "utils/terminal";
@@ -102,13 +100,6 @@ const TerminalPage: FC = () => {
 		handleWebLinkRef.current = handleWebLink;
 	}, [handleWebLink]);
 
-	const { metadata } = useEmbeddedMetadata();
-	const appearanceSettingsQuery = useQuery(
-		appearanceSettings(metadata.userAppearance),
-	);
-	const currentTerminalFont =
-		appearanceSettingsQuery.data?.terminal_font || DEFAULT_TERMINAL_FONT;
-
 	// Create the terminal!
 	const fitAddonRef = useRef<FitAddon>();
 	useEffect(() => {
@@ -119,7 +110,7 @@ const TerminalPage: FC = () => {
 			allowProposedApi: true,
 			allowTransparency: true,
 			disableStdin: false,
-			fontFamily: terminalFonts[currentTerminalFont],
+			fontFamily: MONOSPACE_FONT_FAMILY,
 			fontSize: 16,
 			theme: {
 				background: theme.palette.background.default,
@@ -159,12 +150,7 @@ const TerminalPage: FC = () => {
 			window.removeEventListener("resize", listener);
 			terminal.dispose();
 		};
-	}, [
-		config.isLoading,
-		renderer,
-		theme.palette.background.default,
-		currentTerminalFont,
-	]);
+	}, [config.isLoading, renderer, theme.palette.background.default]);
 
 	// Updates the reconnection token into the URL if necessary.
 	useEffect(() => {

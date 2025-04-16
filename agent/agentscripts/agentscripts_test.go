@@ -44,7 +44,7 @@ func TestExecuteBasic(t *testing.T) {
 	}}, aAPI.ScriptCompleted)
 	require.NoError(t, err)
 	require.NoError(t, runner.Execute(context.Background(), agentscripts.ExecuteAllScripts))
-	log := testutil.TryReceive(ctx, t, fLogger.logs)
+	log := testutil.RequireRecvCtx(ctx, t, fLogger.logs)
 	require.Equal(t, "hello", log.Output)
 }
 
@@ -102,16 +102,13 @@ func TestEnv(t *testing.T) {
 
 func TestTimeout(t *testing.T) {
 	t.Parallel()
-	if runtime.GOOS == "darwin" {
-		t.Skip("this test is flaky on macOS, see https://github.com/coder/internal/issues/329")
-	}
 	runner := setup(t, nil)
 	defer runner.Close()
 	aAPI := agenttest.NewFakeAgentAPI(t, testutil.Logger(t), nil, nil)
 	err := runner.Init([]codersdk.WorkspaceAgentScript{{
 		LogSourceID: uuid.New(),
 		Script:      "sleep infinity",
-		Timeout:     100 * time.Millisecond,
+		Timeout:     time.Millisecond,
 	}}, aAPI.ScriptCompleted)
 	require.NoError(t, err)
 	require.ErrorIs(t, runner.Execute(context.Background(), agentscripts.ExecuteAllScripts), agentscripts.ErrTimeout)
@@ -136,7 +133,7 @@ func TestScriptReportsTiming(t *testing.T) {
 	require.NoError(t, runner.Execute(ctx, agentscripts.ExecuteAllScripts))
 	runner.Close()
 
-	log := testutil.TryReceive(ctx, t, fLogger.logs)
+	log := testutil.RequireRecvCtx(ctx, t, fLogger.logs)
 	require.Equal(t, "hello", log.Output)
 
 	timings := aAPI.GetTimings()
@@ -234,6 +231,7 @@ func TestExecuteOptions(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 

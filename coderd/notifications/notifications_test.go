@@ -260,7 +260,7 @@ func TestWebhookDispatch(t *testing.T) {
 	mgr.Run(ctx)
 
 	// THEN: the webhook is received by the mock server and has the expected contents
-	payload := testutil.TryReceive(testutil.Context(t, testutil.WaitShort), t, sent)
+	payload := testutil.RequireRecvCtx(testutil.Context(t, testutil.WaitShort), t, sent)
 	require.EqualValues(t, "1.1", payload.Version)
 	require.Equal(t, msgID[0], payload.MsgID)
 	require.Equal(t, payload.Payload.Labels, input)
@@ -350,8 +350,8 @@ func TestBackpressure(t *testing.T) {
 
 	// one batch of dispatches is sent
 	for range batchSize {
-		call := testutil.TryReceive(ctx, t, handler.calls)
-		testutil.RequireSend(ctx, t, call.result, dispatchResult{
+		call := testutil.RequireRecvCtx(ctx, t, handler.calls)
+		testutil.RequireSendCtx(ctx, t, call.result, dispatchResult{
 			retryable: false,
 			err:       nil,
 		})
@@ -402,7 +402,7 @@ func TestBackpressure(t *testing.T) {
 	// The batch completes
 	w.MustWait(ctx)
 
-	require.NoError(t, testutil.TryReceive(ctx, t, stopErr))
+	require.NoError(t, testutil.RequireRecvCtx(ctx, t, stopErr))
 	require.EqualValues(t, batchSize, storeInterceptor.sent.Load()+storeInterceptor.failed.Load())
 }
 
@@ -1808,7 +1808,7 @@ func TestCustomNotificationMethod(t *testing.T) {
 	// THEN: the notification should be received by the custom dispatch method
 	mgr.Run(ctx)
 
-	receivedMsgID := testutil.TryReceive(ctx, t, received)
+	receivedMsgID := testutil.RequireRecvCtx(ctx, t, received)
 	require.Equal(t, msgID[0].String(), receivedMsgID.String())
 
 	// Ensure no messages received by default method (SMTP):
@@ -2007,83 +2007,6 @@ func TestNotificationTargetMatrix(t *testing.T) {
 			require.Len(t, enqueued, tt.expectedEnqueued)
 		})
 	}
-}
-
-func TestNotificationOneTimePasswordDeliveryTargets(t *testing.T) {
-	t.Parallel()
-
-	t.Run("Inbox", func(t *testing.T) {
-		t.Parallel()
-
-		// nolint:gocritic // Unit test.
-		ctx := dbauthz.AsNotifier(testutil.Context(t, testutil.WaitSuperLong))
-		store, _ := dbtestutil.NewDB(t)
-		logger := testutil.Logger(t)
-
-		// Given: Coder Inbox is enabled and SMTP/Webhook are disabled.
-		cfg := defaultNotificationsConfig(database.NotificationMethodSmtp)
-		cfg.Inbox.Enabled = true
-		cfg.SMTP = codersdk.NotificationsEmailConfig{}
-		cfg.Webhook = codersdk.NotificationsWebhookConfig{}
-
-		enq, err := notifications.NewStoreEnqueuer(cfg, store, defaultHelpers(), logger.Named("enqueuer"), quartz.NewMock(t))
-		require.NoError(t, err)
-		user := createSampleUser(t, store)
-
-		// When: A one-time-passcode notification is sent, it does not enqueue a notification.
-		enqueued, err := enq.Enqueue(ctx, user.ID, notifications.TemplateUserRequestedOneTimePasscode,
-			map[string]string{"one_time_passcode": "1234"}, "test", user.ID)
-		require.NoError(t, err)
-		require.Len(t, enqueued, 0)
-	})
-
-	t.Run("SMTP", func(t *testing.T) {
-		t.Parallel()
-
-		// nolint:gocritic // Unit test.
-		ctx := dbauthz.AsNotifier(testutil.Context(t, testutil.WaitSuperLong))
-		store, _ := dbtestutil.NewDB(t)
-		logger := testutil.Logger(t)
-
-		// Given: Coder Inbox/Webhook are disabled and SMTP is enabled.
-		cfg := defaultNotificationsConfig(database.NotificationMethodSmtp)
-		cfg.Inbox.Enabled = false
-		cfg.Webhook = codersdk.NotificationsWebhookConfig{}
-
-		enq, err := notifications.NewStoreEnqueuer(cfg, store, defaultHelpers(), logger.Named("enqueuer"), quartz.NewMock(t))
-		require.NoError(t, err)
-		user := createSampleUser(t, store)
-
-		// When: A one-time-passcode notification is sent, it does enqueue a notification.
-		enqueued, err := enq.Enqueue(ctx, user.ID, notifications.TemplateUserRequestedOneTimePasscode,
-			map[string]string{"one_time_passcode": "1234"}, "test", user.ID)
-		require.NoError(t, err)
-		require.Len(t, enqueued, 1)
-	})
-
-	t.Run("Webhook", func(t *testing.T) {
-		t.Parallel()
-
-		// nolint:gocritic // Unit test.
-		ctx := dbauthz.AsNotifier(testutil.Context(t, testutil.WaitSuperLong))
-		store, _ := dbtestutil.NewDB(t)
-		logger := testutil.Logger(t)
-
-		// Given: Coder Inbox/SMTP are disabled and Webhook is enabled.
-		cfg := defaultNotificationsConfig(database.NotificationMethodWebhook)
-		cfg.Inbox.Enabled = false
-		cfg.SMTP = codersdk.NotificationsEmailConfig{}
-
-		enq, err := notifications.NewStoreEnqueuer(cfg, store, defaultHelpers(), logger.Named("enqueuer"), quartz.NewMock(t))
-		require.NoError(t, err)
-		user := createSampleUser(t, store)
-
-		// When: A one-time-passcode notification is sent, it does enqueue a notification.
-		enqueued, err := enq.Enqueue(ctx, user.ID, notifications.TemplateUserRequestedOneTimePasscode,
-			map[string]string{"one_time_passcode": "1234"}, "test", user.ID)
-		require.NoError(t, err)
-		require.Len(t, enqueued, 1)
-	})
 }
 
 type fakeHandler struct {

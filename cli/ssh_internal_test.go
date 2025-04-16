@@ -98,7 +98,7 @@ func TestCloserStack_Empty(t *testing.T) {
 		defer close(closed)
 		uut.close(nil)
 	}()
-	testutil.TryReceive(ctx, t, closed)
+	testutil.RequireRecvCtx(ctx, t, closed)
 }
 
 func TestCloserStack_Context(t *testing.T) {
@@ -157,7 +157,7 @@ func TestCloserStack_CloseAfterContext(t *testing.T) {
 	err := uut.push("async", ac)
 	require.NoError(t, err)
 	cancel()
-	testutil.TryReceive(testCtx, t, ac.started)
+	testutil.RequireRecvCtx(testCtx, t, ac.started)
 
 	closed := make(chan struct{})
 	go func() {
@@ -174,7 +174,7 @@ func TestCloserStack_CloseAfterContext(t *testing.T) {
 	}
 
 	ac.complete()
-	testutil.TryReceive(testCtx, t, closed)
+	testutil.RequireRecvCtx(testCtx, t, closed)
 }
 
 func TestCloserStack_Timeout(t *testing.T) {
@@ -204,20 +204,20 @@ func TestCloserStack_Timeout(t *testing.T) {
 	}()
 	trap.MustWait(ctx).Release()
 	// top starts right away, but it hangs
-	testutil.TryReceive(ctx, t, ac[2].started)
+	testutil.RequireRecvCtx(ctx, t, ac[2].started)
 	// timer pops and we start the middle one
 	mClock.Advance(gracefulShutdownTimeout).MustWait(ctx)
-	testutil.TryReceive(ctx, t, ac[1].started)
+	testutil.RequireRecvCtx(ctx, t, ac[1].started)
 
 	// middle one finishes
 	ac[1].complete()
 	// bottom starts, but also hangs
-	testutil.TryReceive(ctx, t, ac[0].started)
+	testutil.RequireRecvCtx(ctx, t, ac[0].started)
 
 	// timer has to pop twice to time out.
 	mClock.Advance(gracefulShutdownTimeout).MustWait(ctx)
 	mClock.Advance(gracefulShutdownTimeout).MustWait(ctx)
-	testutil.TryReceive(ctx, t, closed)
+	testutil.RequireRecvCtx(ctx, t, closed)
 }
 
 type fakeCloser struct {

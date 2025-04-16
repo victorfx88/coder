@@ -1,4 +1,3 @@
-import { workspacePermissionsByOrganization } from "api/queries/organizations";
 import { templates } from "api/queries/templates";
 import type { Workspace } from "api/typesGenerated";
 import { useFilter } from "components/Filter/Filter";
@@ -8,7 +7,7 @@ import { useEffectEvent } from "hooks/hookPolyfills";
 import { usePagination } from "hooks/usePagination";
 import { useDashboard } from "modules/dashboard/useDashboard";
 import { useOrganizationsFilterMenu } from "modules/tableFiltering/options";
-import { type FC, useEffect, useMemo, useState } from "react";
+import { type FC, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import { useQuery } from "react-query";
 import { useSearchParams } from "react-router-dom";
@@ -40,30 +39,10 @@ const WorkspacesPage: FC = () => {
 	// each hook.
 	const searchParamsResult = useSafeSearchParams();
 	const pagination = usePagination({ searchParamsResult });
-	const { permissions, user: me } = useAuthenticated();
+	const { permissions } = useAuthenticated();
 	const { entitlements } = useDashboard();
 
 	const templatesQuery = useQuery(templates());
-
-	const workspacePermissionsQuery = useQuery(
-		workspacePermissionsByOrganization(
-			templatesQuery.data?.map((template) => template.organization_id),
-			me.id,
-		),
-	);
-
-	// Filter templates based on workspace creation permission
-	const filteredTemplates = useMemo(() => {
-		if (!templatesQuery.data || !workspacePermissionsQuery.data) {
-			return templatesQuery.data;
-		}
-
-		return templatesQuery.data.filter((template) => {
-			const workspacePermission =
-				workspacePermissionsQuery.data[template.organization_id];
-			return workspacePermission?.createWorkspaceForUserID;
-		});
-	}, [templatesQuery.data, workspacePermissionsQuery.data]);
 
 	const filterProps = useWorkspacesFilter({
 		searchParamsResult,
@@ -111,7 +90,7 @@ const WorkspacesPage: FC = () => {
 				checkedWorkspaces={checkedWorkspaces}
 				onCheckChange={setCheckedWorkspaces}
 				canCheckWorkspaces={canCheckWorkspaces}
-				templates={filteredTemplates}
+				templates={templatesQuery.data}
 				templatesFetchStatus={templatesQuery.status}
 				workspaces={data?.workspaces}
 				error={error}

@@ -1,3 +1,4 @@
+import { useTheme } from "@emotion/react";
 import { Stack } from "components/Stack/Stack";
 import { StatusIndicatorDot } from "components/StatusIndicator/StatusIndicator";
 import dayjs from "dayjs";
@@ -11,6 +12,8 @@ interface LastUsedProps {
 }
 
 export const LastUsed: FC<LastUsedProps> = ({ lastUsedAt }) => {
+	const theme = useTheme();
+
 	const [circle, message] = useTime(() => {
 		const t = dayjs(lastUsedAt);
 		const now = dayjs();
@@ -37,7 +40,7 @@ export const LastUsed: FC<LastUsedProps> = ({ lastUsedAt }) => {
 
 	return (
 		<Stack
-			className="text-content-secondary"
+			style={{ color: theme.palette.text.secondary }}
 			direction="row"
 			spacing={1}
 			alignItems="center"

@@ -378,7 +378,6 @@ func (p *Server) acquireAndRunOne(client proto.DRPCProvisionerDaemonClient) erro
 			slog.F("workspace_build_id", build.WorkspaceBuildId),
 			slog.F("workspace_id", build.Metadata.WorkspaceId),
 			slog.F("workspace_name", build.WorkspaceName),
-			slog.F("is_prebuild", build.Metadata.IsPrebuild),
 		)
 
 		span.SetAttributes(
@@ -388,7 +387,6 @@ func (p *Server) acquireAndRunOne(client proto.DRPCProvisionerDaemonClient) erro
 			attribute.String("workspace_owner_id", build.Metadata.WorkspaceOwnerId),
 			attribute.String("workspace_owner", build.Metadata.WorkspaceOwner),
 			attribute.String("workspace_transition", build.Metadata.WorkspaceTransition.String()),
-			attribute.Bool("is_prebuild", build.Metadata.IsPrebuild),
 		)
 	}
 

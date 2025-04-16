@@ -22,10 +22,9 @@
 import globalAxios, { type AxiosInstance, isAxiosError } from "axios";
 import type dayjs from "dayjs";
 import userAgentParser from "ua-parser-js";
-import { OneWayWebSocket } from "../utils/OneWayWebSocket";
 import { delay } from "../utils/delay";
-import type { PostWorkspaceUsageRequest } from "./typesGenerated";
 import * as TypesGen from "./typesGenerated";
+import type { PostWorkspaceUsageRequest } from "./typesGenerated";
 
 const getMissingParameters = (
 	oldBuildParameters: TypesGen.WorkspaceBuildParameter[],
@@ -102,40 +101,61 @@ const getMissingParameters = (
 };
 
 /**
+ *
  * @param agentId
- * @returns {OneWayWebSocket} A OneWayWebSocket that emits Server-Sent Events.
+ * @returns An EventSource that emits agent metadata event objects
+ * (ServerSentEvent)
  */
-export const watchAgentMetadata = (
-	agentId: string,
-): OneWayWebSocket<TypesGen.ServerSentEvent> => {
-	return new OneWayWebSocket({
-		apiRoute: `/api/v2/workspaceagents/${agentId}/watch-metadata-ws`,
-	});
+export const watchAgentMetadata = (agentId: string): EventSource => {
+	return new EventSource(
+		`${location.protocol}//${location.host}/api/v2/workspaceagents/${agentId}/watch-metadata`,
+		{ withCredentials: true },
+	);
 };
 
 /**
- * @returns {OneWayWebSocket} A OneWayWebSocket that emits Server-Sent Events.
+ * @returns {EventSource} An EventSource that emits workspace event objects
+ * (ServerSentEvent)
  */
-export const watchWorkspace = (
-	workspaceId: string,
-): OneWayWebSocket<TypesGen.ServerSentEvent> => {
-	return new OneWayWebSocket({
-		apiRoute: `/api/v2/workspaces/${workspaceId}/watch-ws`,
-	});
+export const watchWorkspace = (workspaceId: string): EventSource => {
+	return new EventSource(
+		`${location.protocol}//${location.host}/api/v2/workspaces/${workspaceId}/watch`,
+		{ withCredentials: true },
+	);
 };
 
-type WatchInboxNotificationsParams = Readonly<{
+type WatchInboxNotificationsParams = {
 	read_status?: "read" | "unread" | "all";
-}>;
+};
 
-export function watchInboxNotifications(
+export const watchInboxNotifications = (
+	onNewNotification: (res: TypesGen.GetInboxNotificationResponse) => void,
 	params?: WatchInboxNotificationsParams,
-): OneWayWebSocket<TypesGen.GetInboxNotificationResponse> {
-	return new OneWayWebSocket({
-		apiRoute: "/api/v2/notifications/inbox/watch",
-		searchParams: params,
+) => {
+	const searchParams = new URLSearchParams(params);
+	const socket = createWebSocket(
+		"/api/v2/notifications/inbox/watch",
+		searchParams,
+	);
+
+	socket.addEventListener("message", (event) => {
+		try {
+			const res = JSON.parse(
+				event.data,
+			) as TypesGen.GetInboxNotificationResponse;
+			onNewNotification(res);
+		} catch (error) {
+			console.warn("Error parsing inbox notification: ", error);
+		}
 	});
-}
+
+	socket.addEventListener("error", (event) => {
+		console.warn("Watch inbox notifications error: ", event);
+		socket.close();
+	});
+
+	return socket;
+};
 
 export const getURLWithSearchParams = (
 	basePath: string,
@@ -381,6 +401,11 @@ export type InsightsTemplateParams = InsightsParams & {
 	interval: "day" | "week";
 };
 
+export type GetJFrogXRayScanParams = {
+	workspaceId: string;
+	agentId: string;
+};
+
 export class MissingBuildParameters extends Error {
 	parameters: TypesGen.TemplateVersionParameter[] = [];
 	versionId: string;
@@ -394,11 +419,6 @@ export class MissingBuildParameters extends Error {
 		this.versionId = versionId;
 	}
 }
-
-export type GetProvisionerJobsParams = {
-	status?: TypesGen.ProvisionerJobStatus;
-	limit?: number;
-};
 
 /**
  * This is the container for all API methods. It's split off to make it more
@@ -1009,32 +1029,6 @@ class ApiMethods {
 		return response.data;
 	};
 
-	templateVersionDynamicParameters = (
-		versionId: string,
-		{
-			onMessage,
-			onError,
-		}: {
-			onMessage: (response: TypesGen.DynamicParametersResponse) => void;
-			onError: (error: Error) => void;
-		},
-	): WebSocket => {
-		const socket = createWebSocket(
-			`/api/v2/templateversions/${versionId}/dynamic-parameters`,
-		);
-
-		socket.addEventListener("message", (event) =>
-			onMessage(JSON.parse(event.data) as TypesGen.DynamicParametersResponse),
-		);
-
-		socket.addEventListener("error", () => {
-			onError(new Error("Connection for dynamic parameters failed."));
-			socket.close();
-		});
-
-		return socket;
-	};
-
 	/**
 	 * @param organization Can be the organization's ID or name
 	 */
@@ -1134,7 +1128,7 @@ class ApiMethods {
 	};
 
 	getWorkspaceByOwnerAndName = async (
-		username: string,
+		username = "me",
 		workspaceName: string,
 		params?: TypesGen.WorkspaceOptions,
 	): Promise<TypesGen.Workspace> => {
@@ -1147,7 +1141,7 @@ class ApiMethods {
 	};
 
 	getWorkspaceBuildByNumber = async (
-		username: string,
+		username = "me",
 		workspaceName: string,
 		buildNumber: number,
 	): Promise<TypesGen.WorkspaceBuild> => {
@@ -1333,7 +1327,7 @@ class ApiMethods {
 	};
 
 	createWorkspace = async (
-		userId: string,
+		userId = "me",
 		workspace: TypesGen.CreateWorkspaceRequest,
 	): Promise<TypesGen.Workspace> => {
 		const response = await this.axios.post<TypesGen.Workspace>(
@@ -2298,6 +2292,29 @@ class ApiMethods {
 		await this.axios.delete(`/api/v2/workspaces/${workspaceID}/favorite`);
 	};
 
+	getJFrogXRayScan = async (options: GetJFrogXRayScanParams) => {
+		const searchParams = new URLSearchParams({
+			workspace_id: options.workspaceId,
+			agent_id: options.agentId,
+		});
+
+		try {
+			const res = await this.axios.get<TypesGen.JFrogXrayScan>(
+				`/api/v2/integrations/jfrog/xray-scan?${searchParams}`,
+			);
+
+			return res.data;
+		} catch (error) {
+			if (isAxiosError(error) && error.response?.status === 404) {
+				// react-query library does not allow undefined to be returned as a
+				// query result
+				return null;
+			}
+
+			throw error;
+		}
+	};
+
 	postWorkspaceUsage = async (
 		workspaceID: string,
 		options: PostWorkspaceUsageRequest,
@@ -2398,13 +2415,9 @@ class ApiMethods {
 		return res.data;
 	};
 
-	getProvisionerJobs = async (
-		orgId: string,
-		params: GetProvisionerJobsParams = {},
-	) => {
+	getProvisionerJobs = async (orgId: string) => {
 		const res = await this.axios.get<TypesGen.ProvisionerJob[]>(
 			`/api/v2/organizations/${orgId}/provisionerjobs`,
-			{ params },
 		);
 		return res.data;
 	};
@@ -2532,7 +2545,7 @@ function createWebSocket(
 ) {
 	const protocol = location.protocol === "https:" ? "wss:" : "ws:";
 	const socket = new WebSocket(
-		`${protocol}//${location.host}${path}?${params}`,
+		`${protocol}//${location.host}${path}?${params.toString()}`,
 	);
 	socket.binaryType = "blob";
 	return socket;

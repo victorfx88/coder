@@ -204,7 +204,7 @@ func (api *API) postConvertLoginType(rw http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		Value:    token,
 		Expires:  claims.Expiry.Time(),
-		Secure:   api.DeploymentValues.HTTPCookies.Secure.Value(),
+		Secure:   api.SecureAuthCookie,
 		HttpOnly: true,
 		// Must be SameSite to work on the redirected auth flow from the
 		// oauth provider.
@@ -1100,7 +1100,6 @@ func (api *API) userOAuth2Github(rw http.ResponseWriter, r *http.Request) {
 	// We use AuthCodeURL from the OAuth2Config field instead of the one on
 	// GithubOAuth2Config because when device flow is configured, AuthCodeURL
 	// is overridden and returns a value that doesn't pass the URL check.
-	// codeql[go/constant-oauth2-state] -- We are solely using the AuthCodeURL from the OAuth2Config field in order to validate the hostname of the external auth provider.
 	if externalauth.IsGithubDotComURL(api.GithubOAuth2Config.OAuth2Config.AuthCodeURL("")) && user.GithubComUserID.Int64 != ghUser.GetID() {
 		err = api.Database.UpdateUserGithubComUserID(ctx, database.UpdateUserGithubComUserIDParams{
 			ID: user.ID,
@@ -1359,7 +1358,7 @@ func (api *API) userOIDC(rw http.ResponseWriter, r *http.Request) {
 		emailSp := strings.Split(email, "@")
 		if len(emailSp) == 1 {
 			httpapi.Write(ctx, rw, http.StatusForbidden, codersdk.Response{
-				Message: fmt.Sprintf("Your email %q is not from an authorized domain! Please contact your administrator.", email),
+				Message: fmt.Sprintf("Your email %q is not in domains %q!", email, api.OIDCConfig.EmailDomain),
 			})
 			return
 		}
@@ -1374,7 +1373,7 @@ func (api *API) userOIDC(rw http.ResponseWriter, r *http.Request) {
 		}
 		if !ok {
 			httpapi.Write(ctx, rw, http.StatusForbidden, codersdk.Response{
-				Message: fmt.Sprintf("Your email %q is not from an authorized domain! Please contact your administrator.", email),
+				Message: fmt.Sprintf("Your email %q is not in domains %q!", email, api.OIDCConfig.EmailDomain),
 			})
 			return
 		}
@@ -1913,12 +1912,13 @@ func (api *API) oauthLogin(r *http.Request, params *oauthLoginParams) ([]*http.C
 				slog.F("user_id", user.ID),
 			)
 		}
-		cookies = append(cookies, api.DeploymentValues.HTTPCookies.Apply(&http.Cookie{
+		cookies = append(cookies, &http.Cookie{
 			Name:     codersdk.SessionTokenCookie,
 			Path:     "/",
 			MaxAge:   -1,
+			Secure:   api.SecureAuthCookie,
 			HttpOnly: true,
-		}))
+		})
 		// This is intentional setting the key to the deleted old key,
 		// as the user needs to be forced to log back in.
 		key = *oldKey

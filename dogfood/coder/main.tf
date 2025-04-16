@@ -2,7 +2,7 @@ terraform {
   required_providers {
     coder = {
       source  = "coder/coder"
-      version = "2.3.0"
+      version = "2.2.0-pre0"
     }
     docker = {
       source  = "kreuzwerker/docker"
@@ -191,15 +191,16 @@ module "vscode-web" {
   accept_license          = true
 }
 
-module "jetbrains" {
-  count    = data.coder_workspace.me.start_count
-  source   = "git::https://github.com/coder/modules.git//jetbrains?ref=jetbrains"
-  agent_id = coder_agent.dev.id
-  folder   = local.repo_dir
-  options  = ["WS", "GO"]
-  default  = "GO"
-  latest   = true
-  channel  = "eap"
+module "jetbrains_gateway" {
+  count          = data.coder_workspace.me.start_count
+  source         = "dev.registry.coder.com/modules/jetbrains-gateway/coder"
+  version        = ">= 1.0.0"
+  agent_id       = coder_agent.dev.id
+  agent_name     = "dev"
+  folder         = local.repo_dir
+  jetbrains_ides = ["GO", "WS"]
+  default        = "GO"
+  latest         = true
 }
 
 module "filebrowser" {
@@ -356,14 +357,6 @@ resource "coder_agent" "dev" {
     cd "${local.repo_dir}" && make clean
     cd "${local.repo_dir}/site" && pnpm install
   EOT
-
-  shutdown_script = <<-EOT
-    #!/usr/bin/env bash
-    set -eux -o pipefail
-
-    # Stop the Docker service to prevent errors during workspace destroy.
-    sudo service docker stop
-  EOT
 }
 
 # Add a cost so we get some quota usage in dev.coder.com
@@ -425,10 +418,6 @@ resource "docker_container" "workspace" {
   # CPU limits are unnecessary since Docker will load balance automatically
   memory  = data.coder_workspace_owner.me.name == "code-asher" ? 65536 : 32768
   runtime = "sysbox-runc"
-  # Ensure the workspace is given time to execute shutdown scripts.
-  destroy_grace_seconds = 60
-  stop_timeout          = 60
-  stop_signal           = "SIGINT"
   env = [
     "CODER_AGENT_TOKEN=${coder_agent.dev.token}",
     "USE_CAP_NET_ADMIN=true",

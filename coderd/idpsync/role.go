@@ -286,8 +286,5 @@ func (s *RoleSyncSettings) Set(v string) error {
 }
 
 func (s *RoleSyncSettings) String() string {
-	if s.Mapping == nil {
-		s.Mapping = make(map[string][]string)
-	}
 	return runtimeconfig.JSONString(s)
 }

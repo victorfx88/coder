@@ -57,7 +57,7 @@ export const Sidebar: FC<SidebarProps> = ({ user }) => {
 				Tokens
 			</SidebarNavItem>
 			<SidebarNavItem href="notifications" icon={NotificationsIcon}>
-				Notifications
+				Notifications <FeatureStageBadge contentType="beta" size="sm" />
 			</SidebarNavItem>
 		</BaseSidebar>
 	);

@@ -11,7 +11,6 @@ import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { Avatar } from "components/Avatar/Avatar";
 import { AvatarData } from "components/Avatar/AvatarData";
 import { displayError, displaySuccess } from "components/GlobalSnackbar/utils";
-import { Loader } from "components/Loader/Loader";
 import {
 	MoreMenu,
 	MoreMenuContent,
@@ -20,10 +19,7 @@ import {
 	ThreeDotsButton,
 } from "components/MoreMenu/MoreMenu";
 import { PaginationContainer } from "components/PaginationWidget/PaginationContainer";
-import {
-	SettingsHeader,
-	SettingsHeaderTitle,
-} from "components/SettingsHeader/SettingsHeader";
+import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import { Stack } from "components/Stack/Stack";
 import {
 	Table,
@@ -33,7 +29,6 @@ import {
 	TableHeader,
 	TableRow,
 } from "components/Table/Table";
-import { TableLoader } from "components/TableLoader/TableLoader";
 import { UserAutocomplete } from "components/UserAutocomplete/UserAutocomplete";
 import type { PaginationResultInfo } from "hooks/usePaginatedQuery";
 import { TriangleAlert } from "lucide-react";
@@ -84,10 +79,7 @@ export const OrganizationMembersPageView: FC<
 }) => {
 	return (
 		<div>
-			<SettingsHeader>
-				<SettingsHeaderTitle>Members</SettingsHeaderTitle>
-			</SettingsHeader>
-
+			<SettingsHeader title="Members" />
 			<div className="flex flex-col gap-4">
 				{Boolean(error) && <ErrorAlert error={error} />}
 
@@ -127,67 +119,58 @@ export const OrganizationMembersPageView: FC<
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{members ? (
-								members.map((member) => (
-									<TableRow key={member.user_id} className="align-baseline">
-										<TableCell>
-											<AvatarData
-												avatar={
-													<Avatar
-														fallback={member.username}
-														src={member.avatar_url}
-														size="lg"
-													/>
-												}
-												title={member.name || member.username}
-												subtitle={member.email}
-											/>
-										</TableCell>
-										<UserRoleCell
-											inheritedRoles={member.global_roles}
-											roles={member.roles}
-											allAvailableRoles={allAvailableRoles}
-											oidcRoleSyncEnabled={false}
-											isLoading={isUpdatingMemberRoles}
-											canEditUsers={canEditMembers}
-											onEditRoles={async (roles) => {
-												try {
-													await updateMemberRoles(member, roles);
-													displaySuccess("Roles updated successfully.");
-												} catch (error) {
-													displayError(
-														getErrorMessage(error, "Failed to update roles."),
-													);
-												}
-											}}
+							{members?.map((member) => (
+								<TableRow key={member.user_id} className="align-baseline">
+									<TableCell>
+										<AvatarData
+											avatar={
+												<Avatar
+													fallback={member.username}
+													src={member.avatar_url}
+												/>
+											}
+											title={member.name || member.username}
+											subtitle={member.email}
 										/>
-										<UserGroupsCell userGroups={member.groups} />
-										<TableCell>
-											{member.user_id !== me.id && canEditMembers && (
-												<MoreMenu>
-													<MoreMenuTrigger>
-														<ThreeDotsButton />
-													</MoreMenuTrigger>
-													<MoreMenuContent>
-														<MoreMenuItem
-															danger
-															onClick={() => removeMember(member)}
-														>
-															Remove
-														</MoreMenuItem>
-													</MoreMenuContent>
-												</MoreMenu>
-											)}
-										</TableCell>
-									</TableRow>
-								))
-							) : (
-								<TableRow>
-									<TableCell colSpan={999}>
-										<Loader />
+									</TableCell>
+									<UserRoleCell
+										inheritedRoles={member.global_roles}
+										roles={member.roles}
+										allAvailableRoles={allAvailableRoles}
+										oidcRoleSyncEnabled={false}
+										isLoading={isUpdatingMemberRoles}
+										canEditUsers={canEditMembers}
+										onEditRoles={async (roles) => {
+											try {
+												await updateMemberRoles(member, roles);
+												displaySuccess("Roles updated successfully.");
+											} catch (error) {
+												displayError(
+													getErrorMessage(error, "Failed to update roles."),
+												);
+											}
+										}}
+									/>
+									<UserGroupsCell userGroups={member.groups} />
+									<TableCell>
+										{member.user_id !== me.id && canEditMembers && (
+											<MoreMenu>
+												<MoreMenuTrigger>
+													<ThreeDotsButton />
+												</MoreMenuTrigger>
+												<MoreMenuContent>
+													<MoreMenuItem
+														danger
+														onClick={() => removeMember(member)}
+													>
+														Remove
+													</MoreMenuItem>
+												</MoreMenuContent>
+											</MoreMenu>
+										)}
 									</TableCell>
 								</TableRow>
-							)}
+							))}
 						</TableBody>
 					</Table>
 				</PaginationContainer>
