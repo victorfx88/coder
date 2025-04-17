@@ -83,20 +83,20 @@ func validateBuildParameter(richParameter TemplateVersionParameter, buildParamet
 		}
 	}
 
-	if len(richParameter.Options) > 0 {
-		var matched bool
-		for _, opt := range richParameter.Options {
-			if opt.Value == value {
-				matched = true
-				break
-			}
-		}
-
-		if !matched {
-			return xerrors.Errorf("parameter value must match one of options: %s", parameterValuesAsArray(richParameter.Options))
-		}
-		return nil
-	}
+	//if len(richParameter.Options) > 0 {
+	//	var matched bool
+	//	for _, opt := range richParameter.Options {
+	//		if opt.Value == value {
+	//			matched = true
+	//			break
+	//		}
+	//	}
+	//
+	//	if !matched {
+	//		return xerrors.Errorf("parameter value must match one of options: %s", parameterValuesAsArray(richParameter.Options))
+	//	}
+	//	return nil
+	//}
 
 	if !validationEnabled(richParameter) {
 		return nil
