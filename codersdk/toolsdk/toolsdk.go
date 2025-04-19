@@ -2,9 +2,13 @@ package toolsdk
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"errors"
 	"io"
+	"mime"
+	"path/filepath"
+	"strings"
 
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/codersdk/agentsdk"
@@ -42,6 +46,8 @@ var (
 		CreateTemplateVersion.Generic(),
 		CreateTemplate.Generic(),
 		GetTemplateVersionLogs.Generic(),
+		GetTemplateVersion.Generic(),
+		DownloadTarFile.Generic(),
 		UpdateTemplateActiveVersion.Generic(),
 		DeleteTemplate.Generic(),
 		GetWorkspaceAgentLogs.Generic(),
@@ -85,7 +91,13 @@ var (
 			Name: "coder_get_workspace",
 			Description: `Get a workspace by ID.
 			
-This returns more data than list_workspaces to reduce token usage.`,
+This returns more data than list_workspaces to reduce token usage.
+
+Workspace health is composed of infrastructure and agents.
+Infrastructure can be provisioned successfully, but the agent
+could fail to connect due to template misconfiguration or
+connection issues. To ensure a workspace is alive, eventually
+the agent should be in a connected state.`,
 			Schema: aisdk.Schema{
 				Properties: map[string]any{
 					"workspace_id": map[string]any{
@@ -286,6 +298,10 @@ is provisioned correctly and the agent can connect to the control plane.
 						"type":        "string",
 						"description": "The transition to perform. Must be one of: start, stop, delete",
 					},
+					"template_version_id": map[string]any{
+						"type":        "string",
+						"description": "The template version ID to use for the workspace build. Workspaces do not update template versions automatically.",
+					},
 				},
 				Required: []string{"workspace_id", "transition"},
 			},
@@ -303,8 +319,16 @@ is provisioned correctly and the agent can connect to the control plane.
 			if !ok {
 				return codersdk.WorkspaceBuild{}, errors.New("transition must be a string")
 			}
+			var templateVersionID uuid.UUID
+			if args["template_version_id"] != nil {
+				templateVersionID, err = uuid.Parse(args["template_version_id"].(string))
+				if err != nil {
+					return codersdk.WorkspaceBuild{}, err
+				}
+			}
 			return client.CreateWorkspaceBuild(ctx, workspaceID, codersdk.CreateWorkspaceBuildRequest{
-				Transition: codersdk.WorkspaceTransition(rawTransition),
+				Transition:        codersdk.WorkspaceTransition(rawTransition),
+				TemplateVersionID: templateVersionID,
 			})
 		},
 	}
@@ -413,7 +437,7 @@ This resource provides the following fields:
 - init_script: The script to run on provisioned infrastructure to fetch and start the agent.
 - token: Set the environment variable CODER_AGENT_TOKEN to this value to authenticate the agent.
 
-The agent MUST be installed and started using the init_script.
+The agent MUST be installed and started using the init_script. A utility like curl or wget to fetch the agent binary must exist in the provisioned infrastructure.
 
 Expose terminal or HTTP applications running in a workspace with:
 
@@ -533,13 +557,20 @@ resource "google_compute_instance" "dev" {
     auto_delete = false
     source      = google_compute_disk.root.name
   }
+  // In order to use google-instance-identity, a service account *must* be provided.
   service_account {
     email  = data.google_compute_default_service_account.default.email
     scopes = ["cloud-platform"]
   }
+  # ONLY FOR WINDOWS:
+  # metadata = {
+  #   windows-startup-script-ps1 = coder_agent.main.init_script
+  # }
   # The startup script runs as root with no $HOME environment set up, so instead of directly
   # running the agent init script, create a user (with a homedir, default shell and sudo
   # permissions) and execute the init script as that user.
+  #
+  # The agent MUST be started in here.
   metadata_startup_script = <<EOMETA
 #!/usr/bin/env sh
 set -eux
@@ -877,6 +908,35 @@ Useful for checking whether a workspace builds successfully or not.`,
 		},
 	}
 
+	GetTemplateVersion = Tool[codersdk.TemplateVersion]{
+		Tool: aisdk.Tool{
+			Name:        "coder_get_template_version",
+			Description: "Get a template version by ID.",
+			Schema: aisdk.Schema{
+				Properties: map[string]any{
+					"template_version_id": map[string]any{
+						"type": "string",
+					},
+				},
+			},
+		},
+		Handler: func(ctx context.Context, args map[string]any) (codersdk.TemplateVersion, error) {
+			client, err := clientFromContext(ctx)
+			if err != nil {
+				return codersdk.TemplateVersion{}, err
+			}
+			templateVersionID, err := uuid.Parse(args["template_version_id"].(string))
+			if err != nil {
+				return codersdk.TemplateVersion{}, err
+			}
+			templateVersion, err := client.TemplateVersion(ctx, templateVersionID)
+			if err != nil {
+				return codersdk.TemplateVersion{}, err
+			}
+			return templateVersion, nil
+		},
+	}
+
 	GetTemplateVersionLogs = Tool[[]string]{
 		Tool: aisdk.Tool{
 			Name:        "coder_get_template_version_logs",
@@ -1009,6 +1069,63 @@ Useful for checking whether a workspace builds successfully or not.`,
 				return codersdk.UploadResponse{}, err
 			}
 			return resp, nil
+		},
+	}
+
+	DownloadTarFile = Tool[map[string]string]{
+		Tool: aisdk.Tool{
+			Name:        "coder_download_tar_file",
+			Description: "Download a tar file and get key/value mapping of file names to file contents.",
+			Schema: aisdk.Schema{
+				Properties: map[string]any{
+					"file_id": map[string]any{
+						"type": "string",
+					},
+				},
+			},
+		},
+		Handler: func(ctx context.Context, args map[string]any) (map[string]string, error) {
+			client, err := clientFromContext(ctx)
+			if err != nil {
+				return nil, err
+			}
+			uploadID, err := uuid.Parse(args["file_id"].(string))
+			if err != nil {
+				return nil, err
+			}
+			download, contentType, err := client.Download(ctx, uploadID)
+			if err != nil {
+				return nil, err
+			}
+
+			if contentType != codersdk.ContentTypeTar {
+				return nil, errors.New("content type is not tar")
+			}
+
+			tarReader := tar.NewReader(bytes.NewReader(download))
+			files := make(map[string]string)
+			for {
+				header, err := tarReader.Next()
+				if err == io.EOF {
+					break
+				}
+				if err != nil {
+					return nil, err
+				}
+				// if the mime type is not text, skip it.
+				mimeType := mime.TypeByExtension(filepath.Ext(header.Name))
+				if mimeType != "" && !strings.HasPrefix(mimeType, "text/") {
+					files[header.Name] = `<content skipped because it's not text - mime type: ` + mimeType + `>`
+					continue
+				}
+				content, err := io.ReadAll(tarReader)
+				if err != nil {
+					return nil, err
+				}
+				files[header.Name] = string(content)
+			}
+
+			return files, nil
 		},
 	}
 
