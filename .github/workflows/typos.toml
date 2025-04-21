@@ -1,6 +1,3 @@
-[default]
-extend-ignore-identifiers-re = ["gho_.*"]
-
 [default.extend-identifiers]
 alog = "alog"
 Jetbrains = "JetBrains"
@@ -27,7 +24,6 @@ EDE = "EDE"
 HELO = "HELO"
 LKE = "LKE"
 byt = "byt"
-typ = "typ"
 
 [files]
 extend-exclude = [
@@ -46,6 +42,5 @@ extend-exclude = [
 	"site/src/pages/SetupPage/countries.tsx",
 	"provisioner/terraform/testdata/**",
 	# notifications' golden files confuse the detector because of quoted-printable encoding
-	"coderd/notifications/testdata/**",
-	"agent/agentcontainers/testdata/devcontainercli/**"
+	"coderd/notifications/testdata/**"
 ]

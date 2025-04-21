@@ -105,12 +105,3 @@ export const SCIMUpdateUser: Story = {
 		},
 	},
 };
-
-export const UnauthenticatedUser: Story = {
-	args: {
-		auditLog: {
-			...MockAuditLog,
-			user: null,
-		},
-	},
-};

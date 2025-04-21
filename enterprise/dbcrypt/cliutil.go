@@ -7,7 +7,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"cdr.dev/slog"
-
 	"github.com/coder/coder/v2/coderd/database"
 )
 
@@ -20,7 +19,7 @@ func Rotate(ctx context.Context, log slog.Logger, sqlDB *sql.DB, ciphers []Ciphe
 		return xerrors.Errorf("create cryptdb: %w", err)
 	}
 
-	userIDs, err := db.AllUserIDs(ctx, false)
+	userIDs, err := db.AllUserIDs(ctx)
 	if err != nil {
 		return xerrors.Errorf("get users: %w", err)
 	}
@@ -110,7 +109,7 @@ func Decrypt(ctx context.Context, log slog.Logger, sqlDB *sql.DB, ciphers []Ciph
 	}
 	cryptDB.primaryCipherDigest = ""
 
-	userIDs, err := db.AllUserIDs(ctx, false)
+	userIDs, err := db.AllUserIDs(ctx)
 	if err != nil {
 		return xerrors.Errorf("get users: %w", err)
 	}

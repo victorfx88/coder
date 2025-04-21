@@ -8,11 +8,7 @@ import {
 } from "components/Badges/Badges";
 import { Button } from "components/Button/Button";
 import { PopoverPaywall } from "components/Paywall/PopoverPaywall";
-import {
-	SettingsHeader,
-	SettingsHeaderDescription,
-	SettingsHeaderTitle,
-} from "components/SettingsHeader/SettingsHeader";
+import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import {
 	Popover,
 	PopoverContent,
@@ -58,12 +54,10 @@ export const AppearanceSettingsPageView: FC<
 
 	return (
 		<>
-			<SettingsHeader>
-				<SettingsHeaderTitle>Appearance</SettingsHeaderTitle>
-				<SettingsHeaderDescription>
-					Customize the look and feel of your Coder deployment.
-				</SettingsHeaderDescription>
-			</SettingsHeader>
+			<SettingsHeader
+				title="Appearance"
+				description="Customize the look and feel of your Coder deployment."
+			/>
 
 			<Badges>
 				<Popover mode="hover">

@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -35,7 +34,6 @@ import (
 
 	"cdr.dev/slog"
 	"cdr.dev/slog/sloggers/sloghuman"
-	"github.com/coder/coder/v2/agent/agentssh"
 	"github.com/coder/coder/v2/cli/cliui"
 	"github.com/coder/coder/v2/cli/cliutil"
 	"github.com/coder/coder/v2/coderd/autobuild/notify"
@@ -58,14 +56,12 @@ var (
 	autostopNotifyCountdown = []time.Duration{30 * time.Minute}
 	// gracefulShutdownTimeout is the timeout, per item in the stack of things to close
 	gracefulShutdownTimeout = 2 * time.Second
-	workspaceNameRe         = regexp.MustCompile(`[/.]+|--`)
 )
 
 func (r *RootCmd) ssh() *serpent.Command {
 	var (
 		stdio               bool
 		hostPrefix          string
-		hostnameSuffix      string
 		forwardAgent        bool
 		forwardGPG          bool
 		identityAgent       string
@@ -80,9 +76,6 @@ func (r *RootCmd) ssh() *serpent.Command {
 		appearanceConfig    codersdk.AppearanceConfig
 		networkInfoDir      string
 		networkInfoInterval time.Duration
-
-		containerName string
-		containerUser string
 	)
 	client := new(codersdk.Client)
 	cmd := &serpent.Command{
@@ -203,14 +196,11 @@ func (r *RootCmd) ssh() *serpent.Command {
 				parsedEnv = append(parsedEnv, [2]string{k, v})
 			}
 
-			deploymentSSHConfig := codersdk.SSHConfigResponse{
-				HostnamePrefix: hostPrefix,
-				HostnameSuffix: hostnameSuffix,
-			}
+			namedWorkspace := strings.TrimPrefix(inv.Args[0], hostPrefix)
+			// Support "--" as a delimiter between owner and workspace name
+			namedWorkspace = strings.Replace(namedWorkspace, "--", "/", 1)
 
-			workspace, workspaceAgent, err := findWorkspaceAndAgentByHostname(
-				ctx, inv, client,
-				inv.Args[0], deploymentSSHConfig, disableAutostart)
+			workspace, workspaceAgent, err := getWorkspaceAndAgent(ctx, inv, client, !disableAutostart, namedWorkspace)
 			if err != nil {
 				return err
 			}
@@ -270,7 +260,7 @@ func (r *RootCmd) ssh() *serpent.Command {
 			})
 			if err != nil {
 				if xerrors.Is(err, context.Canceled) {
-					return cliui.ErrCanceled
+					return cliui.Canceled
 				}
 				return err
 			}
@@ -291,34 +281,6 @@ func (r *RootCmd) ssh() *serpent.Command {
 				return err
 			}
 			conn.AwaitReachable(ctx)
-
-			if containerName != "" {
-				cts, err := client.WorkspaceAgentListContainers(ctx, workspaceAgent.ID, nil)
-				if err != nil {
-					return xerrors.Errorf("list containers: %w", err)
-				}
-				if len(cts.Containers) == 0 {
-					cliui.Info(inv.Stderr, "No containers found!")
-					cliui.Info(inv.Stderr, "Tip: Agent container integration is experimental and not enabled by default.")
-					cliui.Info(inv.Stderr, "     To enable it, set CODER_AGENT_DEVCONTAINERS_ENABLE=true in your template.")
-					return nil
-				}
-				var found bool
-				for _, c := range cts.Containers {
-					if c.FriendlyName == containerName || c.ID == containerName {
-						found = true
-						break
-					}
-				}
-				if !found {
-					availableContainers := make([]string, len(cts.Containers))
-					for i, c := range cts.Containers {
-						availableContainers[i] = c.FriendlyName
-					}
-					cliui.Errorf(inv.Stderr, "Container not found: %q\nAvailable containers: %v", containerName, availableContainers)
-					return nil
-				}
-			}
 
 			stopPolling := tryPollWorkspaceAutostop(ctx, client, workspace)
 			defer stopPolling()
@@ -492,17 +454,6 @@ func (r *RootCmd) ssh() *serpent.Command {
 				}
 			}
 
-			if containerName != "" {
-				for k, v := range map[string]string{
-					agentssh.ContainerEnvironmentVariable:     containerName,
-					agentssh.ContainerUserEnvironmentVariable: containerUser,
-				} {
-					if err := sshSession.Setenv(k, v); err != nil {
-						return xerrors.Errorf("setenv: %w", err)
-					}
-				}
-			}
-
 			err = sshSession.RequestPty("xterm-256color", 128, 128, gossh.TerminalModes{})
 			if err != nil {
 				return xerrors.Errorf("request pty: %w", err)
@@ -568,12 +519,6 @@ func (r *RootCmd) ssh() *serpent.Command {
 			Env:         "CODER_SSH_SSH_HOST_PREFIX",
 			Description: "Strip this prefix from the provided hostname to determine the workspace name. This is useful when used as part of an OpenSSH proxy command.",
 			Value:       serpent.StringOf(&hostPrefix),
-		},
-		{
-			Flag:        "hostname-suffix",
-			Env:         "CODER_SSH_HOSTNAME_SUFFIX",
-			Description: "Strip this suffix from the provided hostname to determine the workspace name. This is useful when used as part of an OpenSSH proxy command. The suffix must be specified without a leading . character.",
-			Value:       serpent.StringOf(&hostnameSuffix),
 		},
 		{
 			Flag:          "forward-agent",
@@ -649,46 +594,9 @@ func (r *RootCmd) ssh() *serpent.Command {
 			Default:     "5s",
 			Value:       serpent.DurationOf(&networkInfoInterval),
 		},
-		{
-			Flag:          "container",
-			FlagShorthand: "c",
-			Description:   "Specifies a container inside the workspace to connect to.",
-			Value:         serpent.StringOf(&containerName),
-			Hidden:        true, // Hidden until this features is at least in beta.
-		},
-		{
-			Flag:        "container-user",
-			Description: "When connecting to a container, specifies the user to connect as.",
-			Value:       serpent.StringOf(&containerUser),
-			Hidden:      true, // Hidden until this features is at least in beta.
-		},
 		sshDisableAutostartOption(serpent.BoolOf(&disableAutostart)),
 	}
 	return cmd
-}
-
-// findWorkspaceAndAgentByHostname parses the hostname from the commandline and finds the workspace and agent it
-// corresponds to, taking into account any name prefixes or suffixes configured (e.g. myworkspace.coder, or
-// vscode-coder--myusername--myworkspace).
-func findWorkspaceAndAgentByHostname(
-	ctx context.Context, inv *serpent.Invocation, client *codersdk.Client,
-	hostname string, config codersdk.SSHConfigResponse, disableAutostart bool,
-) (
-	codersdk.Workspace, codersdk.WorkspaceAgent, error,
-) {
-	// for suffixes, we don't explicitly get the . and must add it. This is to ensure that the suffix is always
-	// interpreted as a dotted label in DNS names, not just any string suffix. That is, a suffix of 'coder' will
-	// match a hostname like 'en.coder', but not 'encoder'.
-	qualifiedSuffix := "." + config.HostnameSuffix
-
-	switch {
-	case config.HostnamePrefix != "" && strings.HasPrefix(hostname, config.HostnamePrefix):
-		hostname = strings.TrimPrefix(hostname, config.HostnamePrefix)
-	case config.HostnameSuffix != "" && strings.HasSuffix(hostname, qualifiedSuffix):
-		hostname = strings.TrimSuffix(hostname, qualifiedSuffix)
-	}
-	hostname = normalizeWorkspaceInput(hostname)
-	return getWorkspaceAndAgent(ctx, inv, client, !disableAutostart, hostname)
 }
 
 // watchAndClose ensures closer is called if the context is canceled or
@@ -1448,29 +1356,4 @@ func collectNetworkStats(ctx context.Context, agentConn *workspacesdk.AgentConn,
 		UploadBytesSec:   int64(uploadSecs),
 		DownloadBytesSec: int64(downloadSecs),
 	}, nil
-}
-
-// Converts workspace name input to owner/workspace.agent format
-// Possible valid input formats:
-// workspace
-// owner/workspace
-// owner--workspace
-// owner/workspace--agent
-// owner/workspace.agent
-// owner--workspace--agent
-// owner--workspace.agent
-func normalizeWorkspaceInput(input string) string {
-	// Split on "/", "--", and "."
-	parts := workspaceNameRe.Split(input, -1)
-
-	switch len(parts) {
-	case 1:
-		return input // "workspace"
-	case 2:
-		return fmt.Sprintf("%s/%s", parts[0], parts[1]) // "owner/workspace"
-	case 3:
-		return fmt.Sprintf("%s/%s.%s", parts[0], parts[1], parts[2]) // "owner/workspace.agent"
-	default:
-		return input // Fallback
-	}
 }

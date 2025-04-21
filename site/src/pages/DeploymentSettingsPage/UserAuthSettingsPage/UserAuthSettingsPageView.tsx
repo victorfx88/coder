@@ -1,11 +1,6 @@
 import type { SerpentOption } from "api/typesGenerated";
 import { Badges, DisabledBadge, EnabledBadge } from "components/Badges/Badges";
-import {
-	SettingsHeader,
-	SettingsHeaderDescription,
-	SettingsHeaderDocsLink,
-	SettingsHeaderTitle,
-} from "components/SettingsHeader/SettingsHeader";
+import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import { Stack } from "components/Stack/Stack";
 import {
 	deploymentGroupHasParent,
@@ -32,24 +27,14 @@ export const UserAuthSettingsPageView = ({
 		<>
 			<Stack direction="column" spacing={6}>
 				<div>
-					<SettingsHeader>
-						<SettingsHeaderTitle>User Authentication</SettingsHeaderTitle>
-					</SettingsHeader>
+					<SettingsHeader title="User Authentication" />
 
 					<SettingsHeader
-						actions={
-							<SettingsHeaderDocsLink
-								href={docs("/admin/users/oidc-auth#openid-connect")}
-							/>
-						}
-					>
-						<SettingsHeaderTitle level="h2" hierarchy="secondary">
-							Login with OpenID Connect
-						</SettingsHeaderTitle>
-						<SettingsHeaderDescription>
-							Set up authentication to login with OpenID Connect.
-						</SettingsHeaderDescription>
-					</SettingsHeader>
+						title="Login with OpenID Connect"
+						secondary
+						description="Set up authentication to login with OpenID Connect."
+						docsHref={docs("/admin/users/oidc-auth#openid-connect")}
+					/>
 
 					<Badges>{oidcEnabled ? <EnabledBadge /> : <DisabledBadge />}</Badges>
 
@@ -64,17 +49,11 @@ export const UserAuthSettingsPageView = ({
 
 				<div>
 					<SettingsHeader
-						actions={
-							<SettingsHeaderDocsLink href={docs("/admin/users/github-auth")} />
-						}
-					>
-						<SettingsHeaderTitle level="h2" hierarchy="secondary">
-							Login with GitHub
-						</SettingsHeaderTitle>
-						<SettingsHeaderDescription>
-							Set up authentication to login with GitHub.
-						</SettingsHeaderDescription>
-					</SettingsHeader>
+						title="Login with GitHub"
+						secondary
+						description="Set up authentication to login with GitHub."
+						docsHref={docs("/admin/users/github-auth")}
+					/>
 
 					<Badges>
 						{githubEnabled ? <EnabledBadge /> : <DisabledBadge />}

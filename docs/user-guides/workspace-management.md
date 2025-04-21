@@ -34,17 +34,6 @@ coder create --template="<templateName>" <workspaceName>
 coder show <workspace-name>
 ```
 
-### Workspace name rules and restrictions
-
-| Constraint       | Rule                                       |
-|------------------|--------------------------------------------|
-| Start/end with   | Must start and end with a letter or number |
-| Character types  | Letters, numbers, and hyphens only         |
-| Length           | 1-32 characters                            |
-| Case sensitivity | Case-insensitive (lowercase recommended)   |
-| Reserved names   | Cannot use `new` or `create`               |
-| Uniqueness       | Must be unique within your workspaces      |
-
 ## Workspace filtering
 
 In the Coder UI, you can filter your workspaces using pre-defined filters or
@@ -101,9 +90,12 @@ manually updated the workspace.
 
 ## Bulk operations
 
-> [!NOTE]
-> Bulk operations are a Premium feature.
-> [Learn more](https://coder.com/pricing#compare-plans).
+<blockquote class="info">
+
+Bulk operations are an Enterprise and Premium feature.
+[Learn more](https://coder.com/pricing#compare-plans).
+
+</blockquote>
 
 Licensed admins may apply bulk operations (update, delete, start, stop) in the
 **Workspaces** tab. Select the workspaces you'd like to modify with the
@@ -190,5 +182,4 @@ Coder stores macOS and Linux logs at the following locations:
 | `shutdown_script` | `/tmp/coder-shutdown-script.log` |
 | Agent             | `/tmp/coder-agent.log`           |
 
-> [!NOTE]
-> Logs are truncated once they reach 5MB in size.
+> Note: Logs are truncated once they reach 5MB in size.

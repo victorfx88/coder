@@ -34,7 +34,6 @@ import {
 	Table,
 	TableBody,
 	TableCell,
-	TableHead,
 	TableHeader,
 	TableRow,
 } from "components/Table/Table";
@@ -257,7 +256,7 @@ export const IdpOrgSyncPageView: FC<IdpSyncPageViewProps> = ({
 									className="min-w-60 max-w-3xl"
 									value={coderOrgs}
 									onChange={setCoderOrgs}
-									options={organizations.map((org) => ({
+									defaultOptions={organizations.map((org) => ({
 										label: org.display_name,
 										value: org.id,
 									}))}
@@ -366,9 +365,9 @@ const IdpMappingTable: FC<IdpMappingTableProps> = ({ isEmpty, children }) => {
 		<Table>
 			<TableHeader>
 				<TableRow>
-					<TableHead className="w-2/5">IdP organization</TableHead>
-					<TableHead className="w-3/5">Coder organization</TableHead>
-					<TableHead className="w-auto" />
+					<TableCell width="45%">IdP organization</TableCell>
+					<TableCell width="55%">Coder organization</TableCell>
+					<TableCell width="5%" />
 				</TableRow>
 			</TableHeader>
 			<TableBody>

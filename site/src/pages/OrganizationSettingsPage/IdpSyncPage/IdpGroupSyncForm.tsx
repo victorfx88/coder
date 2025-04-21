@@ -259,7 +259,7 @@ export const IdpGroupSyncForm: FC<IdpGroupSyncFormProps> = ({
 							className="min-w-60 max-w-3xl"
 							value={coderGroups}
 							onChange={setCoderGroups}
-							options={groups.map((group) => ({
+							defaultOptions={groups.map((group) => ({
 								label: group.display_name || group.name,
 								value: group.id,
 							}))}

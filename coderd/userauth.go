@@ -24,7 +24,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"cdr.dev/slog"
-
 	"github.com/coder/coder/v2/coderd/cryptokeys"
 	"github.com/coder/coder/v2/coderd/idpsync"
 	"github.com/coder/coder/v2/coderd/jwtutils"
@@ -204,7 +203,7 @@ func (api *API) postConvertLoginType(rw http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		Value:    token,
 		Expires:  claims.Expiry.Time(),
-		Secure:   api.DeploymentValues.HTTPCookies.Secure.Value(),
+		Secure:   api.SecureAuthCookie,
 		HttpOnly: true,
 		// Must be SameSite to work on the redirected auth flow from the
 		// oauth provider.
@@ -1097,11 +1096,7 @@ func (api *API) userOAuth2Github(rw http.ResponseWriter, r *http.Request) {
 	}
 	// If the user is logging in with github.com we update their associated
 	// GitHub user ID to the new one.
-	// We use AuthCodeURL from the OAuth2Config field instead of the one on
-	// GithubOAuth2Config because when device flow is configured, AuthCodeURL
-	// is overridden and returns a value that doesn't pass the URL check.
-	// codeql[go/constant-oauth2-state] -- We are solely using the AuthCodeURL from the OAuth2Config field in order to validate the hostname of the external auth provider.
-	if externalauth.IsGithubDotComURL(api.GithubOAuth2Config.OAuth2Config.AuthCodeURL("")) && user.GithubComUserID.Int64 != ghUser.GetID() {
+	if externalauth.IsGithubDotComURL(api.GithubOAuth2Config.AuthCodeURL("")) && user.GithubComUserID.Int64 != ghUser.GetID() {
 		err = api.Database.UpdateUserGithubComUserID(ctx, database.UpdateUserGithubComUserIDParams{
 			ID: user.ID,
 			GithubComUserID: sql.NullInt64{
@@ -1359,7 +1354,7 @@ func (api *API) userOIDC(rw http.ResponseWriter, r *http.Request) {
 		emailSp := strings.Split(email, "@")
 		if len(emailSp) == 1 {
 			httpapi.Write(ctx, rw, http.StatusForbidden, codersdk.Response{
-				Message: fmt.Sprintf("Your email %q is not from an authorized domain! Please contact your administrator.", email),
+				Message: fmt.Sprintf("Your email %q is not in domains %q!", email, api.OIDCConfig.EmailDomain),
 			})
 			return
 		}
@@ -1374,7 +1369,7 @@ func (api *API) userOIDC(rw http.ResponseWriter, r *http.Request) {
 		}
 		if !ok {
 			httpapi.Write(ctx, rw, http.StatusForbidden, codersdk.Response{
-				Message: fmt.Sprintf("Your email %q is not from an authorized domain! Please contact your administrator.", email),
+				Message: fmt.Sprintf("Your email %q is not in domains %q!", email, api.OIDCConfig.EmailDomain),
 			})
 			return
 		}
@@ -1510,8 +1505,7 @@ func (api *API) accessTokenClaims(ctx context.Context, rw http.ResponseWriter, s
 func (api *API) userInfoClaims(ctx context.Context, rw http.ResponseWriter, state httpmw.OAuth2State, logger slog.Logger) (userInfoClaims map[string]interface{}, ok bool) {
 	userInfoClaims = make(map[string]interface{})
 	userInfo, err := api.OIDCConfig.Provider.UserInfo(ctx, oauth2.StaticTokenSource(state.Token))
-	switch {
-	case err == nil:
+	if err == nil {
 		err = userInfo.Claims(&userInfoClaims)
 		if err != nil {
 			logger.Error(ctx, "oauth2: unable to unmarshal user info claims", slog.Error(err))
@@ -1526,14 +1520,14 @@ func (api *API) userInfoClaims(ctx context.Context, rw http.ResponseWriter, stat
 			slog.F("claim_fields", claimFields(userInfoClaims)),
 			slog.F("blank", blankFields(userInfoClaims)),
 		)
-	case !strings.Contains(err.Error(), "user info endpoint is not supported by this provider"):
+	} else if !strings.Contains(err.Error(), "user info endpoint is not supported by this provider") {
 		logger.Error(ctx, "oauth2: unable to obtain user information claims", slog.Error(err))
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
 			Message: "Failed to obtain user information claims.",
 			Detail:  "The attempt to fetch claims via the UserInfo endpoint failed: " + err.Error(),
 		})
 		return nil, false
-	default:
+	} else {
 		// The OIDC provider does not support the UserInfo endpoint.
 		// This is not an error, but we should log it as it may mean
 		// that some claims are missing.
@@ -1671,7 +1665,7 @@ func (api *API) oauthLogin(r *http.Request, params *oauthLoginParams) ([]*http.C
 		}
 
 		// nolint:gocritic // Getting user count is a system function.
-		userCount, err := tx.GetUserCount(dbauthz.AsSystemRestricted(ctx), false)
+		userCount, err := tx.GetUserCount(dbauthz.AsSystemRestricted(ctx))
 		if err != nil {
 			return xerrors.Errorf("unable to fetch user count: %w", err)
 		}
@@ -1913,12 +1907,13 @@ func (api *API) oauthLogin(r *http.Request, params *oauthLoginParams) ([]*http.C
 				slog.F("user_id", user.ID),
 			)
 		}
-		cookies = append(cookies, api.DeploymentValues.HTTPCookies.Apply(&http.Cookie{
+		cookies = append(cookies, &http.Cookie{
 			Name:     codersdk.SessionTokenCookie,
 			Path:     "/",
 			MaxAge:   -1,
+			Secure:   api.SecureAuthCookie,
 			HttpOnly: true,
-		}))
+		})
 		// This is intentional setting the key to the deleted old key,
 		// as the user needs to be forced to log back in.
 		key = *oldKey

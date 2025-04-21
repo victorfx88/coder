@@ -12,11 +12,7 @@ import (
 // implementation of the VPN RPC protocol.
 var CurrentSupportedVersions = RPCVersionList{
 	Versions: []RPCVersion{
-		// 1.1 adds telemetry fields to StartRequest:
-		// - device_id: Coder Desktop device ID
-		// - device_os: Coder Desktop OS information
-		// - coder_desktop_version: Coder Desktop version
-		{Major: 1, Minor: 1},
+		{Major: 1, Minor: 0},
 	},
 }
 

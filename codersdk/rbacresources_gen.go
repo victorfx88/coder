@@ -17,7 +17,6 @@ const (
 	ResourceGroup                         RBACResource = "group"
 	ResourceGroupMember                   RBACResource = "group_member"
 	ResourceIdpsyncSettings               RBACResource = "idpsync_settings"
-	ResourceInboxNotification             RBACResource = "inbox_notification"
 	ResourceLicense                       RBACResource = "license"
 	ResourceNotificationMessage           RBACResource = "notification_message"
 	ResourceNotificationPreference        RBACResource = "notification_preference"
@@ -34,9 +33,7 @@ const (
 	ResourceTailnetCoordinator            RBACResource = "tailnet_coordinator"
 	ResourceTemplate                      RBACResource = "template"
 	ResourceUser                          RBACResource = "user"
-	ResourceWebpushSubscription           RBACResource = "webpush_subscription"
 	ResourceWorkspace                     RBACResource = "workspace"
-	ResourceWorkspaceAgentDevcontainers   RBACResource = "workspace_agent_devcontainers"
 	ResourceWorkspaceAgentResourceMonitor RBACResource = "workspace_agent_resource_monitor"
 	ResourceWorkspaceDormant              RBACResource = "workspace_dormant"
 	ResourceWorkspaceProxy                RBACResource = "workspace_proxy"
@@ -77,7 +74,6 @@ var RBACResourceActions = map[RBACResource][]RBACAction{
 	ResourceGroup:                         {ActionCreate, ActionDelete, ActionRead, ActionUpdate},
 	ResourceGroupMember:                   {ActionRead},
 	ResourceIdpsyncSettings:               {ActionRead, ActionUpdate},
-	ResourceInboxNotification:             {ActionCreate, ActionRead, ActionUpdate},
 	ResourceLicense:                       {ActionCreate, ActionDelete, ActionRead},
 	ResourceNotificationMessage:           {ActionCreate, ActionDelete, ActionRead, ActionUpdate},
 	ResourceNotificationPreference:        {ActionRead, ActionUpdate},
@@ -94,9 +90,7 @@ var RBACResourceActions = map[RBACResource][]RBACAction{
 	ResourceTailnetCoordinator:            {ActionCreate, ActionDelete, ActionRead, ActionUpdate},
 	ResourceTemplate:                      {ActionCreate, ActionDelete, ActionRead, ActionUpdate, ActionUse, ActionViewInsights},
 	ResourceUser:                          {ActionCreate, ActionDelete, ActionRead, ActionReadPersonal, ActionUpdate, ActionUpdatePersonal},
-	ResourceWebpushSubscription:           {ActionCreate, ActionDelete, ActionRead},
 	ResourceWorkspace:                     {ActionApplicationConnect, ActionCreate, ActionDelete, ActionRead, ActionSSH, ActionWorkspaceStart, ActionWorkspaceStop, ActionUpdate},
-	ResourceWorkspaceAgentDevcontainers:   {ActionCreate},
 	ResourceWorkspaceAgentResourceMonitor: {ActionCreate, ActionRead, ActionUpdate},
 	ResourceWorkspaceDormant:              {ActionApplicationConnect, ActionCreate, ActionDelete, ActionRead, ActionSSH, ActionWorkspaceStart, ActionWorkspaceStop, ActionUpdate},
 	ResourceWorkspaceProxy:                {ActionCreate, ActionDelete, ActionRead, ActionUpdate},

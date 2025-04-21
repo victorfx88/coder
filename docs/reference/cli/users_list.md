@@ -13,14 +13,6 @@ coder users list [flags]
 
 ## Options
 
-### --github-user-id
-
-|      |                  |
-|------|------------------|
-| Type | <code>int</code> |
-
-Filter users by their GitHub user ID.
-
 ### -c, --column
 
 |         |                                                                    |

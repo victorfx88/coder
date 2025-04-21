@@ -44,28 +44,19 @@ const (
 //
 //nolint:varnamelen
 func unbiasedModulo32(v uint32, n int32) (int32, error) {
-	// #nosec G115 - These conversions are safe within the context of this algorithm
-	// The conversions here are part of an unbiased modulo algorithm for random number generation
-	// where the values are properly handled within their respective ranges.
 	prod := uint64(v) * uint64(n)
-	// #nosec G115 - Safe conversion as part of the unbiased modulo algorithm
 	low := uint32(prod)
-	// #nosec G115 - Safe conversion as part of the unbiased modulo algorithm
 	if low < uint32(n) {
-		// #nosec G115 - Safe conversion as part of the unbiased modulo algorithm
 		thresh := uint32(-n) % uint32(n)
 		for low < thresh {
 			err := binary.Read(rand.Reader, binary.BigEndian, &v)
 			if err != nil {
 				return 0, err
 			}
-			// #nosec G115 - Safe conversion as part of the unbiased modulo algorithm
 			prod = uint64(v) * uint64(n)
-			// #nosec G115 - Safe conversion as part of the unbiased modulo algorithm
 			low = uint32(prod)
 		}
 	}
-	// #nosec G115 - Safe conversion as part of the unbiased modulo algorithm
 	return int32(prod >> 32), nil
 }
 
@@ -98,7 +89,7 @@ func StringCharset(charSetStr string, size int) (string, error) {
 
 		ci, err := unbiasedModulo32(
 			r,
-			int32(len(charSet)), // #nosec G115 - Safe conversion as len(charSet) will be reasonably small for character sets
+			int32(len(charSet)),
 		)
 		if err != nil {
 			return "", err

@@ -102,17 +102,17 @@ func validateBuildParameter(richParameter TemplateVersionParameter, buildParamet
 		return nil
 	}
 
-	var minVal, maxVal int
+	var min, max int
 	if richParameter.ValidationMin != nil {
-		minVal = int(*richParameter.ValidationMin)
+		min = int(*richParameter.ValidationMin)
 	}
 	if richParameter.ValidationMax != nil {
-		maxVal = int(*richParameter.ValidationMax)
+		max = int(*richParameter.ValidationMax)
 	}
 
 	validation := &provider.Validation{
-		Min:         minVal,
-		Max:         maxVal,
+		Min:         min,
+		Max:         max,
 		MinDisabled: richParameter.ValidationMin == nil,
 		MaxDisabled: richParameter.ValidationMax == nil,
 		Regex:       richParameter.ValidationRegex,

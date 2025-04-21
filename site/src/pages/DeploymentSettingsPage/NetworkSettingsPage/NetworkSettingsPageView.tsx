@@ -1,11 +1,6 @@
 import type { SerpentOption } from "api/typesGenerated";
 import { Badges, DisabledBadge, EnabledBadge } from "components/Badges/Badges";
-import {
-	SettingsHeader,
-	SettingsHeaderDescription,
-	SettingsHeaderDocsLink,
-	SettingsHeaderTitle,
-} from "components/SettingsHeader/SettingsHeader";
+import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import { Stack } from "components/Stack/Stack";
 import type { FC } from "react";
 import {
@@ -25,14 +20,10 @@ export const NetworkSettingsPageView: FC<NetworkSettingsPageViewProps> = ({
 	<Stack direction="column" spacing={6}>
 		<div>
 			<SettingsHeader
-				actions={<SettingsHeaderDocsLink href={docs("/admin/networking")} />}
-			>
-				<SettingsHeaderTitle>Network</SettingsHeaderTitle>
-				<SettingsHeaderDescription>
-					Configure your deployment connectivity.
-				</SettingsHeaderDescription>
-			</SettingsHeader>
-
+				title="Network"
+				description="Configure your deployment connectivity."
+				docsHref={docs("/admin/networking")}
+			/>
 			<OptionsTable
 				options={options.filter((o) =>
 					deploymentGroupHasParent(o.group, "Networking"),
@@ -42,20 +33,11 @@ export const NetworkSettingsPageView: FC<NetworkSettingsPageViewProps> = ({
 
 		<div>
 			<SettingsHeader
-				actions={
-					<SettingsHeaderDocsLink
-						href={docs("/admin/networking/port-forwarding")}
-					/>
-				}
-			>
-				<SettingsHeaderTitle level="h2" hierarchy="secondary">
-					Port Forwarding
-				</SettingsHeaderTitle>
-				<SettingsHeaderDescription>
-					Port forwarding lets developers securely access processes on their
-					Coder workspace from a local machine.
-				</SettingsHeaderDescription>
-			</SettingsHeader>
+				title="Port Forwarding"
+				secondary
+				description="Port forwarding lets developers securely access processes on their Coder workspace from a local machine."
+				docsHref={docs("/admin/networking/port-forwarding")}
+			/>
 
 			<Badges>
 				{useDeploymentOptions(options, "Wildcard Access URL")[0].value !==

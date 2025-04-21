@@ -55,13 +55,8 @@ SELECT
 FROM
     organizations
 WHERE
-    -- Optionally provide a filter for deleted organizations.
-  	CASE WHEN
-  	    sqlc.narg('deleted') :: boolean IS NULL THEN
-			true
-		ELSE
-			deleted = sqlc.narg('deleted')
-	END AND
+    -- Optionally include deleted organizations
+    deleted = @deleted AND
     id = ANY(
         SELECT
             organization_id
@@ -70,14 +65,6 @@ WHERE
         WHERE
             user_id = $1
     );
-
--- name: GetOrganizationResourceCountByID :one
-SELECT
-    (SELECT COUNT(*) FROM workspaces WHERE workspaces.organization_id = $1 AND workspaces.deleted = false) AS workspace_count,
-    (SELECT COUNT(*) FROM groups WHERE groups.organization_id = $1) AS group_count,
-    (SELECT COUNT(*) FROM templates WHERE templates.organization_id = $1 AND templates.deleted = false) AS template_count,
-    (SELECT COUNT(*) FROM organization_members WHERE organization_members.organization_id = $1) AS member_count,
-    (SELECT COUNT(*) FROM provisioner_keys WHERE provisioner_keys.organization_id = $1) AS provisioner_key_count;
 
 -- name: InsertOrganization :one
 INSERT INTO

@@ -15,7 +15,6 @@ extension, authenticates with Coder, and connects to the workspace.
 
 ![Demo](https://github.com/coder/vscode-coder/raw/main/demo.gif?raw=true)
 
-> [!NOTE]
 > The `VS Code Desktop` button can be hidden by enabling
 > [Browser-only connections](../../admin/networking/index.md#browser-only-connections).
 
@@ -53,8 +52,7 @@ marketplace, or the Eclipse Open VSX _local_ marketplace.
 
 ![Code Web Extensions](../../images/ides/code-web-extensions.png)
 
-> [!NOTE]
-> Microsoft does not allow any unofficial VS Code IDE to connect to the
+> Note: Microsoft does not allow any unofficial VS Code IDE to connect to the
 > extension marketplace.
 
 ### Adding extensions to custom images

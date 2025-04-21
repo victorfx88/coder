@@ -6,12 +6,12 @@ import (
 	"net"
 	"net/netip"
 	"net/url"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"golang.org/x/exp/slices"
 	"golang.org/x/xerrors"
 	"tailscale.com/derp"
 	"tailscale.com/derp/derphttp"
@@ -197,15 +197,14 @@ func (r *RegionReport) Run(ctx context.Context) {
 		return
 	}
 
-	switch {
-	case len(r.Region.Nodes) == 1:
+	if len(r.Region.Nodes) == 1 {
 		r.Healthy = r.NodeReports[0].Severity != health.SeverityError
 		r.Severity = r.NodeReports[0].Severity
-	case unhealthyNodes == 1:
+	} else if unhealthyNodes == 1 {
 		// r.Healthy = true (by default)
 		r.Severity = health.SeverityWarning
 		r.Warnings = append(r.Warnings, health.Messagef(health.CodeDERPOneNodeUnhealthy, oneNodeUnhealthy))
-	case unhealthyNodes > 1:
+	} else if unhealthyNodes > 1 {
 		r.Healthy = false
 
 		// Review node reports and select the highest severity.

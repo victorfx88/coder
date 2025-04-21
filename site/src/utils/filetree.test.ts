@@ -122,6 +122,6 @@ test("traverse() go trough all the file tree files", () => {
 	traverse(fileTree, (_content, _filename, fullPath) => {
 		filePaths.push(fullPath);
 	});
-	const expectedFilePaths = ["images", "images/java.Dockerfile", "main.tf"];
+	const expectedFilePaths = ["main.tf", "images", "images/java.Dockerfile"];
 	expect(filePaths).toEqual(expectedFilePaths);
 });

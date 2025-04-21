@@ -534,7 +534,7 @@ func TestTemplatePush(t *testing.T) {
 						"test_name": tt.name,
 					}))
 
-					templateName := testutil.GetRandomNameHyphenated(t)
+					templateName := strings.ReplaceAll(testutil.GetRandomName(t), "_", "-")
 
 					inv, root := clitest.New(t, "templates", "push", templateName, "-d", tempDir, "--yes")
 					clitest.SetupConfig(t, templateAdmin, root)
@@ -723,7 +723,6 @@ func TestTemplatePush(t *testing.T) {
 			template := coderdtest.CreateTemplate(t, client, owner.OrganizationID, templateVersion.ID)
 
 			// Test the cli command.
-			//nolint:gocritic
 			modifiedTemplateVariables := append(initialTemplateVariables,
 				&proto.TemplateVariable{
 					Name:        "second_variable",
@@ -793,7 +792,6 @@ func TestTemplatePush(t *testing.T) {
 			template := coderdtest.CreateTemplate(t, client, owner.OrganizationID, templateVersion.ID)
 
 			// Test the cli command.
-			//nolint:gocritic
 			modifiedTemplateVariables := append(initialTemplateVariables,
 				&proto.TemplateVariable{
 					Name:        "second_variable",
@@ -841,7 +839,6 @@ func TestTemplatePush(t *testing.T) {
 			template := coderdtest.CreateTemplate(t, client, owner.OrganizationID, templateVersion.ID)
 
 			// Test the cli command.
-			//nolint:gocritic
 			modifiedTemplateVariables := append(initialTemplateVariables,
 				&proto.TemplateVariable{
 					Name:         "second_variable",
@@ -908,7 +905,6 @@ func TestTemplatePush(t *testing.T) {
 			template := coderdtest.CreateTemplate(t, client, owner.OrganizationID, templateVersion.ID)
 
 			// Test the cli command.
-			//nolint:gocritic
 			modifiedTemplateVariables := append(initialTemplateVariables,
 				&proto.TemplateVariable{
 					Name:        "second_variable",

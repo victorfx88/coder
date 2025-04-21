@@ -17,7 +17,6 @@ type OrganizationBuilder struct {
 	t                 *testing.T
 	db                database.Store
 	seed              database.Organization
-	delete            bool
 	allUsersAllowance int32
 	members           []uuid.UUID
 	groups            map[database.Group][]uuid.UUID
@@ -41,14 +40,7 @@ type OrganizationResponse struct {
 
 func (b OrganizationBuilder) EveryoneAllowance(allowance int) OrganizationBuilder {
 	//nolint: revive // returns modified struct
-	// #nosec G115 - Safe conversion as allowance is expected to be within int32 range
 	b.allUsersAllowance = int32(allowance)
-	return b
-}
-
-func (b OrganizationBuilder) Deleted(deleted bool) OrganizationBuilder {
-	//nolint: revive // returns modified struct
-	b.delete = deleted
 	return b
 }
 
@@ -124,17 +116,6 @@ func (b OrganizationBuilder) Do() OrganizationResponse {
 				})
 			}
 		}
-	}
-
-	if b.delete {
-		now := dbtime.Now()
-		err = b.db.UpdateOrganizationDeletedByID(ctx, database.UpdateOrganizationDeletedByIDParams{
-			UpdatedAt: now,
-			ID:        org.ID,
-		})
-		require.NoError(b.t, err)
-		org.Deleted = true
-		org.UpdatedAt = now
 	}
 
 	return OrganizationResponse{

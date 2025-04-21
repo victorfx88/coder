@@ -2,7 +2,6 @@ package notifications_test
 
 import (
 	"context"
-	"net/url"
 	"sync/atomic"
 	"testing"
 	"text/template"
@@ -22,18 +21,6 @@ import (
 )
 
 func defaultNotificationsConfig(method database.NotificationMethod) codersdk.NotificationsConfig {
-	var (
-		smtp    codersdk.NotificationsEmailConfig
-		webhook codersdk.NotificationsWebhookConfig
-	)
-
-	switch method {
-	case database.NotificationMethodSmtp:
-		smtp.Smarthost = serpent.String("localhost:1337")
-	case database.NotificationMethodWebhook:
-		webhook.Endpoint = serpent.URL(url.URL{Host: "localhost"})
-	}
-
 	return codersdk.NotificationsConfig{
 		Method:              serpent.String(method),
 		MaxSendAttempts:     5,
@@ -44,11 +31,8 @@ func defaultNotificationsConfig(method database.NotificationMethod) codersdk.Not
 		RetryInterval:       serpent.Duration(time.Millisecond * 50),
 		LeaseCount:          10,
 		StoreSyncBufferSize: 50,
-		SMTP:                smtp,
-		Webhook:             webhook,
-		Inbox: codersdk.NotificationsInboxConfig{
-			Enabled: serpent.Bool(true),
-		},
+		SMTP:                codersdk.NotificationsEmailConfig{},
+		Webhook:             codersdk.NotificationsWebhookConfig{},
 	}
 }
 

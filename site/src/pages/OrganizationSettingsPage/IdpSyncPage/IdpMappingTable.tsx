@@ -27,13 +27,9 @@ export const IdpMappingTable: FC<IdpMappingTableProps> = ({
 			<Table>
 				<TableHeader>
 					<TableRow>
-						<TableCell className="w-2/5">
-							IdP {type.toLocaleLowerCase()}
-						</TableCell>
-						<TableCell className="w-3/5">
-							Coder {type.toLocaleLowerCase()}
-						</TableCell>
-						<TableCell className="w-auto" />
+						<TableCell width="45%">IdP {type.toLocaleLowerCase()}</TableCell>
+						<TableCell width="55%">Coder {type.toLocaleLowerCase()}</TableCell>
+						<TableCell width="5%" />
 					</TableRow>
 				</TableHeader>
 				<TableBody>

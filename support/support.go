@@ -241,9 +241,11 @@ func WorkspaceInfo(ctx context.Context, client *codersdk.Client, log slog.Logger
 			return xerrors.Errorf("fetch provisioner job logs: %w", err)
 		}
 		defer closer.Close()
+		var logs []codersdk.ProvisionerJobLog
 		for log := range buildLogCh {
-			w.BuildLogs = append(w.BuildLogs, log)
+			logs = append(w.BuildLogs, log)
 		}
+		w.BuildLogs = logs
 		return nil
 	})
 

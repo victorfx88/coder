@@ -116,14 +116,14 @@ coder:
   #    - my-tls-secret-name
 ```
 
-You can view our
-[Helm README](https://github.com/coder/coder/blob/main/helm#readme) for
-details on the values that are available, or you can view the
-[values.yaml](https://github.com/coder/coder/blob/main/helm/coder/values.yaml)
-file directly.
+> You can view our
+> [Helm README](https://github.com/coder/coder/blob/main/helm#readme) for
+> details on the values that are available, or you can view the
+> [values.yaml](https://github.com/coder/coder/blob/main/helm/coder/values.yaml)
+> file directly.
 
 We support two release channels: mainline and stable - read the
-[Releases](./releases/index.md) page to learn more about which best suits your team.
+[Releases](./releases.md) page to learn more about which best suits your team.
 
 - **Mainline** Coder release:
 
@@ -133,7 +133,7 @@ We support two release channels: mainline and stable - read the
   helm install coder coder-v2/coder \
       --namespace coder \
       --values values.yaml \
-      --version 2.20.0
+      --version 2.19.0
   ```
 
 - **Stable** Coder release:
@@ -144,7 +144,7 @@ We support two release channels: mainline and stable - read the
   helm install coder coder-v2/coder \
       --namespace coder \
       --values values.yaml \
-      --version 2.19.0
+      --version 2.18.5
   ```
 
 You can watch Coder start up by running `kubectl get pods -n coder`. Once Coder

@@ -13,6 +13,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "components/DropdownMenu/DropdownMenu";
+import { FeatureStageBadge } from "components/FeatureStageBadge/FeatureStageBadge";
 import { displayError } from "components/GlobalSnackbar/utils";
 import { Latency } from "components/Latency/Latency";
 import type { ProxyContextValue } from "contexts/ProxyContext";
@@ -67,8 +68,9 @@ export const MobileMenu: FC<MobileMenuProps> = ({
 			<DropdownMenuTrigger asChild>
 				<Button
 					aria-label={open ? "Close menu" : "Open menu"}
-					size="icon-lg"
+					size="lg"
 					variant="subtle"
+					className="ml-auto md:hidden"
 				>
 					{open ? <XIcon /> : <MenuIcon />}
 				</Button>

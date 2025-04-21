@@ -46,8 +46,7 @@ resource "coder_agent" "dev" {
 }
 ```
 
-> [!NOTE]
-> The `dir` attribute can be set in multiple ways, for example:
+> Note: The `dir` attribute can be set in multiple ways, for example:
 >
 > - `~/coder`
 > - `/home/coder/coder`

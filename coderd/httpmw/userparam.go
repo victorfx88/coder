@@ -31,18 +31,13 @@ func UserParam(r *http.Request) database.User {
 	return user
 }
 
-func UserParamOptional(r *http.Request) (database.User, bool) {
-	user, ok := r.Context().Value(userParamContextKey{}).(database.User)
-	return user, ok
-}
-
 // ExtractUserParam extracts a user from an ID/username in the {user} URL
 // parameter.
 func ExtractUserParam(db database.Store) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 			ctx := r.Context()
-			user, ok := ExtractUserContext(ctx, db, rw, r)
+			user, ok := extractUserContext(ctx, db, rw, r)
 			if !ok {
 				// response already handled
 				return
@@ -53,31 +48,15 @@ func ExtractUserParam(db database.Store) func(http.Handler) http.Handler {
 	}
 }
 
-// ExtractUserParamOptional does not fail if no user is present.
-func ExtractUserParamOptional(db database.Store) func(http.Handler) http.Handler {
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
-			ctx := r.Context()
-
-			user, ok := ExtractUserContext(ctx, db, &httpapi.NoopResponseWriter{}, r)
-			if ok {
-				ctx = context.WithValue(ctx, userParamContextKey{}, user)
-			}
-
-			next.ServeHTTP(rw, r.WithContext(ctx))
-		})
-	}
-}
-
-// ExtractUserContext queries the database for the parameterized `{user}` from the request URL.
-func ExtractUserContext(ctx context.Context, db database.Store, rw http.ResponseWriter, r *http.Request) (user database.User, ok bool) {
+// extractUserContext queries the database for the parameterized `{user}` from the request URL.
+func extractUserContext(ctx context.Context, db database.Store, rw http.ResponseWriter, r *http.Request) (user database.User, ok bool) {
 	// userQuery is either a uuid, a username, or 'me'
 	userQuery := chi.URLParam(r, "user")
 	if userQuery == "" {
 		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
 			Message: "\"user\" must be provided.",
 		})
-		return database.User{}, false
+		return database.User{}, true
 	}
 
 	if userQuery == "me" {

@@ -81,7 +81,7 @@ func AssertRBAC(t *testing.T, api *coderd.API, client *codersdk.Client) RBACAsse
 // Note that duplicate rbac calls are handled by the rbac.Cacher(), but
 // will be recorded twice. So AllCalls() returns calls regardless if they
 // were returned from the cached or not.
-func (a RBACAsserter) AllCalls() AuthCalls {
+func (a RBACAsserter) AllCalls() []AuthCall {
 	return a.Recorder.AllCalls(&a.Subject)
 }
 
@@ -140,11 +140,8 @@ func (a RBACAsserter) Reset() RBACAsserter {
 	return a
 }
 
-type AuthCalls []AuthCall
-
 type AuthCall struct {
 	rbac.AuthCall
-	Err error
 
 	asserted bool
 	// callers is a small stack trace for debugging.
@@ -255,7 +252,7 @@ func (r *RecordingAuthorizer) AssertActor(t *testing.T, actor rbac.Subject, did 
 }
 
 // recordAuthorize is the internal method that records the Authorize() call.
-func (r *RecordingAuthorizer) recordAuthorize(subject rbac.Subject, action policy.Action, object rbac.Object, authzErr error) {
+func (r *RecordingAuthorizer) recordAuthorize(subject rbac.Subject, action policy.Action, object rbac.Object) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -265,7 +262,6 @@ func (r *RecordingAuthorizer) recordAuthorize(subject rbac.Subject, action polic
 			Action: action,
 			Object: object,
 		},
-		Err: authzErr,
 		callers: []string{
 			// This is a decent stack trace for debugging.
 			// Some dbauthz calls are a bit nested, so we skip a few.
@@ -292,12 +288,11 @@ func caller(skip int) string {
 }
 
 func (r *RecordingAuthorizer) Authorize(ctx context.Context, subject rbac.Subject, action policy.Action, object rbac.Object) error {
+	r.recordAuthorize(subject, action, object)
 	if r.Wrapped == nil {
 		panic("Developer error: RecordingAuthorizer.Wrapped is nil")
 	}
-	authzErr := r.Wrapped.Authorize(ctx, subject, action, object)
-	r.recordAuthorize(subject, action, object, authzErr)
-	return authzErr
+	return r.Wrapped.Authorize(ctx, subject, action, object)
 }
 
 func (r *RecordingAuthorizer) Prepare(ctx context.Context, subject rbac.Subject, action policy.Action, objectType string) (rbac.PreparedAuthorized, error) {
@@ -344,11 +339,10 @@ func (s *PreparedRecorder) Authorize(ctx context.Context, object rbac.Object) er
 	s.rw.Lock()
 	defer s.rw.Unlock()
 
-	authzErr := s.prepped.Authorize(ctx, object)
 	if !s.usingSQL {
-		s.rec.recordAuthorize(s.subject, s.action, object, authzErr)
+		s.rec.recordAuthorize(s.subject, s.action, object)
 	}
-	return authzErr
+	return s.prepped.Authorize(ctx, object)
 }
 
 func (s *PreparedRecorder) CompileToSQL(ctx context.Context, cfg regosql.ConvertConfig) (string, error) {

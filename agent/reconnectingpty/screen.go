@@ -225,7 +225,6 @@ func (rpty *screenReconnectingPTY) doAttach(ctx context.Context, conn net.Conn, 
 		rpty.command.Path,
 		// pty.Cmd duplicates Path as the first argument so remove it.
 	}, rpty.command.Args[1:]...)...)
-	//nolint:gocritic
 	cmd.Env = append(rpty.command.Env, "TERM=xterm-256color")
 	cmd.Dir = rpty.command.Dir
 	ptty, process, err := pty.Start(cmd, pty.WithPTYOption(
@@ -307,9 +306,9 @@ func (rpty *screenReconnectingPTY) doAttach(ctx context.Context, conn net.Conn, 
 		if closeErr != nil {
 			logger.Debug(ctx, "closed ptty with error", slog.Error(closeErr))
 		}
-		killErr := process.Kill()
-		if killErr != nil {
-			logger.Debug(ctx, "killed process with error", slog.Error(killErr))
+		closeErr = process.Kill()
+		if closeErr != nil {
+			logger.Debug(ctx, "killed process with error", slog.Error(closeErr))
 		}
 		rpty.metrics.WithLabelValues("screen_wait").Add(1)
 		return nil, nil, err
@@ -341,7 +340,6 @@ func (rpty *screenReconnectingPTY) sendCommand(ctx context.Context, command stri
 			// -X runs a command in the matching session.
 			"-X", command,
 		)
-		//nolint:gocritic
 		cmd.Env = append(rpty.command.Env, "TERM=xterm-256color")
 		cmd.Dir = rpty.command.Dir
 		cmd.Stdout = &stdout

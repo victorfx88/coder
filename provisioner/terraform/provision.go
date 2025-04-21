@@ -156,7 +156,6 @@ func (s *server) Plan(
 	if err != nil {
 		return provisionersdk.PlanErrorf("setup env: %s", err)
 	}
-	env = otelEnvInject(ctx, env)
 
 	vars, err := planVars(request)
 	if err != nil {
@@ -209,7 +208,6 @@ func (s *server) Apply(
 	if err != nil {
 		return provisionersdk.ApplyErrorf("provision env: %s", err)
 	}
-	env = otelEnvInject(ctx, env)
 	resp, err := e.apply(
 		ctx, killCtx, env, sess,
 	)
@@ -244,11 +242,6 @@ func provisionEnv(
 		return nil, xerrors.Errorf("marshal owner groups: %w", err)
 	}
 
-	ownerRbacRoles, err := json.Marshal(metadata.GetWorkspaceOwnerRbacRoles())
-	if err != nil {
-		return nil, xerrors.Errorf("marshal owner rbac roles: %w", err)
-	}
-
 	env = append(env,
 		"CODER_AGENT_URL="+metadata.GetCoderUrl(),
 		"CODER_WORKSPACE_TRANSITION="+strings.ToLower(metadata.GetWorkspaceTransition().String()),
@@ -261,7 +254,6 @@ func provisionEnv(
 		"CODER_WORKSPACE_OWNER_SSH_PUBLIC_KEY="+metadata.GetWorkspaceOwnerSshPublicKey(),
 		"CODER_WORKSPACE_OWNER_SSH_PRIVATE_KEY="+metadata.GetWorkspaceOwnerSshPrivateKey(),
 		"CODER_WORKSPACE_OWNER_LOGIN_TYPE="+metadata.GetWorkspaceOwnerLoginType(),
-		"CODER_WORKSPACE_OWNER_RBAC_ROLES="+string(ownerRbacRoles),
 		"CODER_WORKSPACE_ID="+metadata.GetWorkspaceId(),
 		"CODER_WORKSPACE_OWNER_ID="+metadata.GetWorkspaceOwnerId(),
 		"CODER_WORKSPACE_OWNER_SESSION_TOKEN="+metadata.GetWorkspaceOwnerSessionToken(),
@@ -270,10 +262,6 @@ func provisionEnv(
 		"CODER_WORKSPACE_TEMPLATE_VERSION="+metadata.GetTemplateVersion(),
 		"CODER_WORKSPACE_BUILD_ID="+metadata.GetWorkspaceBuildId(),
 	)
-	if metadata.GetIsPrebuild() {
-		env = append(env, provider.IsPrebuildEnvironmentVariable()+"=true")
-	}
-
 	for key, value := range provisionersdk.AgentScriptEnv() {
 		env = append(env, key+"="+value)
 	}

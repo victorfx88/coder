@@ -3,11 +3,7 @@ import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { Button } from "components/Button/Button";
 import { FileUpload } from "components/FileUpload/FileUpload";
 import { displayError } from "components/GlobalSnackbar/utils";
-import {
-	SettingsHeader,
-	SettingsHeaderDescription,
-	SettingsHeaderTitle,
-} from "components/SettingsHeader/SettingsHeader";
+import { SettingsHeader } from "components/SettingsHeader/SettingsHeader";
 import { Stack } from "components/Stack/Stack";
 import { ChevronLeftIcon } from "lucide-react";
 import type { FC } from "react";
@@ -54,13 +50,10 @@ export const AddNewLicensePageView: FC<AddNewLicenseProps> = ({
 				direction="row"
 				justifyContent="space-between"
 			>
-				<SettingsHeader>
-					<SettingsHeaderTitle>Add a license</SettingsHeaderTitle>
-					<SettingsHeaderDescription>
-						Get access to high availability, RBAC, quotas, and more.
-					</SettingsHeaderDescription>
-				</SettingsHeader>
-
+				<SettingsHeader
+					title="Add a license"
+					description="Get access to high availability, RBAC, quotas, and more."
+				/>
 				<Button asChild variant="outline">
 					<RouterLink to="/deployment/licenses">
 						<ChevronLeftIcon />

@@ -32,7 +32,6 @@ import (
 	"github.com/coder/coder/v2/coderd/cryptokeys"
 	"github.com/coder/coder/v2/coderd/httpapi"
 	"github.com/coder/coder/v2/coderd/httpmw"
-	"github.com/coder/coder/v2/coderd/httpmw/loggermw"
 	"github.com/coder/coder/v2/coderd/tracing"
 	"github.com/coder/coder/v2/coderd/workspaceapps"
 	"github.com/coder/coder/v2/codersdk"
@@ -71,7 +70,7 @@ type Options struct {
 	TLSCertificates    []tls.Certificate
 
 	APIRateLimit           int
-	CookieConfig           codersdk.HTTPCookieConfig
+	SecureAuthCookie       bool
 	DisablePathApps        bool
 	DERPEnabled            bool
 	DERPServerRelayAddress string
@@ -311,8 +310,8 @@ func New(ctx context.Context, opts *Options) (*Server, error) {
 			Logger:                   s.Logger.Named("proxy_token_provider"),
 		},
 
-		DisablePathApps: opts.DisablePathApps,
-		Cookies:         opts.CookieConfig,
+		DisablePathApps:  opts.DisablePathApps,
+		SecureAuthCookie: opts.SecureAuthCookie,
 
 		AgentProvider:            agentProvider,
 		StatsCollector:           workspaceapps.NewStatsCollector(opts.StatsCollectorOptions),
@@ -337,7 +336,7 @@ func New(ctx context.Context, opts *Options) (*Server, error) {
 		tracing.Middleware(s.TracerProvider),
 		httpmw.AttachRequestID,
 		httpmw.ExtractRealIP(s.Options.RealIPConfig),
-		loggermw.Logger(s.Logger),
+		httpmw.Logger(s.Logger),
 		prometheusMW,
 		corsMW,
 
@@ -363,7 +362,7 @@ func New(ctx context.Context, opts *Options) (*Server, error) {
 		},
 		// CSRF is required here because we need to set the CSRF cookies on
 		// responses.
-		httpmw.CSRF(s.Options.CookieConfig),
+		httpmw.CSRF(s.Options.SecureAuthCookie),
 	)
 
 	// Attach workspace apps routes.
@@ -399,13 +398,13 @@ func New(ctx context.Context, opts *Options) (*Server, error) {
 		r.Route("/derp", func(r chi.Router) {
 			r.Get("/", derpHandler.ServeHTTP)
 			// This is used when UDP is blocked, and latency must be checked via HTTP(s).
-			r.Get("/latency-check", func(w http.ResponseWriter, _ *http.Request) {
+			r.Get("/latency-check", func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
 			})
 		})
 	} else {
 		r.Route("/derp", func(r chi.Router) {
-			r.HandleFunc("/*", func(rw http.ResponseWriter, _ *http.Request) {
+			r.HandleFunc("/*", func(rw http.ResponseWriter, r *http.Request) {
 				httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
 					Message: "DERP is disabled on this proxy.",
 				})
@@ -414,7 +413,7 @@ func New(ctx context.Context, opts *Options) (*Server, error) {
 	}
 
 	r.Get("/api/v2/buildinfo", s.buildInfo)
-	r.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write([]byte("OK")) })
+	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write([]byte("OK")) })
 	// TODO: @emyrk should this be authenticated or debounced?
 	r.Get("/healthz-report", s.healthReport)
 	r.NotFound(func(rw http.ResponseWriter, r *http.Request) {

@@ -266,6 +266,7 @@ export const CreateTemplateForm: FC<CreateTemplateFormProps> = (props) => {
 								{...getFieldHelpers("organization")}
 								required
 								label="Belongs to"
+								value={selectedOrg}
 								onChange={(newValue) => {
 									setSelectedOrg(newValue);
 									void form.setFieldValue("organization", newValue?.name || "");

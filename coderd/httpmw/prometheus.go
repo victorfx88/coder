@@ -3,7 +3,6 @@ package httpmw
 import (
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -23,18 +22,18 @@ func Prometheus(register prometheus.Registerer) func(http.Handler) http.Handler 
 		Name:      "requests_processed_total",
 		Help:      "The total number of processed API requests",
 	}, []string{"code", "method", "path"})
-	requestsConcurrent := factory.NewGaugeVec(prometheus.GaugeOpts{
+	requestsConcurrent := factory.NewGauge(prometheus.GaugeOpts{
 		Namespace: "coderd",
 		Subsystem: "api",
 		Name:      "concurrent_requests",
 		Help:      "The number of concurrent API requests.",
-	}, []string{"method", "path"})
-	websocketsConcurrent := factory.NewGaugeVec(prometheus.GaugeOpts{
+	})
+	websocketsConcurrent := factory.NewGauge(prometheus.GaugeOpts{
 		Namespace: "coderd",
 		Subsystem: "api",
 		Name:      "concurrent_websockets",
 		Help:      "The total number of concurrent API websockets.",
-	}, []string{"path"})
+	})
 	websocketsDist := factory.NewHistogramVec(prometheus.HistogramOpts{
 		Namespace: "coderd",
 		Subsystem: "api",
@@ -62,6 +61,7 @@ func Prometheus(register prometheus.Registerer) func(http.Handler) http.Handler 
 			var (
 				start  = time.Now()
 				method = r.Method
+				rctx   = chi.RouteContext(r.Context())
 			)
 
 			sw, ok := w.(*tracing.StatusWriter)
@@ -72,18 +72,16 @@ func Prometheus(register prometheus.Registerer) func(http.Handler) http.Handler 
 			var (
 				dist     *prometheus.HistogramVec
 				distOpts []string
-				path     = getRoutePattern(r)
 			)
-
 			// We want to count WebSockets separately.
 			if httpapi.IsWebsocketUpgrade(r) {
-				websocketsConcurrent.WithLabelValues(path).Inc()
-				defer websocketsConcurrent.WithLabelValues(path).Dec()
+				websocketsConcurrent.Inc()
+				defer websocketsConcurrent.Dec()
 
 				dist = websocketsDist
 			} else {
-				requestsConcurrent.WithLabelValues(method, path).Inc()
-				defer requestsConcurrent.WithLabelValues(method, path).Dec()
+				requestsConcurrent.Inc()
+				defer requestsConcurrent.Dec()
 
 				dist = requestsDist
 				distOpts = []string{method}
@@ -91,6 +89,7 @@ func Prometheus(register prometheus.Registerer) func(http.Handler) http.Handler 
 
 			next.ServeHTTP(w, r)
 
+			path := rctx.RoutePattern()
 			distOpts = append(distOpts, path)
 			statusStr := strconv.Itoa(sw.Status)
 
@@ -98,35 +97,4 @@ func Prometheus(register prometheus.Registerer) func(http.Handler) http.Handler 
 			dist.WithLabelValues(distOpts...).Observe(time.Since(start).Seconds())
 		})
 	}
-}
-
-func getRoutePattern(r *http.Request) string {
-	rctx := chi.RouteContext(r.Context())
-	if rctx == nil {
-		return ""
-	}
-
-	if pattern := rctx.RoutePattern(); pattern != "" {
-		// Pattern is already available
-		return pattern
-	}
-
-	routePath := r.URL.Path
-	if r.URL.RawPath != "" {
-		routePath = r.URL.RawPath
-	}
-
-	tctx := chi.NewRouteContext()
-	routes := rctx.Routes
-	if routes != nil && !routes.Match(tctx, r.Method, routePath) {
-		// No matching pattern. /api/* requests will be matched as "UNKNOWN"
-		// All other ones will be matched as "STATIC".
-		if strings.HasPrefix(routePath, "/api/") {
-			return "UNKNOWN"
-		}
-		return "STATIC"
-	}
-
-	// tctx has the updated pattern, since Match mutates it
-	return tctx.RoutePattern()
 }

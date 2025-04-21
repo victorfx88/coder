@@ -1,42 +1,39 @@
+import CircularProgress from "@mui/material/CircularProgress";
 import { updateAppearanceSettings } from "api/queries/users";
-import { appearanceSettings } from "api/queries/users";
-import { ErrorAlert } from "components/Alert/ErrorAlert";
-import { Loader } from "components/Loader/Loader";
-import { useEmbeddedMetadata } from "hooks/useEmbeddedMetadata";
+import { Stack } from "components/Stack/Stack";
+import { useAuthenticated } from "contexts/auth/RequireAuth";
 import type { FC } from "react";
-import { useMutation, useQuery, useQueryClient } from "react-query";
+import { useMutation, useQueryClient } from "react-query";
+import { Section } from "../Section";
 import { AppearanceForm } from "./AppearanceForm";
 
 export const AppearancePage: FC = () => {
+	const { user: me } = useAuthenticated();
 	const queryClient = useQueryClient();
 	const updateAppearanceSettingsMutation = useMutation(
-		updateAppearanceSettings(queryClient),
+		updateAppearanceSettings("me", queryClient),
 	);
-
-	const { metadata } = useEmbeddedMetadata();
-	const appearanceSettingsQuery = useQuery(
-		appearanceSettings(metadata.userAppearance),
-	);
-
-	if (appearanceSettingsQuery.isLoading) {
-		return <Loader />;
-	}
-
-	if (!appearanceSettingsQuery.data) {
-		return <ErrorAlert error={appearanceSettingsQuery.error} />;
-	}
 
 	return (
 		<>
-			<AppearanceForm
-				isUpdating={updateAppearanceSettingsMutation.isLoading}
-				error={updateAppearanceSettingsMutation.error}
-				initialValues={{
-					theme_preference: appearanceSettingsQuery.data.theme_preference,
-					terminal_font: appearanceSettingsQuery.data.terminal_font,
-				}}
-				onSubmit={updateAppearanceSettingsMutation.mutateAsync}
-			/>
+			<Section
+				title={
+					<Stack direction="row" alignItems="center">
+						<span>Theme</span>
+						{updateAppearanceSettingsMutation.isLoading && (
+							<CircularProgress size={16} />
+						)}
+					</Stack>
+				}
+				layout="fluid"
+			>
+				<AppearanceForm
+					isUpdating={updateAppearanceSettingsMutation.isLoading}
+					error={updateAppearanceSettingsMutation.error}
+					initialValues={{ theme_preference: me.theme_preference }}
+					onSubmit={updateAppearanceSettingsMutation.mutateAsync}
+				/>
+			</Section>
 		</>
 	);
 };

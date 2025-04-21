@@ -543,67 +543,6 @@ func AllGroupSourceValues() []GroupSource {
 	}
 }
 
-type InboxNotificationReadStatus string
-
-const (
-	InboxNotificationReadStatusAll    InboxNotificationReadStatus = "all"
-	InboxNotificationReadStatusUnread InboxNotificationReadStatus = "unread"
-	InboxNotificationReadStatusRead   InboxNotificationReadStatus = "read"
-)
-
-func (e *InboxNotificationReadStatus) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = InboxNotificationReadStatus(s)
-	case string:
-		*e = InboxNotificationReadStatus(s)
-	default:
-		return fmt.Errorf("unsupported scan type for InboxNotificationReadStatus: %T", src)
-	}
-	return nil
-}
-
-type NullInboxNotificationReadStatus struct {
-	InboxNotificationReadStatus InboxNotificationReadStatus `json:"inbox_notification_read_status"`
-	Valid                       bool                        `json:"valid"` // Valid is true if InboxNotificationReadStatus is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullInboxNotificationReadStatus) Scan(value interface{}) error {
-	if value == nil {
-		ns.InboxNotificationReadStatus, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.InboxNotificationReadStatus.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullInboxNotificationReadStatus) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.InboxNotificationReadStatus), nil
-}
-
-func (e InboxNotificationReadStatus) Valid() bool {
-	switch e {
-	case InboxNotificationReadStatusAll,
-		InboxNotificationReadStatusUnread,
-		InboxNotificationReadStatusRead:
-		return true
-	}
-	return false
-}
-
-func AllInboxNotificationReadStatusValues() []InboxNotificationReadStatus {
-	return []InboxNotificationReadStatus{
-		InboxNotificationReadStatusAll,
-		InboxNotificationReadStatusUnread,
-		InboxNotificationReadStatusRead,
-	}
-}
-
 type LogLevel string
 
 const (
@@ -878,7 +817,6 @@ type NotificationMethod string
 const (
 	NotificationMethodSmtp    NotificationMethod = "smtp"
 	NotificationMethodWebhook NotificationMethod = "webhook"
-	NotificationMethodInbox   NotificationMethod = "inbox"
 )
 
 func (e *NotificationMethod) Scan(src interface{}) error {
@@ -919,8 +857,7 @@ func (ns NullNotificationMethod) Value() (driver.Value, error) {
 func (e NotificationMethod) Valid() bool {
 	switch e {
 	case NotificationMethodSmtp,
-		NotificationMethodWebhook,
-		NotificationMethodInbox:
+		NotificationMethodWebhook:
 		return true
 	}
 	return false
@@ -930,7 +867,6 @@ func AllNotificationMethodValues() []NotificationMethod {
 	return []NotificationMethod{
 		NotificationMethodSmtp,
 		NotificationMethodWebhook,
-		NotificationMethodInbox,
 	}
 }
 
@@ -2414,67 +2350,6 @@ func AllWorkspaceAppOpenInValues() []WorkspaceAppOpenIn {
 	}
 }
 
-type WorkspaceAppStatusState string
-
-const (
-	WorkspaceAppStatusStateWorking  WorkspaceAppStatusState = "working"
-	WorkspaceAppStatusStateComplete WorkspaceAppStatusState = "complete"
-	WorkspaceAppStatusStateFailure  WorkspaceAppStatusState = "failure"
-)
-
-func (e *WorkspaceAppStatusState) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = WorkspaceAppStatusState(s)
-	case string:
-		*e = WorkspaceAppStatusState(s)
-	default:
-		return fmt.Errorf("unsupported scan type for WorkspaceAppStatusState: %T", src)
-	}
-	return nil
-}
-
-type NullWorkspaceAppStatusState struct {
-	WorkspaceAppStatusState WorkspaceAppStatusState `json:"workspace_app_status_state"`
-	Valid                   bool                    `json:"valid"` // Valid is true if WorkspaceAppStatusState is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullWorkspaceAppStatusState) Scan(value interface{}) error {
-	if value == nil {
-		ns.WorkspaceAppStatusState, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.WorkspaceAppStatusState.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullWorkspaceAppStatusState) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.WorkspaceAppStatusState), nil
-}
-
-func (e WorkspaceAppStatusState) Valid() bool {
-	switch e {
-	case WorkspaceAppStatusStateWorking,
-		WorkspaceAppStatusStateComplete,
-		WorkspaceAppStatusStateFailure:
-		return true
-	}
-	return false
-}
-
-func AllWorkspaceAppStatusStateValues() []WorkspaceAppStatusState {
-	return []WorkspaceAppStatusState{
-		WorkspaceAppStatusStateWorking,
-		WorkspaceAppStatusStateComplete,
-		WorkspaceAppStatusStateFailure,
-	}
-}
-
 type WorkspaceTransition string
 
 const (
@@ -2669,9 +2544,9 @@ type GroupMember struct {
 	UserDeleted            bool          `db:"user_deleted" json:"user_deleted"`
 	UserLastSeenAt         time.Time     `db:"user_last_seen_at" json:"user_last_seen_at"`
 	UserQuietHoursSchedule string        `db:"user_quiet_hours_schedule" json:"user_quiet_hours_schedule"`
+	UserThemePreference    string        `db:"user_theme_preference" json:"user_theme_preference"`
 	UserName               string        `db:"user_name" json:"user_name"`
 	UserGithubComUserID    sql.NullInt64 `db:"user_github_com_user_id" json:"user_github_com_user_id"`
-	UserIsSystem           bool          `db:"user_is_system" json:"user_is_system"`
 	OrganizationID         uuid.UUID     `db:"organization_id" json:"organization_id"`
 	GroupName              string        `db:"group_name" json:"group_name"`
 	GroupID                uuid.UUID     `db:"group_id" json:"group_id"`
@@ -2680,19 +2555,6 @@ type GroupMember struct {
 type GroupMemberTable struct {
 	UserID  uuid.UUID `db:"user_id" json:"user_id"`
 	GroupID uuid.UUID `db:"group_id" json:"group_id"`
-}
-
-type InboxNotification struct {
-	ID         uuid.UUID       `db:"id" json:"id"`
-	UserID     uuid.UUID       `db:"user_id" json:"user_id"`
-	TemplateID uuid.UUID       `db:"template_id" json:"template_id"`
-	Targets    []uuid.UUID     `db:"targets" json:"targets"`
-	Title      string          `db:"title" json:"title"`
-	Content    string          `db:"content" json:"content"`
-	Icon       string          `db:"icon" json:"icon"`
-	Actions    json.RawMessage `db:"actions" json:"actions"`
-	ReadAt     sql.NullTime    `db:"read_at" json:"read_at"`
-	CreatedAt  time.Time       `db:"created_at" json:"created_at"`
 }
 
 type JfrogXrayScan struct {
@@ -3170,12 +3032,10 @@ type TemplateVersionParameter struct {
 }
 
 type TemplateVersionPreset struct {
-	ID                  uuid.UUID     `db:"id" json:"id"`
-	TemplateVersionID   uuid.UUID     `db:"template_version_id" json:"template_version_id"`
-	Name                string        `db:"name" json:"name"`
-	CreatedAt           time.Time     `db:"created_at" json:"created_at"`
-	DesiredInstances    sql.NullInt32 `db:"desired_instances" json:"desired_instances"`
-	InvalidateAfterSecs sql.NullInt32 `db:"invalidate_after_secs" json:"invalidate_after_secs"`
+	ID                uuid.UUID `db:"id" json:"id"`
+	TemplateVersionID uuid.UUID `db:"template_version_id" json:"template_version_id"`
+	Name              string    `db:"name" json:"name"`
+	CreatedAt         time.Time `db:"created_at" json:"created_at"`
 }
 
 type TemplateVersionPresetParameter struct {
@@ -3201,12 +3061,6 @@ type TemplateVersionTable struct {
 	Message         string         `db:"message" json:"message"`
 	Archived        bool           `db:"archived" json:"archived"`
 	SourceExampleID sql.NullString `db:"source_example_id" json:"source_example_id"`
-}
-
-type TemplateVersionTerraformValue struct {
-	TemplateVersionID uuid.UUID       `db:"template_version_id" json:"template_version_id"`
-	UpdatedAt         time.Time       `db:"updated_at" json:"updated_at"`
-	CachedPlan        json.RawMessage `db:"cached_plan" json:"cached_plan"`
 }
 
 type TemplateVersionVariable struct {
@@ -3248,22 +3102,16 @@ type User struct {
 	LastSeenAt     time.Time      `db:"last_seen_at" json:"last_seen_at"`
 	// Daily (!) cron schedule (with optional CRON_TZ) signifying the start of the user's quiet hours. If empty, the default quiet hours on the instance is used instead.
 	QuietHoursSchedule string `db:"quiet_hours_schedule" json:"quiet_hours_schedule"`
+	// "" can be interpreted as "the user does not care", falling back to the default theme
+	ThemePreference string `db:"theme_preference" json:"theme_preference"`
 	// Name of the Coder user
 	Name string `db:"name" json:"name"`
-	// The GitHub.com numerical user ID. It is used to check if the user has starred the Coder repository. It is also used for filtering users in the users list CLI command, and may become more widely used in the future.
+	// The GitHub.com numerical user ID. At time of implementation, this is used to check if the user has starred the Coder repository.
 	GithubComUserID sql.NullInt64 `db:"github_com_user_id" json:"github_com_user_id"`
 	// A hash of the one-time-passcode given to the user.
 	HashedOneTimePasscode []byte `db:"hashed_one_time_passcode" json:"hashed_one_time_passcode"`
 	// The time when the one-time-passcode expires.
 	OneTimePasscodeExpiresAt sql.NullTime `db:"one_time_passcode_expires_at" json:"one_time_passcode_expires_at"`
-	// Determines if a user is a system user, and therefore cannot login or perform normal actions
-	IsSystem bool `db:"is_system" json:"is_system"`
-}
-
-type UserConfig struct {
-	UserID uuid.UUID `db:"user_id" json:"user_id"`
-	Key    string    `db:"key" json:"key"`
-	Value  string    `db:"value" json:"value"`
 }
 
 // Tracks when users were deleted
@@ -3301,15 +3149,6 @@ type VisibleUser struct {
 	ID        uuid.UUID `db:"id" json:"id"`
 	Username  string    `db:"username" json:"username"`
 	AvatarURL string    `db:"avatar_url" json:"avatar_url"`
-}
-
-type WebpushSubscription struct {
-	ID                uuid.UUID `db:"id" json:"id"`
-	UserID            uuid.UUID `db:"user_id" json:"user_id"`
-	CreatedAt         time.Time `db:"created_at" json:"created_at"`
-	Endpoint          string    `db:"endpoint" json:"endpoint"`
-	EndpointP256dhKey string    `db:"endpoint_p256dh_key" json:"endpoint_p256dh_key"`
-	EndpointAuthKey   string    `db:"endpoint_auth_key" json:"endpoint_auth_key"`
 }
 
 // Joins in the display name information such as username, avatar, and organization name.
@@ -3385,22 +3224,6 @@ type WorkspaceAgent struct {
 	APIVersion  string                    `db:"api_version" json:"api_version"`
 	// Specifies the order in which to display agents in user interfaces.
 	DisplayOrder int32 `db:"display_order" json:"display_order"`
-}
-
-// Workspace agent devcontainer configuration
-type WorkspaceAgentDevcontainer struct {
-	// Unique identifier
-	ID uuid.UUID `db:"id" json:"id"`
-	// Workspace agent foreign key
-	WorkspaceAgentID uuid.UUID `db:"workspace_agent_id" json:"workspace_agent_id"`
-	// Creation timestamp
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
-	// Workspace folder
-	WorkspaceFolder string `db:"workspace_folder" json:"workspace_folder"`
-	// Path to devcontainer.json.
-	ConfigPath string `db:"config_path" json:"config_path"`
-	// The name of the Dev Container.
-	Name string `db:"name" json:"name"`
 }
 
 type WorkspaceAgentLog struct {
@@ -3531,29 +3354,6 @@ type WorkspaceApp struct {
 	OpenIn WorkspaceAppOpenIn `db:"open_in" json:"open_in"`
 }
 
-// Audit sessions for workspace apps, the data in this table is ephemeral and is used to deduplicate audit log entries for workspace apps. While a session is active, the same data will not be logged again. This table does not store historical data.
-type WorkspaceAppAuditSession struct {
-	// The agent that the workspace app or port forward belongs to.
-	AgentID uuid.UUID `db:"agent_id" json:"agent_id"`
-	// The app that is currently in the workspace app. This is may be uuid.Nil because ports are not associated with an app.
-	AppID uuid.UUID `db:"app_id" json:"app_id"`
-	// The user that is currently using the workspace app. This is may be uuid.Nil if we cannot determine the user.
-	UserID uuid.UUID `db:"user_id" json:"user_id"`
-	// The IP address of the user that is currently using the workspace app.
-	Ip string `db:"ip" json:"ip"`
-	// The user agent of the user that is currently using the workspace app.
-	UserAgent string `db:"user_agent" json:"user_agent"`
-	// The slug or port of the workspace app that the user is currently using.
-	SlugOrPort string `db:"slug_or_port" json:"slug_or_port"`
-	// The HTTP status produced by the token authorization. Defaults to 200 if no status is provided.
-	StatusCode int32 `db:"status_code" json:"status_code"`
-	// The time the user started the session.
-	StartedAt time.Time `db:"started_at" json:"started_at"`
-	// The time the session was last updated.
-	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
-	ID        uuid.UUID `db:"id" json:"id"`
-}
-
 // A record of workspace app usage statistics
 type WorkspaceAppStat struct {
 	// The ID of the record
@@ -3576,17 +3376,6 @@ type WorkspaceAppStat struct {
 	SessionEndedAt time.Time `db:"session_ended_at" json:"session_ended_at"`
 	// The number of requests made during the session, a number larger than 1 indicates that multiple sessions were rolled up into one
 	Requests int32 `db:"requests" json:"requests"`
-}
-
-type WorkspaceAppStatus struct {
-	ID          uuid.UUID               `db:"id" json:"id"`
-	CreatedAt   time.Time               `db:"created_at" json:"created_at"`
-	AgentID     uuid.UUID               `db:"agent_id" json:"agent_id"`
-	AppID       uuid.UUID               `db:"app_id" json:"app_id"`
-	WorkspaceID uuid.UUID               `db:"workspace_id" json:"workspace_id"`
-	State       WorkspaceAppStatusState `db:"state" json:"state"`
-	Message     string                  `db:"message" json:"message"`
-	Uri         sql.NullString          `db:"uri" json:"uri"`
 }
 
 // Joins in the username + avatar url of the initiated by user.
@@ -3636,17 +3425,6 @@ type WorkspaceBuildTable struct {
 	TemplateVersionPresetID uuid.NullUUID       `db:"template_version_preset_id" json:"template_version_preset_id"`
 }
 
-type WorkspaceLatestBuild struct {
-	ID                      uuid.UUID            `db:"id" json:"id"`
-	WorkspaceID             uuid.UUID            `db:"workspace_id" json:"workspace_id"`
-	TemplateVersionID       uuid.UUID            `db:"template_version_id" json:"template_version_id"`
-	JobID                   uuid.UUID            `db:"job_id" json:"job_id"`
-	TemplateVersionPresetID uuid.NullUUID        `db:"template_version_preset_id" json:"template_version_preset_id"`
-	Transition              WorkspaceTransition  `db:"transition" json:"transition"`
-	CreatedAt               time.Time            `db:"created_at" json:"created_at"`
-	JobStatus               ProvisionerJobStatus `db:"job_status" json:"job_status"`
-}
-
 type WorkspaceModule struct {
 	ID         uuid.UUID           `db:"id" json:"id"`
 	JobID      uuid.UUID           `db:"job_id" json:"job_id"`
@@ -3655,25 +3433,6 @@ type WorkspaceModule struct {
 	Version    string              `db:"version" json:"version"`
 	Key        string              `db:"key" json:"key"`
 	CreatedAt  time.Time           `db:"created_at" json:"created_at"`
-}
-
-type WorkspacePrebuild struct {
-	ID              uuid.UUID     `db:"id" json:"id"`
-	Name            string        `db:"name" json:"name"`
-	TemplateID      uuid.UUID     `db:"template_id" json:"template_id"`
-	CreatedAt       time.Time     `db:"created_at" json:"created_at"`
-	Ready           bool          `db:"ready" json:"ready"`
-	CurrentPresetID uuid.NullUUID `db:"current_preset_id" json:"current_preset_id"`
-}
-
-type WorkspacePrebuildBuild struct {
-	ID                      uuid.UUID           `db:"id" json:"id"`
-	WorkspaceID             uuid.UUID           `db:"workspace_id" json:"workspace_id"`
-	TemplateVersionID       uuid.UUID           `db:"template_version_id" json:"template_version_id"`
-	Transition              WorkspaceTransition `db:"transition" json:"transition"`
-	JobID                   uuid.UUID           `db:"job_id" json:"job_id"`
-	TemplateVersionPresetID uuid.NullUUID       `db:"template_version_preset_id" json:"template_version_preset_id"`
-	BuildNumber             int32               `db:"build_number" json:"build_number"`
 }
 
 type WorkspaceProxy struct {
