@@ -2,15 +2,15 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { userEvent, within } from "@storybook/test";
 import { MockWorkspace, MockWorkspaceAgent } from "testHelpers/entities";
 import { withDesktopViewport } from "testHelpers/storybook";
-import { AgentSSHButton } from "./SSHButton";
+import { SSHButton } from "./SSHButton";
 
-const meta: Meta<typeof AgentSSHButton> = {
-	title: "modules/resources/AgentSSHButton",
-	component: AgentSSHButton,
+const meta: Meta<typeof SSHButton> = {
+	title: "modules/resources/SSHButton",
+	component: SSHButton,
 };
 
 export default meta;
-type Story = StoryObj<typeof AgentSSHButton>;
+type Story = StoryObj<typeof SSHButton>;
 
 export const Closed: Story = {
 	args: {

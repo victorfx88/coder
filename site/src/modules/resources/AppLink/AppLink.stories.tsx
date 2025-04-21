@@ -8,7 +8,6 @@ import {
 	MockWorkspaceApp,
 	MockWorkspaceProxies,
 } from "testHelpers/entities";
-import { withGlobalSnackbar } from "testHelpers/storybook";
 import { AppLink } from "./AppLink";
 
 const meta: Meta<typeof AppLink> = {
@@ -68,19 +67,6 @@ export const ExternalApp: Story = {
 		app: {
 			...MockWorkspaceApp,
 			external: true,
-		},
-		agent: MockWorkspaceAgent,
-	},
-};
-
-export const ExternalAppNotInstalled: Story = {
-	decorators: [withGlobalSnackbar],
-	args: {
-		workspace: MockWorkspace,
-		app: {
-			...MockWorkspaceApp,
-			external: true,
-			url: "foobar-foobaz://open-me",
 		},
 		agent: MockWorkspaceAgent,
 	},

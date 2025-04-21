@@ -26,10 +26,7 @@ import { pageTitle } from "utils/page";
 import type { AutofillBuildParameter } from "utils/richParameters";
 import { paramsUsedToCreateWorkspace } from "utils/workspace";
 import { CreateWorkspacePageView } from "./CreateWorkspacePageView";
-import {
-	type CreateWorkspacePermissions,
-	createWorkspaceChecks,
-} from "./permissions";
+import { type CreateWSPermissions, createWorkspaceChecks } from "./permissions";
 
 export const createWorkspaceModes = ["form", "auto", "duplicate"] as const;
 export type CreateWorkspaceMode = (typeof createWorkspaceModes)[number];
@@ -137,7 +134,7 @@ const CreateWorkspacePage: FC = () => {
 			});
 
 			onCreateWorkspace(newWorkspace);
-		} catch {
+		} catch (err) {
 			setMode("form");
 		}
 	});
@@ -209,7 +206,7 @@ const CreateWorkspacePage: FC = () => {
 					externalAuthPollingState={externalAuthPollingState}
 					startPollingExternalAuth={startPollingExternalAuth}
 					hasAllRequiredExternalAuth={hasAllRequiredExternalAuth}
-					permissions={permissionsQuery.data as CreateWorkspacePermissions}
+					permissions={permissionsQuery.data as CreateWSPermissions}
 					parameters={realizedParameters as TemplateVersionParameter[]}
 					presets={templateVersionPresetsQuery.data ?? []}
 					creatingWorkspace={createWorkspaceMutation.isLoading}

@@ -22,10 +22,10 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -202,16 +202,7 @@ func TestServer(t *testing.T) {
 		go func() {
 			errCh <- inv.WithContext(ctx).Run()
 		}()
-		matchCh1 := make(chan string, 1)
-		go func() {
-			matchCh1 <- pty.ExpectMatchContext(ctx, "Using an ephemeral deployment directory")
-		}()
-		select {
-		case err := <-errCh:
-			require.NoError(t, err)
-		case <-matchCh1:
-			// OK!
-		}
+		pty.ExpectMatch("Using an ephemeral deployment directory")
 		rootDirLine := pty.ReadLine(ctx)
 		rootDir := strings.TrimPrefix(rootDirLine, "Using an ephemeral deployment directory")
 		rootDir = strings.TrimSpace(rootDir)
@@ -220,17 +211,7 @@ func TestServer(t *testing.T) {
 		require.NotEmpty(t, rootDir)
 		require.DirExists(t, rootDir)
 
-		matchCh2 := make(chan string, 1)
-		go func() {
-			// The "View the Web UI" log is a decent indicator that the server was successfully started.
-			matchCh2 <- pty.ExpectMatchContext(ctx, "View the Web UI")
-		}()
-		select {
-		case err := <-errCh:
-			require.NoError(t, err)
-		case <-matchCh2:
-			// OK!
-		}
+		pty.ExpectMatchContext(ctx, "View the Web UI")
 
 		cancelFunc()
 		<-errCh
@@ -272,8 +253,10 @@ func TestServer(t *testing.T) {
 			"--access-url", "http://localhost:3000/",
 			"--cache-dir", t.TempDir(),
 		)
-		pty := ptytest.New(t).Attach(inv)
-		require.NoError(t, pty.Resize(20, 80))
+		stdoutRW := syncReaderWriter{}
+		stderrRW := syncReaderWriter{}
+		inv.Stdout = io.MultiWriter(os.Stdout, &stdoutRW)
+		inv.Stderr = io.MultiWriter(os.Stderr, &stderrRW)
 		clitest.Start(t, inv)
 
 		// Wait for startup
@@ -287,9 +270,8 @@ func TestServer(t *testing.T) {
 		// normally shown to the user, so we'll ignore them.
 		ignoreLines := []string{
 			"isn't externally reachable",
-			"open install.sh: file does not exist",
+			"install.sh will be unavailable",
 			"telemetry disabled, unable to notify of security issues",
-			"installed terraform version newer than expected",
 		}
 
 		countLines := func(fullOutput string) int {
@@ -300,11 +282,9 @@ func TestServer(t *testing.T) {
 			for _, line := range linesByNewline {
 				for _, ignoreLine := range ignoreLines {
 					if strings.Contains(line, ignoreLine) {
-						t.Logf("Ignoring: %q", line)
 						continue lineLoop
 					}
 				}
-				t.Logf("Counting: %q", line)
 				if line == "" {
 					// Empty lines take up one line.
 					countByWidth++
@@ -315,10 +295,17 @@ func TestServer(t *testing.T) {
 			return countByWidth
 		}
 
-		out := pty.ReadAll()
-		numLines := countLines(string(out))
-		t.Logf("numLines: %d", numLines)
-		require.Less(t, numLines, 20, "expected less than 20 lines of output (terminal width 80), got %d", numLines)
+		stdout, err := io.ReadAll(&stdoutRW)
+		if err != nil {
+			t.Fatalf("failed to read stdout: %v", err)
+		}
+		stderr, err := io.ReadAll(&stderrRW)
+		if err != nil {
+			t.Fatalf("failed to read stderr: %v", err)
+		}
+
+		numLines := countLines(string(stdout)) + countLines(string(stderr))
+		require.Less(t, numLines, 20)
 	})
 
 	t.Run("OAuth2GitHubDefaultProvider", func(t *testing.T) {
@@ -1209,7 +1196,7 @@ func TestServer(t *testing.T) {
 				}
 			}
 			return htmlFirstServedFound
-		}, testutil.WaitLong, testutil.IntervalSlow, "no html_first_served telemetry item")
+		}, testutil.WaitMedium, testutil.IntervalFast, "no html_first_served telemetry item")
 	})
 	t.Run("Prometheus", func(t *testing.T) {
 		t.Parallel()
@@ -1217,120 +1204,106 @@ func TestServer(t *testing.T) {
 		t.Run("DBMetricsDisabled", func(t *testing.T) {
 			t.Parallel()
 
-			ctx := testutil.Context(t, testutil.WaitLong)
-			inv, _ := clitest.New(t,
+			ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitShort)
+			defer cancel()
+
+			randPort := testutil.RandomPort(t)
+			inv, cfg := clitest.New(t,
 				"server",
 				"--in-memory",
 				"--http-address", ":0",
 				"--access-url", "http://example.com",
 				"--provisioner-daemons", "1",
 				"--prometheus-enable",
-				"--prometheus-address", ":0",
+				"--prometheus-address", ":"+strconv.Itoa(randPort),
 				// "--prometheus-collect-db-metrics", // disabled by default
 				"--cache-dir", t.TempDir(),
 			)
 
-			pty := ptytest.New(t)
-			inv.Stdout = pty.Output()
-			inv.Stderr = pty.Output()
-
 			clitest.Start(t, inv)
+			_ = waitAccessURL(t, cfg)
 
-			// Wait until we see the prometheus address in the logs.
-			addrMatchExpr := `http server listening\s+addr=(\S+)\s+name=prometheus`
-			lineMatch := pty.ExpectRegexMatchContext(ctx, addrMatchExpr)
-			promAddr := regexp.MustCompile(addrMatchExpr).FindStringSubmatch(lineMatch)[1]
-
-			testutil.Eventually(ctx, t, func(ctx context.Context) bool {
-				req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://%s/metrics", promAddr), nil)
-				if err != nil {
-					t.Logf("error creating request: %s", err.Error())
-					return false
-				}
+			var res *http.Response
+			require.Eventually(t, func() bool {
+				req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://127.0.0.1:%d", randPort), nil)
+				assert.NoError(t, err)
 				// nolint:bodyclose
-				res, err := http.DefaultClient.Do(req)
+				res, err = http.DefaultClient.Do(req)
 				if err != nil {
-					t.Logf("error hitting prometheus endpoint: %s", err.Error())
 					return false
 				}
 				defer res.Body.Close()
+
 				scanner := bufio.NewScanner(res.Body)
-				var activeUsersFound bool
-				var scannedOnce bool
+				hasActiveUsers := false
 				for scanner.Scan() {
-					line := scanner.Text()
-					if !scannedOnce {
-						t.Logf("scanned: %s", line) // avoid spamming logs
-						scannedOnce = true
-					}
-					if strings.HasPrefix(line, "coderd_db_query_latencies_seconds") {
-						t.Errorf("db metrics should not be tracked when --prometheus-collect-db-metrics is not enabled")
-					}
 					// This metric is manually registered to be tracked in the server. That's
 					// why we test it's tracked here.
-					if strings.HasPrefix(line, "coderd_api_active_users_duration_hour") {
-						activeUsersFound = true
+					if strings.HasPrefix(scanner.Text(), "coderd_api_active_users_duration_hour") {
+						hasActiveUsers = true
+						continue
 					}
+					if strings.HasPrefix(scanner.Text(), "coderd_db_query_latencies_seconds") {
+						t.Fatal("db metrics should not be tracked when --prometheus-collect-db-metrics is not enabled")
+					}
+					t.Logf("scanned %s", scanner.Text())
 				}
-				return activeUsersFound
-			}, testutil.IntervalSlow, "didn't find coderd_api_active_users_duration_hour in time")
+				if scanner.Err() != nil {
+					t.Logf("scanner err: %s", scanner.Err().Error())
+					return false
+				}
+
+				return hasActiveUsers
+			}, testutil.WaitShort, testutil.IntervalFast, "didn't find coderd_api_active_users_duration_hour in time")
 		})
 
 		t.Run("DBMetricsEnabled", func(t *testing.T) {
 			t.Parallel()
 
-			ctx := testutil.Context(t, testutil.WaitLong)
-			inv, _ := clitest.New(t,
+			ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitShort)
+			defer cancel()
+
+			randPort := testutil.RandomPort(t)
+			inv, cfg := clitest.New(t,
 				"server",
 				"--in-memory",
 				"--http-address", ":0",
 				"--access-url", "http://example.com",
 				"--provisioner-daemons", "1",
 				"--prometheus-enable",
-				"--prometheus-address", ":0",
+				"--prometheus-address", ":"+strconv.Itoa(randPort),
 				"--prometheus-collect-db-metrics",
 				"--cache-dir", t.TempDir(),
 			)
 
-			pty := ptytest.New(t)
-			inv.Stdout = pty.Output()
-			inv.Stderr = pty.Output()
-
 			clitest.Start(t, inv)
+			_ = waitAccessURL(t, cfg)
 
-			// Wait until we see the prometheus address in the logs.
-			addrMatchExpr := `http server listening\s+addr=(\S+)\s+name=prometheus`
-			lineMatch := pty.ExpectRegexMatchContext(ctx, addrMatchExpr)
-			promAddr := regexp.MustCompile(addrMatchExpr).FindStringSubmatch(lineMatch)[1]
-
-			testutil.Eventually(ctx, t, func(ctx context.Context) bool {
-				req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://%s/metrics", promAddr), nil)
-				if err != nil {
-					t.Logf("error creating request: %s", err.Error())
-					return false
-				}
+			var res *http.Response
+			require.Eventually(t, func() bool {
+				req, err := http.NewRequestWithContext(ctx, "GET", fmt.Sprintf("http://127.0.0.1:%d", randPort), nil)
+				assert.NoError(t, err)
 				// nolint:bodyclose
-				res, err := http.DefaultClient.Do(req)
+				res, err = http.DefaultClient.Do(req)
 				if err != nil {
-					t.Logf("error hitting prometheus endpoint: %s", err.Error())
 					return false
 				}
 				defer res.Body.Close()
+
 				scanner := bufio.NewScanner(res.Body)
-				var dbMetricsFound bool
-				var scannedOnce bool
+				hasDBMetrics := false
 				for scanner.Scan() {
-					line := scanner.Text()
-					if !scannedOnce {
-						t.Logf("scanned: %s", line) // avoid spamming logs
-						scannedOnce = true
+					if strings.HasPrefix(scanner.Text(), "coderd_db_query_latencies_seconds") {
+						hasDBMetrics = true
 					}
-					if strings.HasPrefix(line, "coderd_db_query_latencies_seconds") {
-						dbMetricsFound = true
-					}
+					t.Logf("scanned %s", scanner.Text())
 				}
-				return dbMetricsFound
-			}, testutil.IntervalSlow, "didn't find coderd_db_query_latencies_seconds in time")
+				if scanner.Err() != nil {
+					t.Logf("scanner err: %s", scanner.Err().Error())
+					return false
+				}
+				return hasDBMetrics
+			}, testutil.WaitShort, testutil.IntervalFast, "didn't find coderd_db_query_latencies_seconds in time")
 		})
 	})
 	t.Run("GitHubOAuth", func(t *testing.T) {
@@ -1735,7 +1708,6 @@ func TestServer(t *testing.T) {
 			// Next, we instruct the same server to display the YAML config
 			// and then save it.
 			inv = inv.WithContext(testutil.Context(t, testutil.WaitMedium))
-			//nolint:gocritic
 			inv.Args = append(args, "--write-config")
 			fi, err := os.OpenFile(testutil.TempFile(t, "", "coder-config-test-*"), os.O_WRONLY|os.O_CREATE, 0o600)
 			require.NoError(t, err)
@@ -2382,4 +2354,23 @@ func mockTelemetryServer(t *testing.T) (*url.URL, chan *telemetry.Deployment, ch
 	require.NoError(t, err)
 
 	return serverURL, deployment, snapshot
+}
+
+// syncWriter provides a thread-safe io.ReadWriter implementation
+type syncReaderWriter struct {
+	buf bytes.Buffer
+	mu  sync.Mutex
+}
+
+func (w *syncReaderWriter) Write(p []byte) (n int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.buf.Write(p)
+}
+
+func (w *syncReaderWriter) Read(p []byte) (n int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	return w.buf.Read(p)
 }

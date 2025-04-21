@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/render"
@@ -86,7 +85,7 @@ func (api *API) userDebugOIDC(rw http.ResponseWriter, r *http.Request) {
 func (api *API) firstUser(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	// nolint:gocritic // Getting user count is a system function.
-	userCount, err := api.Database.GetUserCount(dbauthz.AsSystemRestricted(ctx), false)
+	userCount, err := api.Database.GetUserCount(dbauthz.AsSystemRestricted(ctx))
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
 			Message: "Internal error fetching user count.",
@@ -129,7 +128,7 @@ func (api *API) postFirstUser(rw http.ResponseWriter, r *http.Request) {
 
 	// This should only function for the first user.
 	// nolint:gocritic // Getting user count is a system function.
-	userCount, err := api.Database.GetUserCount(dbauthz.AsSystemRestricted(ctx), false)
+	userCount, err := api.Database.GetUserCount(dbauthz.AsSystemRestricted(ctx))
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
 			Message: "Internal error fetching user count.",
@@ -298,20 +297,16 @@ func (api *API) GetUsers(rw http.ResponseWriter, r *http.Request) ([]database.Us
 	}
 
 	userRows, err := api.Database.GetUsers(ctx, database.GetUsersParams{
-		AfterID:         paginationParams.AfterID,
-		Search:          params.Search,
-		Status:          params.Status,
-		RbacRole:        params.RbacRole,
-		LastSeenBefore:  params.LastSeenBefore,
-		LastSeenAfter:   params.LastSeenAfter,
-		CreatedAfter:    params.CreatedAfter,
-		CreatedBefore:   params.CreatedBefore,
-		GithubComUserID: params.GithubComUserID,
-		LoginType:       params.LoginType,
-		// #nosec G115 - Pagination offsets are small and fit in int32
-		OffsetOpt: int32(paginationParams.Offset),
-		// #nosec G115 - Pagination limits are small and fit in int32
-		LimitOpt: int32(paginationParams.Limit),
+		AfterID:        paginationParams.AfterID,
+		Search:         params.Search,
+		Status:         params.Status,
+		RbacRole:       params.RbacRole,
+		LastSeenBefore: params.LastSeenBefore,
+		LastSeenAfter:  params.LastSeenAfter,
+		CreatedAfter:   params.CreatedAfter,
+		CreatedBefore:  params.CreatedBefore,
+		OffsetOpt:      int32(paginationParams.Offset),
+		LimitOpt:       int32(paginationParams.Limit),
 	})
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
@@ -964,52 +959,6 @@ func (api *API) notifyUserStatusChanged(ctx context.Context, actingUserName stri
 	return nil
 }
 
-// @Summary Get user appearance settings
-// @ID get-user-appearance-settings
-// @Security CoderSessionToken
-// @Produce json
-// @Tags Users
-// @Param user path string true "User ID, name, or me"
-// @Success 200 {object} codersdk.UserAppearanceSettings
-// @Router /users/{user}/appearance [get]
-func (api *API) userAppearanceSettings(rw http.ResponseWriter, r *http.Request) {
-	var (
-		ctx  = r.Context()
-		user = httpmw.UserParam(r)
-	)
-
-	themePreference, err := api.Database.GetUserThemePreference(ctx, user.ID)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-				Message: "Error reading user settings.",
-				Detail:  err.Error(),
-			})
-			return
-		}
-
-		themePreference = ""
-	}
-
-	terminalFont, err := api.Database.GetUserTerminalFont(ctx, user.ID)
-	if err != nil {
-		if !errors.Is(err, sql.ErrNoRows) {
-			httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-				Message: "Error reading user settings.",
-				Detail:  err.Error(),
-			})
-			return
-		}
-
-		terminalFont = ""
-	}
-
-	httpapi.Write(ctx, rw, http.StatusOK, codersdk.UserAppearanceSettings{
-		ThemePreference: themePreference,
-		TerminalFont:    codersdk.TerminalFontName(terminalFont),
-	})
-}
-
 // @Summary Update user appearance settings
 // @ID update-user-appearance-settings
 // @Security CoderSessionToken
@@ -1018,7 +967,7 @@ func (api *API) userAppearanceSettings(rw http.ResponseWriter, r *http.Request) 
 // @Tags Users
 // @Param user path string true "User ID, name, or me"
 // @Param request body codersdk.UpdateUserAppearanceSettingsRequest true "New appearance settings"
-// @Success 200 {object} codersdk.UserAppearanceSettings
+// @Success 200 {object} codersdk.User
 // @Router /users/{user}/appearance [put]
 func (api *API) putUserAppearanceSettings(rw http.ResponseWriter, r *http.Request) {
 	var (
@@ -1031,45 +980,29 @@ func (api *API) putUserAppearanceSettings(rw http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if !isValidFontName(params.TerminalFont) {
-		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
-			Message: "Unsupported font family.",
-		})
-		return
-	}
-
-	updatedThemePreference, err := api.Database.UpdateUserThemePreference(ctx, database.UpdateUserThemePreferenceParams{
-		UserID:          user.ID,
+	updatedUser, err := api.Database.UpdateUserAppearanceSettings(ctx, database.UpdateUserAppearanceSettingsParams{
+		ID:              user.ID,
 		ThemePreference: params.ThemePreference,
+		UpdatedAt:       dbtime.Now(),
 	})
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-			Message: "Internal error updating user theme preference.",
+			Message: "Internal error updating user.",
 			Detail:  err.Error(),
 		})
 		return
 	}
 
-	updatedTerminalFont, err := api.Database.UpdateUserTerminalFont(ctx, database.UpdateUserTerminalFontParams{
-		UserID:       user.ID,
-		TerminalFont: string(params.TerminalFont),
-	})
+	organizationIDs, err := userOrganizationIDs(ctx, api, user)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-			Message: "Internal error updating user terminal font.",
+			Message: "Internal error fetching user's organizations.",
 			Detail:  err.Error(),
 		})
 		return
 	}
 
-	httpapi.Write(ctx, rw, http.StatusOK, codersdk.UserAppearanceSettings{
-		ThemePreference: updatedThemePreference.Value,
-		TerminalFont:    codersdk.TerminalFontName(updatedTerminalFont.Value),
-	})
-}
-
-func isValidFontName(font codersdk.TerminalFontName) bool {
-	return slices.Contains(codersdk.TerminalFontNames, font)
+	httpapi.Write(ctx, rw, http.StatusOK, db2sdk.User(updatedUser, organizationIDs))
 }
 
 // @Summary Update user password
@@ -1234,7 +1167,6 @@ func (api *API) userRoles(rw http.ResponseWriter, r *http.Request) {
 	memberships, err := api.Database.OrganizationMembers(ctx, database.OrganizationMembersParams{
 		UserID:         user.ID,
 		OrganizationID: uuid.Nil,
-		IncludeSystem:  false,
 	})
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{

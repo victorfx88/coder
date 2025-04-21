@@ -121,16 +121,15 @@ func parseVariableValuesFromHCL(content []byte) ([]VariableValue, error) {
 		}
 
 		ctyType := ctyValue.Type()
-		switch {
-		case ctyType.Equals(cty.String):
+		if ctyType.Equals(cty.String) {
 			stringData[attribute.Name] = ctyValue.AsString()
-		case ctyType.Equals(cty.Number):
+		} else if ctyType.Equals(cty.Number) {
 			stringData[attribute.Name] = ctyValue.AsBigFloat().String()
-		case ctyType.IsTupleType():
+		} else if ctyType.IsTupleType() {
 			// In case of tuples, Coder only supports the list(string) type.
 			var items []string
 			var err error
-			_ = ctyValue.ForEachElement(func(_, val cty.Value) (stop bool) {
+			_ = ctyValue.ForEachElement(func(key, val cty.Value) (stop bool) {
 				if !val.Type().Equals(cty.String) {
 					err = xerrors.Errorf("unsupported tuple item type: %s ", val.GoString())
 					return true
@@ -147,7 +146,7 @@ func parseVariableValuesFromHCL(content []byte) ([]VariableValue, error) {
 				return nil, err
 			}
 			stringData[attribute.Name] = string(m)
-		default:
+		} else {
 			return nil, xerrors.Errorf("unsupported value type (name: %s): %s", attribute.Name, ctyType.GoString())
 		}
 	}

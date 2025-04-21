@@ -40,7 +40,7 @@ func validateRemoteForward(flag string) bool {
 	return isRemoteForwardTCP(flag) || isRemoteForwardUnixSocket(flag)
 }
 
-func parseRemoteForwardTCP(matches []string) (local net.Addr, remote net.Addr, err error) {
+func parseRemoteForwardTCP(matches []string) (net.Addr, net.Addr, error) {
 	remotePort, err := strconv.Atoi(matches[1])
 	if err != nil {
 		return nil, nil, xerrors.Errorf("remote port is invalid: %w", err)
@@ -69,7 +69,7 @@ func parseRemoteForwardTCP(matches []string) (local net.Addr, remote net.Addr, e
 // parseRemoteForwardUnixSocket parses a remote forward flag. Note that
 // we don't verify that the local socket path exists because the user
 // may create it later. This behavior matches OpenSSH.
-func parseRemoteForwardUnixSocket(matches []string) (local net.Addr, remote net.Addr, err error) {
+func parseRemoteForwardUnixSocket(matches []string) (net.Addr, net.Addr, error) {
 	remoteSocket := matches[1]
 	localSocket := matches[2]
 
@@ -85,7 +85,7 @@ func parseRemoteForwardUnixSocket(matches []string) (local net.Addr, remote net.
 	return localAddr, remoteAddr, nil
 }
 
-func parseRemoteForward(flag string) (local net.Addr, remote net.Addr, err error) {
+func parseRemoteForward(flag string) (net.Addr, net.Addr, error) {
 	tcpMatches := remoteForwardRegexTCP.FindStringSubmatch(flag)
 
 	if len(tcpMatches) > 0 {

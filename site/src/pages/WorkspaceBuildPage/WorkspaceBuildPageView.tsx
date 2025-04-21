@@ -7,7 +7,6 @@ import type {
 import { Alert } from "components/Alert/Alert";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { Loader } from "components/Loader/Loader";
-import type { Line } from "components/Logs/LogLine";
 import { Margins } from "components/Margins/Margins";
 import {
 	FullWidthPageHeader,
@@ -303,7 +302,7 @@ const AgentLogsContent: FC<{ workspaceId: string; agent: WorkspaceAgent }> = ({
 	return (
 		<AgentLogs
 			sources={agent.log_sources}
-			logs={logs.map<Line>((l) => ({
+			logs={logs.map((l) => ({
 				id: l.id,
 				output: l.output,
 				time: l.created_at,

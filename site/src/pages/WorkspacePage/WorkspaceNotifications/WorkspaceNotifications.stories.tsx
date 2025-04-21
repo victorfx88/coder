@@ -15,7 +15,7 @@ const defaultPermissions = {
 	readWorkspace: true,
 	updateTemplate: true,
 	updateWorkspace: true,
-	viewDeploymentConfig: true,
+	viewDeploymentValues: true,
 };
 
 const meta: Meta<typeof WorkspaceNotifications> = {

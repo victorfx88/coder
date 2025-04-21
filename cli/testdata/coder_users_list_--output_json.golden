@@ -10,6 +10,7 @@
     "last_seen_at": "====[timestamp]=====",
     "status": "active",
     "login_type": "password",
+    "theme_preference": "",
     "organization_ids": [
       "===========[first org ID]==========="
     ],
@@ -31,6 +32,7 @@
     "last_seen_at": "====[timestamp]=====",
     "status": "dormant",
     "login_type": "password",
+    "theme_preference": "",
     "organization_ids": [
       "===========[first org ID]==========="
     ],

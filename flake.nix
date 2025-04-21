@@ -3,7 +3,6 @@
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-24.11";
-    nixpkgs-unstable.url = "github:nixos/nixpkgs/nixos-unstable";
     nixpkgs-pinned.url = "github:nixos/nixpkgs/5deee6281831847857720668867729617629ef1f";
     flake-utils.url = "github:numtide/flake-utils";
     pnpm2nix = {
@@ -23,7 +22,6 @@
       self,
       nixpkgs,
       nixpkgs-pinned,
-      nixpkgs-unstable,
       flake-utils,
       drpc,
       pnpm2nix,
@@ -33,7 +31,7 @@
       let
         pkgs = import nixpkgs {
           inherit system;
-          # Workaround for: google-chrome has an unfree license (‘unfree’), refusing to evaluate.
+          # Workaround for: terraform has an unfree license (‘bsl11’), refusing to evaluate.
           config.allowUnfree = true;
         };
 
@@ -41,17 +39,6 @@
         # Everything else uses unstable.
         pinnedPkgs = import nixpkgs-pinned {
           inherit system;
-        };
-
-        unstablePkgs = import nixpkgs-unstable {
-          inherit system;
-
-          # Workaround for: terraform has an unfree license (‘bsl11’), refusing to evaluate.
-          config.allowUnfreePredicate =
-            pkg:
-            builtins.elem (pkgs.lib.getName pkg) [
-              "terraform"
-            ];
         };
 
         formatter = pkgs.nixfmt-rfc-style;
@@ -113,7 +100,6 @@
             bat
             cairo
             curl
-            cosign
             delve
             dive
             drpc.defaultPackage.${system}
@@ -135,7 +121,6 @@
             (pinnedPkgs.golangci-lint)
             gopls
             gotestsum
-            hadolint
             jq
             kubectl
             kubectx
@@ -162,8 +147,7 @@
             shellcheck
             (pinnedPkgs.shfmt)
             sqlc
-            syft
-            unstablePkgs.terraform
+            terraform
             typos
             which
             # Needed for many LD system libs!
@@ -200,7 +184,7 @@
             name = "coder-${osArch}";
             # Updated with ./scripts/update-flake.sh`.
             # This should be updated whenever go.mod changes!
-            vendorHash = "sha256-6sdvX0Wglj0CZiig2VD45JzuTcxwg7yrGoPPQUYvuqU=";
+            vendorHash = "sha256-QjqF+QZ5JKMnqkpNh6ZjrJU2QcSqiT4Dip1KoicwLYc=";
             proxyVendor = true;
             src = ./.;
             nativeBuildInputs = with pkgs; [
@@ -232,14 +216,6 @@
             '';
           };
       in
-      # "Keep in mind that you need to use the same version of playwright in your node playwright project as in your nixpkgs, or else playwright will try to use browsers versions that aren't installed!"
-      # - https://nixos.wiki/wiki/Playwright
-      assert pkgs.lib.assertMsg
-        (
-          (pkgs.lib.importJSON ./site/package.json).devDependencies."@playwright/test"
-          == pkgs.playwright-driver.version
-        )
-        "There is a mismatch between the playwright versions in the ./nix.flake and the ./site/package.json file. Please make sure that they use the exact same version.";
       rec {
         inherit formatter;
 
@@ -285,13 +261,12 @@
 
               uname = "coder";
               homeDirectory = "/home/${uname}";
-              releaseName = version;
 
               drv = devShells.default.overrideAttrs (oldAttrs: {
                 buildInputs =
                   (with pkgs; [
                     coreutils
-                    nix.out
+                    nix
                     curl.bin # Ensure the actual curl binary is included in the PATH
                     glibc.bin # Ensure the glibc binaries are included in the PATH
                     jq.bin

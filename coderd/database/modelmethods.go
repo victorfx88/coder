@@ -160,19 +160,12 @@ func (t Template) DeepCopy() Template {
 func (t Template) AutostartAllowedDays() uint8 {
 	// Just flip the binary 0s to 1s and vice versa.
 	// There is an extra day with the 8th bit that needs to be zeroed.
-	// #nosec G115 - Safe conversion for AutostartBlockDaysOfWeek which is 7 bits
 	return ^uint8(t.AutostartBlockDaysOfWeek) & 0b01111111
 }
 
 func (TemplateVersion) RBACObject(template Template) rbac.Object {
 	// Just use the parent template resource for controlling versions
 	return template.RBACObject()
-}
-
-func (i InboxNotification) RBACObject() rbac.Object {
-	return rbac.ResourceInboxNotification.
-		WithID(i.ID).
-		WithOwner(i.UserID.String())
 }
 
 // RBACObjectNoTemplate is for orphaned template versions.
@@ -254,10 +247,6 @@ func (m OrganizationMember) RBACObject() rbac.Object {
 }
 
 func (m OrganizationMembersRow) RBACObject() rbac.Object {
-	return m.OrganizationMember.RBACObject()
-}
-
-func (m PaginatedOrganizationMembersRow) RBACObject() rbac.Object {
 	return m.OrganizationMember.RBACObject()
 }
 
@@ -411,20 +400,20 @@ func ConvertUserRows(rows []GetUsersRow) []User {
 	users := make([]User, len(rows))
 	for i, r := range rows {
 		users[i] = User{
-			ID:             r.ID,
-			Email:          r.Email,
-			Username:       r.Username,
-			Name:           r.Name,
-			HashedPassword: r.HashedPassword,
-			CreatedAt:      r.CreatedAt,
-			UpdatedAt:      r.UpdatedAt,
-			Status:         r.Status,
-			RBACRoles:      r.RBACRoles,
-			LoginType:      r.LoginType,
-			AvatarURL:      r.AvatarURL,
-			Deleted:        r.Deleted,
-			LastSeenAt:     r.LastSeenAt,
-			IsSystem:       r.IsSystem,
+			ID:              r.ID,
+			Email:           r.Email,
+			Username:        r.Username,
+			Name:            r.Name,
+			HashedPassword:  r.HashedPassword,
+			CreatedAt:       r.CreatedAt,
+			UpdatedAt:       r.UpdatedAt,
+			Status:          r.Status,
+			RBACRoles:       r.RBACRoles,
+			LoginType:       r.LoginType,
+			AvatarURL:       r.AvatarURL,
+			Deleted:         r.Deleted,
+			LastSeenAt:      r.LastSeenAt,
+			ThemePreference: r.ThemePreference,
 		}
 	}
 

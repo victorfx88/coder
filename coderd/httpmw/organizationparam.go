@@ -126,7 +126,6 @@ func ExtractOrganizationMemberParam(db database.Store) func(http.Handler) http.H
 			organizationMember, err := database.ExpectOne(db.OrganizationMembers(ctx, database.OrganizationMembersParams{
 				OrganizationID: organization.ID,
 				UserID:         user.ID,
-				IncludeSystem:  false,
 			}))
 			if httpapi.Is404Error(err) {
 				httpapi.ResourceNotFound(rw)

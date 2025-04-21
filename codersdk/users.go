@@ -28,8 +28,7 @@ type UsersRequest struct {
 	// Filter users by status.
 	Status UserStatus `json:"status,omitempty" typescript:"-"`
 	// Filter users that have the given role.
-	Role      string      `json:"role,omitempty" typescript:"-"`
-	LoginType []LoginType `json:"login_type,omitempty" typescript:"-"`
+	Role string `json:"role,omitempty" typescript:"-"`
 
 	SearchQuery string `json:"q,omitempty"`
 	Pagination
@@ -55,11 +54,9 @@ type ReducedUser struct {
 	UpdatedAt   time.Time `json:"updated_at" table:"updated at" format:"date-time"`
 	LastSeenAt  time.Time `json:"last_seen_at" format:"date-time"`
 
-	Status    UserStatus `json:"status" table:"status" enums:"active,suspended"`
-	LoginType LoginType  `json:"login_type"`
-	// Deprecated: this value should be retrieved from
-	// `codersdk.UserPreferenceSettings` instead.
-	ThemePreference string `json:"theme_preference,omitempty"`
+	Status          UserStatus `json:"status" table:"status" enums:"active,suspended"`
+	LoginType       LoginType  `json:"login_type"`
+	ThemePreference string     `json:"theme_preference"`
 }
 
 // User represents a user in Coder.
@@ -190,30 +187,8 @@ type ValidateUserPasswordResponse struct {
 	Details string `json:"details"`
 }
 
-// TerminalFontName is the name of supported terminal font
-type TerminalFontName string
-
-var TerminalFontNames = []TerminalFontName{
-	TerminalFontUnknown, TerminalFontIBMPlexMono, TerminalFontFiraCode,
-	TerminalFontSourceCodePro, TerminalFontJetBrainsMono,
-}
-
-const (
-	TerminalFontUnknown       TerminalFontName = ""
-	TerminalFontIBMPlexMono   TerminalFontName = "ibm-plex-mono"
-	TerminalFontFiraCode      TerminalFontName = "fira-code"
-	TerminalFontSourceCodePro TerminalFontName = "source-code-pro"
-	TerminalFontJetBrainsMono TerminalFontName = "jetbrains-mono"
-)
-
-type UserAppearanceSettings struct {
-	ThemePreference string           `json:"theme_preference"`
-	TerminalFont    TerminalFontName `json:"terminal_font"`
-}
-
 type UpdateUserAppearanceSettingsRequest struct {
-	ThemePreference string           `json:"theme_preference" validate:"required"`
-	TerminalFont    TerminalFontName `json:"terminal_font" validate:"required"`
+	ThemePreference string `json:"theme_preference" validate:"required"`
 }
 
 type UpdateUserPasswordRequest struct {
@@ -485,31 +460,17 @@ func (c *Client) UpdateUserStatus(ctx context.Context, user string, status UserS
 	return resp, json.NewDecoder(res.Body).Decode(&resp)
 }
 
-// GetUserAppearanceSettings fetches the appearance settings for a user.
-func (c *Client) GetUserAppearanceSettings(ctx context.Context, user string) (UserAppearanceSettings, error) {
-	res, err := c.Request(ctx, http.MethodGet, fmt.Sprintf("/api/v2/users/%s/appearance", user), nil)
-	if err != nil {
-		return UserAppearanceSettings{}, err
-	}
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		return UserAppearanceSettings{}, ReadBodyAsError(res)
-	}
-	var resp UserAppearanceSettings
-	return resp, json.NewDecoder(res.Body).Decode(&resp)
-}
-
 // UpdateUserAppearanceSettings updates the appearance settings for a user.
-func (c *Client) UpdateUserAppearanceSettings(ctx context.Context, user string, req UpdateUserAppearanceSettingsRequest) (UserAppearanceSettings, error) {
+func (c *Client) UpdateUserAppearanceSettings(ctx context.Context, user string, req UpdateUserAppearanceSettingsRequest) (User, error) {
 	res, err := c.Request(ctx, http.MethodPut, fmt.Sprintf("/api/v2/users/%s/appearance", user), req)
 	if err != nil {
-		return UserAppearanceSettings{}, err
+		return User{}, err
 	}
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusOK {
-		return UserAppearanceSettings{}, ReadBodyAsError(res)
+		return User{}, ReadBodyAsError(res)
 	}
-	var resp UserAppearanceSettings
+	var resp User
 	return resp, json.NewDecoder(res.Body).Decode(&resp)
 }
 
@@ -755,9 +716,6 @@ func (c *Client) Users(ctx context.Context, req UsersRequest) (GetUsersResponse,
 			}
 			if req.SearchQuery != "" {
 				params = append(params, req.SearchQuery)
-			}
-			for _, lt := range req.LoginType {
-				params = append(params, "login_type:"+string(lt))
 			}
 			q.Set("q", strings.Join(params, " "))
 			r.URL.RawQuery = q.Encode()

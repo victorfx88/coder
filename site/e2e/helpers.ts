@@ -67,7 +67,7 @@ export type LoginOptions = {
 	password: string;
 };
 
-export async function login(page: Page, options: LoginOptions = users.owner) {
+export async function login(page: Page, options: LoginOptions = users.admin) {
 	const ctx = page.context();
 	// biome-ignore lint/suspicious/noExplicitAny: reset the current user
 	(ctx as any)[Symbol.for("currentUser")] = undefined;
@@ -267,12 +267,8 @@ export const createTemplate = async (
 			);
 		}
 
-		// The organization picker will be disabled if there is only one option.
-		const pickerIsDisabled = await orgPicker.isDisabled();
-		if (!pickerIsDisabled) {
-			await orgPicker.click();
-			await page.getByText(orgName, { exact: true }).click();
-		}
+		await orgPicker.click();
+		await page.getByText(orgName, { exact: true }).click();
 	}
 
 	const name = randomName();
@@ -514,7 +510,7 @@ export const waitUntilUrlIsNotResponding = async (url: string) => {
 	while (retries < maxRetries) {
 		try {
 			await axiosInstance.get(url);
-		} catch {
+		} catch (error) {
 			return;
 		}
 
@@ -543,8 +539,6 @@ interface EchoProvisionerResponses {
 	// apply occurs when the workspace is built
 	apply?: RecursivePartial<Response>[];
 }
-
-const emptyPlan = new TextEncoder().encode("{}");
 
 /**
  * createTemplateVersionTar consumes a series of echo provisioner protobufs and
@@ -583,7 +577,6 @@ const createTemplateVersionTar = async (
 					externalAuthProviders: response.apply?.externalAuthProviders ?? [],
 					timings: response.apply?.timings ?? [],
 					presets: [],
-					plan: emptyPlan,
 				},
 			};
 		});
@@ -643,7 +636,6 @@ const createTemplateVersionTar = async (
 						startupScriptTimeoutSeconds: 300,
 						troubleshootingUrl: "",
 						token: randomUUID(),
-						devcontainers: [],
 						...agent,
 					} as Agent;
 
@@ -706,7 +698,6 @@ const createTemplateVersionTar = async (
 			timings: [],
 			modules: [],
 			presets: [],
-			plan: emptyPlan,
 			...response.plan,
 		} as PlanComplete;
 		response.plan.resources = response.plan.resources?.map(fillResource);
@@ -1071,7 +1062,6 @@ type UserValues = {
 export async function createUser(
 	page: Page,
 	userValues: Partial<UserValues> = {},
-	orgName = defaultOrganizationName,
 ): Promise<UserValues> {
 	const returnTo = page.url();
 
@@ -1092,20 +1082,6 @@ export async function createUser(
 		await page.getByLabel("Full name").fill(name);
 	}
 	await page.getByLabel("Email").fill(email);
-
-	// If the organization picker is present on the page, select the default
-	// organization.
-	const orgPicker = page.getByLabel("Organization *");
-	const organizationsEnabled = await orgPicker.isVisible();
-	if (organizationsEnabled) {
-		// The organization picker will be disabled if there is only one option.
-		const pickerIsDisabled = await orgPicker.isDisabled();
-		if (!pickerIsDisabled) {
-			await orgPicker.click();
-			await page.getByText(orgName, { exact: true }).click();
-		}
-	}
-
 	await page.getByLabel("Login Type").click();
 	await page.getByRole("option", { name: "Password", exact: false }).click();
 	// Using input[name=password] due to the select element utilizing 'password'

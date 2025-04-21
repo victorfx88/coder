@@ -2,9 +2,7 @@ package agentcontainers
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
-	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -13,7 +11,6 @@ import (
 
 	"go.uber.org/mock/gomock"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/uuid"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
@@ -37,9 +34,8 @@ import (
 // It can be run manually as follows:
 //
 // CODER_TEST_USE_DOCKER=1 go test ./agent/agentcontainers -run TestDockerCLIContainerLister
-//
-//nolint:paralleltest // This test tends to flake when lots of containers start and stop in parallel.
 func TestIntegrationDocker(t *testing.T) {
+	t.Parallel()
 	if ctud, ok := os.LookupEnv("CODER_TEST_USE_DOCKER"); !ok || ctud != "1" {
 		t.Skip("Set CODER_TEST_USE_DOCKER=1 to run this test")
 	}
@@ -57,7 +53,7 @@ func TestIntegrationDocker(t *testing.T) {
 		Cmd:        []string{"sleep", "infnity"},
 		Labels: map[string]string{
 			"com.coder.test":        testLabelValue,
-			"devcontainer.metadata": `[{"remoteEnv": {"FOO": "bar", "MULTILINE": "foo\nbar\nbaz"}}]`,
+			"devcontainer.metadata": `{"remoteEnv": {"FOO": "bar", "MULTILINE": "foo\nbar\nbaz"}}`,
 		},
 		Mounts:       []string{testTempDir + ":" + testTempDir},
 		ExposedPorts: []string{fmt.Sprintf("%d/tcp", testRandPort)},
@@ -206,7 +202,7 @@ func TestContainersHandler(t *testing.T) {
 
 		fakeCt := fakeContainer(t)
 		fakeCt2 := fakeContainer(t)
-		makeResponse := func(cts ...codersdk.WorkspaceAgentContainer) codersdk.WorkspaceAgentListContainersResponse {
+		makeResponse := func(cts ...codersdk.WorkspaceAgentDevcontainer) codersdk.WorkspaceAgentListContainersResponse {
 			return codersdk.WorkspaceAgentListContainersResponse{Containers: cts}
 		}
 
@@ -313,7 +309,6 @@ func TestContainersHandler(t *testing.T) {
 func TestConvertDockerPort(t *testing.T) {
 	t.Parallel()
 
-	//nolint:paralleltest // variable recapture no longer required
 	for _, tc := range []struct {
 		name          string
 		in            string
@@ -360,7 +355,7 @@ func TestConvertDockerPort(t *testing.T) {
 			expectError: "invalid port",
 		},
 	} {
-		//nolint: paralleltest // variable recapture no longer required
+		tc := tc // not needed anymore but makes the linter happy
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			actualPort, actualNetwork, actualErr := convertDockerPort(tc.in)
@@ -417,274 +412,14 @@ func TestConvertDockerVolume(t *testing.T) {
 	}
 }
 
-// TestConvertDockerInspect tests the convertDockerInspect function using
-// fixtures from ./testdata.
-func TestConvertDockerInspect(t *testing.T) {
-	t.Parallel()
-
-	//nolint:paralleltest // variable recapture no longer required
-	for _, tt := range []struct {
-		name        string
-		expect      []codersdk.WorkspaceAgentContainer
-		expectWarns []string
-		expectError string
-	}{
-		{
-			name: "container_simple",
-			expect: []codersdk.WorkspaceAgentContainer{
-				{
-					CreatedAt:    time.Date(2025, 3, 11, 17, 55, 58, 91280203, time.UTC),
-					ID:           "6b539b8c60f5230b8b0fde2502cd2332d31c0d526a3e6eb6eef1cc39439b3286",
-					FriendlyName: "eloquent_kowalevski",
-					Image:        "debian:bookworm",
-					Labels:       map[string]string{},
-					Running:      true,
-					Status:       "running",
-					Ports:        []codersdk.WorkspaceAgentContainerPort{},
-					Volumes:      map[string]string{},
-				},
-			},
-		},
-		{
-			name: "container_labels",
-			expect: []codersdk.WorkspaceAgentContainer{
-				{
-					CreatedAt:    time.Date(2025, 3, 11, 20, 3, 28, 71706536, time.UTC),
-					ID:           "bd8818e670230fc6f36145b21cf8d6d35580355662aa4d9fe5ae1b188a4c905f",
-					FriendlyName: "fervent_bardeen",
-					Image:        "debian:bookworm",
-					Labels:       map[string]string{"baz": "zap", "foo": "bar"},
-					Running:      true,
-					Status:       "running",
-					Ports:        []codersdk.WorkspaceAgentContainerPort{},
-					Volumes:      map[string]string{},
-				},
-			},
-		},
-		{
-			name: "container_binds",
-			expect: []codersdk.WorkspaceAgentContainer{
-				{
-					CreatedAt:    time.Date(2025, 3, 11, 17, 58, 43, 522505027, time.UTC),
-					ID:           "fdc75ebefdc0243c0fce959e7685931691ac7aede278664a0e2c23af8a1e8d6a",
-					FriendlyName: "silly_beaver",
-					Image:        "debian:bookworm",
-					Labels:       map[string]string{},
-					Running:      true,
-					Status:       "running",
-					Ports:        []codersdk.WorkspaceAgentContainerPort{},
-					Volumes: map[string]string{
-						"/tmp/test/a": "/var/coder/a",
-						"/tmp/test/b": "/var/coder/b",
-					},
-				},
-			},
-		},
-		{
-			name: "container_sameport",
-			expect: []codersdk.WorkspaceAgentContainer{
-				{
-					CreatedAt:    time.Date(2025, 3, 11, 17, 56, 34, 842164541, time.UTC),
-					ID:           "4eac5ce199d27b2329d0ff0ce1a6fc595612ced48eba3669aadb6c57ebef3fa2",
-					FriendlyName: "modest_varahamihira",
-					Image:        "debian:bookworm",
-					Labels:       map[string]string{},
-					Running:      true,
-					Status:       "running",
-					Ports: []codersdk.WorkspaceAgentContainerPort{
-						{
-							Network:  "tcp",
-							Port:     12345,
-							HostPort: 12345,
-							HostIP:   "0.0.0.0",
-						},
-					},
-					Volumes: map[string]string{},
-				},
-			},
-		},
-		{
-			name: "container_differentport",
-			expect: []codersdk.WorkspaceAgentContainer{
-				{
-					CreatedAt:    time.Date(2025, 3, 11, 17, 57, 8, 862545133, time.UTC),
-					ID:           "3090de8b72b1224758a94a11b827c82ba2b09c45524f1263dc4a2d83e19625ea",
-					FriendlyName: "boring_ellis",
-					Image:        "debian:bookworm",
-					Labels:       map[string]string{},
-					Running:      true,
-					Status:       "running",
-					Ports: []codersdk.WorkspaceAgentContainerPort{
-						{
-							Network:  "tcp",
-							Port:     23456,
-							HostPort: 12345,
-							HostIP:   "0.0.0.0",
-						},
-					},
-					Volumes: map[string]string{},
-				},
-			},
-		},
-		{
-			name: "container_sameportdiffip",
-			expect: []codersdk.WorkspaceAgentContainer{
-				{
-					CreatedAt:    time.Date(2025, 3, 11, 17, 56, 34, 842164541, time.UTC),
-					ID:           "a",
-					FriendlyName: "a",
-					Image:        "debian:bookworm",
-					Labels:       map[string]string{},
-					Running:      true,
-					Status:       "running",
-					Ports: []codersdk.WorkspaceAgentContainerPort{
-						{
-							Network:  "tcp",
-							Port:     8001,
-							HostPort: 8000,
-							HostIP:   "0.0.0.0",
-						},
-					},
-					Volumes: map[string]string{},
-				},
-				{
-					CreatedAt:    time.Date(2025, 3, 11, 17, 56, 34, 842164541, time.UTC),
-					ID:           "b",
-					FriendlyName: "b",
-					Image:        "debian:bookworm",
-					Labels:       map[string]string{},
-					Running:      true,
-					Status:       "running",
-					Ports: []codersdk.WorkspaceAgentContainerPort{
-						{
-							Network:  "tcp",
-							Port:     8001,
-							HostPort: 8000,
-							HostIP:   "::",
-						},
-					},
-					Volumes: map[string]string{},
-				},
-			},
-			expectWarns: []string{"host port 8000 is mapped to multiple containers on different interfaces: a, b"},
-		},
-		{
-			name: "container_volume",
-			expect: []codersdk.WorkspaceAgentContainer{
-				{
-					CreatedAt:    time.Date(2025, 3, 11, 17, 59, 42, 39484134, time.UTC),
-					ID:           "b3688d98c007f53402a55e46d803f2f3ba9181d8e3f71a2eb19b392cf0377b4e",
-					FriendlyName: "upbeat_carver",
-					Image:        "debian:bookworm",
-					Labels:       map[string]string{},
-					Running:      true,
-					Status:       "running",
-					Ports:        []codersdk.WorkspaceAgentContainerPort{},
-					Volumes: map[string]string{
-						"/var/lib/docker/volumes/testvol/_data": "/testvol",
-					},
-				},
-			},
-		},
-		{
-			name: "devcontainer_simple",
-			expect: []codersdk.WorkspaceAgentContainer{
-				{
-					CreatedAt:    time.Date(2025, 3, 11, 17, 1, 5, 751972661, time.UTC),
-					ID:           "0b2a9fcf5727d9562943ce47d445019f4520e37a2aa7c6d9346d01af4f4f9aed",
-					FriendlyName: "optimistic_hopper",
-					Image:        "debian:bookworm",
-					Labels: map[string]string{
-						"devcontainer.config_file": "/home/coder/src/coder/coder/agent/agentcontainers/testdata/devcontainer_simple.json",
-						"devcontainer.metadata":    "[]",
-					},
-					Running: true,
-					Status:  "running",
-					Ports:   []codersdk.WorkspaceAgentContainerPort{},
-					Volumes: map[string]string{},
-				},
-			},
-		},
-		{
-			name: "devcontainer_forwardport",
-			expect: []codersdk.WorkspaceAgentContainer{
-				{
-					CreatedAt:    time.Date(2025, 3, 11, 17, 3, 55, 22053072, time.UTC),
-					ID:           "4a16af2293fb75dc827a6949a3905dd57ea28cc008823218ce24fab1cb66c067",
-					FriendlyName: "serene_khayyam",
-					Image:        "debian:bookworm",
-					Labels: map[string]string{
-						"devcontainer.config_file": "/home/coder/src/coder/coder/agent/agentcontainers/testdata/devcontainer_forwardport.json",
-						"devcontainer.metadata":    "[]",
-					},
-					Running: true,
-					Status:  "running",
-					Ports:   []codersdk.WorkspaceAgentContainerPort{},
-					Volumes: map[string]string{},
-				},
-			},
-		},
-		{
-			name: "devcontainer_appport",
-			expect: []codersdk.WorkspaceAgentContainer{
-				{
-					CreatedAt:    time.Date(2025, 3, 11, 17, 2, 42, 613747761, time.UTC),
-					ID:           "52d23691f4b954d083f117358ea763e20f69af584e1c08f479c5752629ee0be3",
-					FriendlyName: "suspicious_margulis",
-					Image:        "debian:bookworm",
-					Labels: map[string]string{
-						"devcontainer.config_file": "/home/coder/src/coder/coder/agent/agentcontainers/testdata/devcontainer_appport.json",
-						"devcontainer.metadata":    "[]",
-					},
-					Running: true,
-					Status:  "running",
-					Ports: []codersdk.WorkspaceAgentContainerPort{
-						{
-							Network:  "tcp",
-							Port:     8080,
-							HostPort: 32768,
-							HostIP:   "0.0.0.0",
-						},
-					},
-					Volumes: map[string]string{},
-				},
-			},
-		},
-	} {
-		// nolint:paralleltest // variable recapture no longer required
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-			bs, err := os.ReadFile(filepath.Join("testdata", tt.name, "docker_inspect.json"))
-			require.NoError(t, err, "failed to read testdata file")
-			actual, warns, err := convertDockerInspect(bs)
-			if len(tt.expectWarns) > 0 {
-				assert.Len(t, warns, len(tt.expectWarns), "expected warnings")
-				for _, warn := range tt.expectWarns {
-					assert.Contains(t, warns, warn)
-				}
-			}
-			if tt.expectError != "" {
-				assert.Empty(t, actual, "expected no data")
-				assert.ErrorContains(t, err, tt.expectError)
-				return
-			}
-			require.NoError(t, err, "expected no error")
-			if diff := cmp.Diff(tt.expect, actual); diff != "" {
-				t.Errorf("unexpected diff (-want +got):\n%s", diff)
-			}
-		})
-	}
-}
-
 // TestDockerEnvInfoer tests the ability of EnvInfo to extract information from
 // running containers. Containers are deleted after the test is complete.
 // As this test creates containers, it is skipped by default.
 // It can be run manually as follows:
 //
 // CODER_TEST_USE_DOCKER=1 go test ./agent/agentcontainers -run TestDockerEnvInfoer
-//
-//nolint:paralleltest // This test tends to flake when lots of containers start and stop in parallel.
 func TestDockerEnvInfoer(t *testing.T) {
+	t.Parallel()
 	if ctud, ok := os.LookupEnv("CODER_TEST_USE_DOCKER"); !ok || ctud != "1" {
 		t.Skip("Set CODER_TEST_USE_DOCKER=1 to run this test")
 	}
@@ -702,7 +437,7 @@ func TestDockerEnvInfoer(t *testing.T) {
 	}{
 		{
 			image:  "busybox:latest",
-			labels: map[string]string{`devcontainer.metadata`: `[{"remoteEnv": {"FOO": "bar", "MULTILINE": "foo\nbar\nbaz"}}]`},
+			labels: map[string]string{`devcontainer.metadata`: `{"remoteEnv": {"FOO": "bar", "MULTILINE": "foo\nbar\nbaz"}}`},
 
 			expectedEnv:       []string{"FOO=bar", "MULTILINE=foo\nbar\nbaz"},
 			expectedUsername:  "root",
@@ -710,7 +445,7 @@ func TestDockerEnvInfoer(t *testing.T) {
 		},
 		{
 			image:             "busybox:latest",
-			labels:            map[string]string{`devcontainer.metadata`: `[{"remoteEnv": {"FOO": "bar", "MULTILINE": "foo\nbar\nbaz"}}]`},
+			labels:            map[string]string{`devcontainer.metadata`: `{"remoteEnv": {"FOO": "bar", "MULTILINE": "foo\nbar\nbaz"}}`},
 			expectedEnv:       []string{"FOO=bar", "MULTILINE=foo\nbar\nbaz"},
 			containerUser:     "root",
 			expectedUsername:  "root",
@@ -718,14 +453,14 @@ func TestDockerEnvInfoer(t *testing.T) {
 		},
 		{
 			image:             "codercom/enterprise-minimal:ubuntu",
-			labels:            map[string]string{`devcontainer.metadata`: `[{"remoteEnv": {"FOO": "bar", "MULTILINE": "foo\nbar\nbaz"}}]`},
+			labels:            map[string]string{`devcontainer.metadata`: `{"remoteEnv": {"FOO": "bar", "MULTILINE": "foo\nbar\nbaz"}}`},
 			expectedEnv:       []string{"FOO=bar", "MULTILINE=foo\nbar\nbaz"},
 			expectedUsername:  "coder",
 			expectedUserShell: "/bin/bash",
 		},
 		{
 			image:             "codercom/enterprise-minimal:ubuntu",
-			labels:            map[string]string{`devcontainer.metadata`: `[{"remoteEnv": {"FOO": "bar", "MULTILINE": "foo\nbar\nbaz"}}]`},
+			labels:            map[string]string{`devcontainer.metadata`: `{"remoteEnv": {"FOO": "bar", "MULTILINE": "foo\nbar\nbaz"}}`},
 			expectedEnv:       []string{"FOO=bar", "MULTILINE=foo\nbar\nbaz"},
 			containerUser:     "coder",
 			expectedUsername:  "coder",
@@ -733,23 +468,16 @@ func TestDockerEnvInfoer(t *testing.T) {
 		},
 		{
 			image:             "codercom/enterprise-minimal:ubuntu",
-			labels:            map[string]string{`devcontainer.metadata`: `[{"remoteEnv": {"FOO": "bar", "MULTILINE": "foo\nbar\nbaz"}}]`},
-			expectedEnv:       []string{"FOO=bar", "MULTILINE=foo\nbar\nbaz"},
-			containerUser:     "root",
-			expectedUsername:  "root",
-			expectedUserShell: "/bin/bash",
-		},
-		{
-			image:             "codercom/enterprise-minimal:ubuntu",
-			labels:            map[string]string{`devcontainer.metadata`: `[{"remoteEnv": {"FOO": "bar"}},{"remoteEnv": {"MULTILINE": "foo\nbar\nbaz"}}]`},
+			labels:            map[string]string{`devcontainer.metadata`: `{"remoteEnv": {"FOO": "bar", "MULTILINE": "foo\nbar\nbaz"}}`},
 			expectedEnv:       []string{"FOO=bar", "MULTILINE=foo\nbar\nbaz"},
 			containerUser:     "root",
 			expectedUsername:  "root",
 			expectedUserShell: "/bin/bash",
 		},
 	} {
-		//nolint:paralleltest // variable recapture no longer required
 		t.Run(fmt.Sprintf("#%d", idx), func(t *testing.T) {
+			t.Parallel()
+
 			// Start a container with the given image
 			// and environment variables
 			image := strings.Split(tt.image, ":")[0]
@@ -774,15 +502,15 @@ func TestDockerEnvInfoer(t *testing.T) {
 			dei, err := EnvInfo(ctx, agentexec.DefaultExecer, ct.Container.ID, tt.containerUser)
 			require.NoError(t, err, "Expected no error from DockerEnvInfo()")
 
-			u, err := dei.User()
+			u, err := dei.CurrentUser()
 			require.NoError(t, err, "Expected no error from CurrentUser()")
 			require.Equal(t, tt.expectedUsername, u.Username, "Expected username to match")
 
-			hd, err := dei.HomeDir()
+			hd, err := dei.UserHomeDir()
 			require.NoError(t, err, "Expected no error from UserHomeDir()")
 			require.NotEmpty(t, hd, "Expected user homedir to be non-empty")
 
-			sh, err := dei.Shell(tt.containerUser)
+			sh, err := dei.UserShell(tt.containerUser)
 			require.NoError(t, err, "Expected no error from UserShell()")
 			require.Equal(t, tt.expectedUserShell, sh, "Expected user shell to match")
 
@@ -809,9 +537,9 @@ func TestDockerEnvInfoer(t *testing.T) {
 	}
 }
 
-func fakeContainer(t *testing.T, mut ...func(*codersdk.WorkspaceAgentContainer)) codersdk.WorkspaceAgentContainer {
+func fakeContainer(t *testing.T, mut ...func(*codersdk.WorkspaceAgentDevcontainer)) codersdk.WorkspaceAgentDevcontainer {
 	t.Helper()
-	ct := codersdk.WorkspaceAgentContainer{
+	ct := codersdk.WorkspaceAgentDevcontainer{
 		CreatedAt:    time.Now().UTC(),
 		ID:           uuid.New().String(),
 		FriendlyName: testutil.GetRandomName(t),
@@ -820,13 +548,10 @@ func fakeContainer(t *testing.T, mut ...func(*codersdk.WorkspaceAgentContainer))
 			testutil.GetRandomName(t): testutil.GetRandomName(t),
 		},
 		Running: true,
-		Ports: []codersdk.WorkspaceAgentContainerPort{
+		Ports: []codersdk.WorkspaceAgentListeningPort{
 			{
-				Network:  "tcp",
-				Port:     testutil.RandomPortNoListen(t),
-				HostPort: testutil.RandomPortNoListen(t),
-				//nolint:gosec // this is a test
-				HostIP: []string{"127.0.0.1", "[::1]", "localhost", "0.0.0.0", "[::]", testutil.GetRandomName(t)}[rand.Intn(6)],
+				Network: "tcp",
+				Port:    testutil.RandomPortNoListen(t),
 			},
 		},
 		Status:  testutil.MustRandString(t, 10),

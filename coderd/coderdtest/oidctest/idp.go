@@ -20,7 +20,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -59,107 +58,15 @@ type deviceFlow struct {
 	granted   bool
 }
 
-// fakeIDPLocked is a set of fields of FakeIDP that are protected
-// behind a mutex.
-type fakeIDPLocked struct {
-	mu sync.RWMutex
-
-	issuer     string
-	issuerURL  *url.URL
-	key        *rsa.PrivateKey
-	provider   ProviderJSON
-	handler    http.Handler
-	cfg        *oauth2.Config
-	fakeCoderd func(req *http.Request) (*http.Response, error)
-}
-
-func (f *fakeIDPLocked) Issuer() string {
-	f.mu.RLock()
-	defer f.mu.RUnlock()
-	return f.issuer
-}
-
-func (f *fakeIDPLocked) IssuerURL() *url.URL {
-	f.mu.RLock()
-	defer f.mu.RUnlock()
-	return f.issuerURL
-}
-
-func (f *fakeIDPLocked) PrivateKey() *rsa.PrivateKey {
-	f.mu.RLock()
-	defer f.mu.RUnlock()
-	return f.key
-}
-
-func (f *fakeIDPLocked) Provider() ProviderJSON {
-	f.mu.RLock()
-	defer f.mu.RUnlock()
-	return f.provider
-}
-
-func (f *fakeIDPLocked) Config() *oauth2.Config {
-	f.mu.RLock()
-	defer f.mu.RUnlock()
-	return f.cfg
-}
-
-func (f *fakeIDPLocked) Handler() http.Handler {
-	f.mu.RLock()
-	defer f.mu.RUnlock()
-	return f.handler
-}
-
-func (f *fakeIDPLocked) SetIssuer(issuer string) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.issuer = issuer
-}
-
-func (f *fakeIDPLocked) SetIssuerURL(issuerURL *url.URL) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.issuerURL = issuerURL
-}
-
-func (f *fakeIDPLocked) SetProvider(provider ProviderJSON) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.provider = provider
-}
-
-// MutateConfig is a helper function to mutate the oauth2.Config.
-// Beware of re-entrant locks!
-func (f *fakeIDPLocked) MutateConfig(fn func(cfg *oauth2.Config)) {
-	f.mu.Lock()
-	if f.cfg == nil {
-		f.cfg = &oauth2.Config{}
-	}
-	fn(f.cfg)
-	f.mu.Unlock()
-}
-
-func (f *fakeIDPLocked) SetHandler(handler http.Handler) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.handler = handler
-}
-
-func (f *fakeIDPLocked) SetFakeCoderd(fakeCoderd func(req *http.Request) (*http.Response, error)) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.fakeCoderd = fakeCoderd
-}
-
-func (f *fakeIDPLocked) FakeCoderd() func(req *http.Request) (*http.Response, error) {
-	f.mu.RLock()
-	defer f.mu.RUnlock()
-	return f.fakeCoderd
-}
-
 // FakeIDP is a functional OIDC provider.
 // It only supports 1 OIDC client.
 type FakeIDP struct {
-	locked fakeIDPLocked
+	issuer    string
+	issuerURL *url.URL
+	key       *rsa.PrivateKey
+	provider  ProviderJSON
+	handler   http.Handler
+	cfg       *oauth2.Config
 
 	// callbackPath allows changing where the callback path to coderd is expected.
 	// This only affects using the Login helper functions.
@@ -203,6 +110,7 @@ type FakeIDP struct {
 	// some claims.
 	defaultIDClaims jwt.MapClaims
 	hookMutateToken func(token map[string]interface{})
+	fakeCoderd      func(req *http.Request) (*http.Response, error)
 	hookOnRefresh   func(email string) error
 	// Custom authentication for the client. This is useful if you want
 	// to test something like PKI auth vs a client_secret.
@@ -348,7 +256,7 @@ func WithServing() func(*FakeIDP) {
 
 func WithIssuer(issuer string) func(*FakeIDP) {
 	return func(f *FakeIDP) {
-		f.locked.SetIssuer(issuer)
+		f.issuer = issuer
 	}
 }
 
@@ -419,9 +327,7 @@ func NewFakeIDP(t testing.TB, opts ...FakeIDPOpt) *FakeIDP {
 	require.NoError(t, err)
 
 	idp := &FakeIDP{
-		locked: fakeIDPLocked{
-			key: pkey,
-		},
+		key:                  pkey,
 		clientID:             uuid.NewString(),
 		clientSecret:         uuid.NewString(),
 		logger:               slog.Make(),
@@ -433,8 +339,8 @@ func NewFakeIDP(t testing.TB, opts ...FakeIDPOpt) *FakeIDP {
 		refreshIDTokenClaims: syncmap.New[string, jwt.MapClaims](),
 		deviceCode:           syncmap.New[string, deviceFlow](),
 		hookOnRefresh:        func(_ string) error { return nil },
-		hookUserInfo:         func(_ string) (jwt.MapClaims, error) { return jwt.MapClaims{}, nil },
-		hookValidRedirectURL: func(_ string) error { return nil },
+		hookUserInfo:         func(email string) (jwt.MapClaims, error) { return jwt.MapClaims{}, nil },
+		hookValidRedirectURL: func(redirectURL string) error { return nil },
 		defaultExpire:        time.Minute * 5,
 	}
 
@@ -442,12 +348,12 @@ func NewFakeIDP(t testing.TB, opts ...FakeIDPOpt) *FakeIDP {
 		opt(idp)
 	}
 
-	if idp.locked.Issuer() == "" {
-		idp.locked.SetIssuer("https://coder.com")
+	if idp.issuer == "" {
+		idp.issuer = "https://coder.com"
 	}
 
-	idp.locked.SetHandler(idp.httpHandler(t))
-	idp.updateIssuerURL(t, idp.locked.Issuer())
+	idp.handler = idp.httpHandler(t)
+	idp.updateIssuerURL(t, idp.issuer)
 	if idp.serve {
 		idp.realServer(t)
 	}
@@ -463,11 +369,11 @@ func NewFakeIDP(t testing.TB, opts ...FakeIDPOpt) *FakeIDP {
 }
 
 func (f *FakeIDP) WellknownConfig() ProviderJSON {
-	return f.locked.Provider()
+	return f.provider
 }
 
 func (f *FakeIDP) IssuerURL() *url.URL {
-	return f.locked.IssuerURL()
+	return f.issuerURL
 }
 
 func (f *FakeIDP) updateIssuerURL(t testing.TB, issuer string) {
@@ -476,11 +382,11 @@ func (f *FakeIDP) updateIssuerURL(t testing.TB, issuer string) {
 	u, err := url.Parse(issuer)
 	require.NoError(t, err, "invalid issuer URL")
 
-	f.locked.SetIssuer(issuer)
-	f.locked.SetIssuerURL(u)
+	f.issuer = issuer
+	f.issuerURL = u
 	// ProviderJSON is the JSON representation of the OpenID Connect provider
 	// These are all the urls that the IDP will respond to.
-	f.locked.SetProvider(ProviderJSON{
+	f.provider = ProviderJSON{
 		Issuer:        issuer,
 		AuthURL:       u.ResolveReference(&url.URL{Path: authorizePath}).String(),
 		TokenURL:      u.ResolveReference(&url.URL{Path: tokenPath}).String(),
@@ -491,7 +397,7 @@ func (f *FakeIDP) updateIssuerURL(t testing.TB, issuer string) {
 			"RS256",
 		},
 		ExternalAuthURL: u.ResolveReference(&url.URL{Path: "/external-auth-validate/user"}).String(),
-	})
+	}
 }
 
 // realServer turns the FakeIDP into a real http server.
@@ -499,7 +405,7 @@ func (f *FakeIDP) realServer(t testing.TB) *httptest.Server {
 	t.Helper()
 
 	srvURL := "localhost:0"
-	issURL, err := url.Parse(f.locked.Issuer())
+	issURL, err := url.Parse(f.issuer)
 	if err == nil {
 		if issURL.Hostname() == "localhost" || issURL.Hostname() == "127.0.0.1" {
 			srvURL = issURL.Host
@@ -512,7 +418,7 @@ func (f *FakeIDP) realServer(t testing.TB) *httptest.Server {
 	ctx, cancel := context.WithCancel(context.Background())
 	srv := &httptest.Server{
 		Listener: l,
-		Config:   &http.Server{Handler: f.locked.Handler(), ReadHeaderTimeout: time.Second * 5},
+		Config:   &http.Server{Handler: f.handler, ReadHeaderTimeout: time.Second * 5},
 	}
 
 	srv.Config.BaseContext = func(_ net.Listener) context.Context {
@@ -533,7 +439,7 @@ func (f *FakeIDP) GenerateAuthenticatedToken(claims jwt.MapClaims) (*oauth2.Toke
 	state := uuid.NewString()
 	f.stateToIDTokenClaims.Store(state, claims)
 	code := f.newCode(state)
-	return f.locked.Config().Exchange(oidc.ClientContext(context.Background(), f.HTTPClient(nil)), code)
+	return f.cfg.Exchange(oidc.ClientContext(context.Background(), f.HTTPClient(nil)), code)
 }
 
 // Login does the full OIDC flow starting at the "LoginButton".
@@ -647,7 +553,7 @@ func (f *FakeIDP) ExternalLogin(t testing.TB, client *codersdk.Client, opts ...f
 	f.SetRedirect(t, coderOauthURL.String())
 
 	cli := f.HTTPClient(client.HTTPClient)
-	cli.CheckRedirect = func(req *http.Request, _ []*http.Request) error {
+	cli.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 		// Store the idTokenClaims to the specific state request. This ties
 		// the claims 1:1 with a given authentication flow.
 		state := req.URL.Query().Get("state")
@@ -714,9 +620,9 @@ func (f *FakeIDP) CreateAuthCode(t testing.TB, state string) string {
 	// it expects some claims to be present.
 	f.stateToIDTokenClaims.Store(state, jwt.MapClaims{})
 
-	code, err := OAuth2GetCode(f.locked.Config().AuthCodeURL(state), func(req *http.Request) (*http.Response, error) {
+	code, err := OAuth2GetCode(f.cfg.AuthCodeURL(state), func(req *http.Request) (*http.Response, error) {
 		rw := httptest.NewRecorder()
-		f.locked.Handler().ServeHTTP(rw, req)
+		f.handler.ServeHTTP(rw, req)
 		resp := rw.Result()
 		return resp, nil
 	})
@@ -738,7 +644,7 @@ func (f *FakeIDP) OIDCCallback(t testing.TB, state string, idTokenClaims jwt.Map
 	f.stateToIDTokenClaims.Store(state, idTokenClaims)
 
 	cli := f.HTTPClient(nil)
-	u := f.locked.Config().AuthCodeURL(state)
+	u := f.cfg.AuthCodeURL(state)
 	req, err := http.NewRequest("GET", u, nil)
 	require.NoError(t, err)
 
@@ -856,10 +762,10 @@ func (f *FakeIDP) encodeClaims(t testing.TB, claims jwt.MapClaims) string {
 	}
 
 	if _, ok := claims["iss"]; !ok {
-		claims["iss"] = f.locked.Issuer()
+		claims["iss"] = f.issuer
 	}
 
-	signed, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(f.locked.PrivateKey())
+	signed, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(f.key)
 	require.NoError(t, err)
 
 	return signed
@@ -876,7 +782,7 @@ func (f *FakeIDP) httpHandler(t testing.TB) http.Handler {
 	mux.Get("/.well-known/openid-configuration", func(rw http.ResponseWriter, r *http.Request) {
 		f.logger.Info(r.Context(), "http OIDC config", slogRequestFields(r)...)
 
-		cpy := f.locked.Provider()
+		cpy := f.provider
 		if f.hookWellKnown != nil {
 			err := f.hookWellKnown(r, &cpy)
 			if err != nil {
@@ -1176,7 +1082,7 @@ func (f *FakeIDP) httpHandler(t testing.TB) http.Handler {
 		set := jose.JSONWebKeySet{
 			Keys: []jose.JSONWebKey{
 				{
-					Key:       f.locked.PrivateKey().Public(),
+					Key:       f.key.Public(),
 					KeyID:     "test-key",
 					Algorithm: "RSA",
 				},
@@ -1275,7 +1181,7 @@ func (f *FakeIDP) httpHandler(t testing.TB) http.Handler {
 			exp:       time.Now().Add(lifetime),
 		})
 
-		verifyURL := f.locked.IssuerURL().ResolveReference(&url.URL{
+		verifyURL := f.issuerURL.ResolveReference(&url.URL{
 			Path: deviceVerify,
 			RawQuery: url.Values{
 				"device_code": {deviceCode},
@@ -1304,7 +1210,7 @@ func (f *FakeIDP) httpHandler(t testing.TB) http.Handler {
 		}.Encode())
 	}))
 
-	mux.NotFound(func(_ http.ResponseWriter, r *http.Request) {
+	mux.NotFound(func(rw http.ResponseWriter, r *http.Request) {
 		f.logger.Error(r.Context(), "http call not found", slogRequestFields(r)...)
 		t.Errorf("unexpected request to IDP at path %q. Not supported", r.URL.Path)
 	})
@@ -1320,7 +1226,7 @@ func (f *FakeIDP) httpHandler(t testing.TB) http.Handler {
 // requests will fail.
 func (f *FakeIDP) HTTPClient(rest *http.Client) *http.Client {
 	if f.serve {
-		if rest == nil {
+		if rest == nil || rest.Transport == nil {
 			return &http.Client{}
 		}
 		return rest
@@ -1334,10 +1240,10 @@ func (f *FakeIDP) HTTPClient(rest *http.Client) *http.Client {
 		Jar: jar,
 		Transport: fakeRoundTripper{
 			roundTrip: func(req *http.Request) (*http.Response, error) {
-				u, _ := url.Parse(f.locked.Issuer())
+				u, _ := url.Parse(f.issuer)
 				if req.URL.Host != u.Host {
-					if fakeCoderd := f.locked.FakeCoderd(); fakeCoderd != nil {
-						return fakeCoderd(req)
+					if f.fakeCoderd != nil {
+						return f.fakeCoderd(req)
 					}
 					if rest == nil || rest.Transport == nil {
 						return nil, xerrors.Errorf("unexpected network request to %q", req.URL.Host)
@@ -1345,7 +1251,7 @@ func (f *FakeIDP) HTTPClient(rest *http.Client) *http.Client {
 					return rest.Transport.RoundTrip(req)
 				}
 				resp := httptest.NewRecorder()
-				f.locked.Handler().ServeHTTP(resp, req)
+				f.handler.ServeHTTP(resp, req)
 				return resp.Result(), nil
 			},
 		},
@@ -1363,7 +1269,6 @@ func (f *FakeIDP) RefreshUsed(refreshToken string) bool {
 // for a given refresh token. By default, all refreshes use the same claims as
 // the original IDToken issuance.
 func (f *FakeIDP) UpdateRefreshClaims(refreshToken string, claims jwt.MapClaims) {
-	// no mutex because it's a sync.Map
 	f.refreshIDTokenClaims.Store(refreshToken, claims)
 }
 
@@ -1371,9 +1276,8 @@ func (f *FakeIDP) UpdateRefreshClaims(refreshToken string, claims jwt.MapClaims)
 // Coderd.
 func (f *FakeIDP) SetRedirect(t testing.TB, u string) {
 	t.Helper()
-	f.locked.MutateConfig(func(cfg *oauth2.Config) {
-		cfg.RedirectURL = u
-	})
+
+	f.cfg.RedirectURL = u
 }
 
 // SetCoderdCallback is optional and only works if not using the IsServing.
@@ -1383,7 +1287,7 @@ func (f *FakeIDP) SetCoderdCallback(callback func(req *http.Request) (*http.Resp
 	if f.serve {
 		panic("cannot set callback handler when using 'WithServing'. Must implement an actual 'Coderd'")
 	}
-	f.locked.SetFakeCoderd(callback)
+	f.fakeCoderd = callback
 }
 
 func (f *FakeIDP) SetCoderdCallbackHandler(handler http.HandlerFunc) {
@@ -1480,13 +1384,13 @@ func (f *FakeIDP) ExternalAuthConfig(t testing.TB, id string, custom *ExternalAu
 		DisplayIcon: f.WellknownConfig().UserInfoURL,
 		// Omit the /user for the validate so we can easily append to it when modifying
 		// the cfg for advanced tests.
-		ValidateURL: f.locked.IssuerURL().ResolveReference(&url.URL{Path: "/external-auth-validate/"}).String(),
+		ValidateURL: f.issuerURL.ResolveReference(&url.URL{Path: "/external-auth-validate/"}).String(),
 		DeviceAuth: &externalauth.DeviceAuth{
 			Config:   oauthCfg,
 			ClientID: f.clientID,
-			TokenURL: f.locked.Provider().TokenURL,
+			TokenURL: f.provider.TokenURL,
 			Scopes:   []string{},
-			CodeURL:  f.locked.Provider().DeviceCodeURL,
+			CodeURL:  f.provider.DeviceCodeURL,
 		},
 	}
 
@@ -1497,7 +1401,7 @@ func (f *FakeIDP) ExternalAuthConfig(t testing.TB, id string, custom *ExternalAu
 	for _, opt := range opts {
 		opt(cfg)
 	}
-	f.updateIssuerURL(t, f.locked.Issuer())
+	f.updateIssuerURL(t, f.issuer)
 	return cfg
 }
 
@@ -1506,35 +1410,35 @@ func (f *FakeIDP) AppCredentials() (clientID string, clientSecret string) {
 }
 
 func (f *FakeIDP) PublicKey() crypto.PublicKey {
-	return f.locked.PrivateKey().Public()
+	return f.key.Public()
 }
 
 func (f *FakeIDP) OauthConfig(t testing.TB, scopes []string) *oauth2.Config {
 	t.Helper()
 
-	provider := f.locked.Provider()
-	f.locked.MutateConfig(func(cfg *oauth2.Config) {
-		if len(scopes) == 0 {
-			scopes = []string{"openid", "email", "profile"}
-		}
-		cfg.ClientID = f.clientID
-		cfg.ClientSecret = f.clientSecret
-		cfg.Endpoint = oauth2.Endpoint{
-			AuthURL:   provider.AuthURL,
-			TokenURL:  provider.TokenURL,
+	if len(scopes) == 0 {
+		scopes = []string{"openid", "email", "profile"}
+	}
+	oauthCfg := &oauth2.Config{
+		ClientID:     f.clientID,
+		ClientSecret: f.clientSecret,
+		Endpoint: oauth2.Endpoint{
+			AuthURL:   f.provider.AuthURL,
+			TokenURL:  f.provider.TokenURL,
 			AuthStyle: oauth2.AuthStyleInParams,
-		}
+		},
 		// If the user is using a real network request, they will need to do
 		// 'fake.SetRedirect()'
-		cfg.RedirectURL = "https://redirect.com"
-		cfg.Scopes = scopes
-	})
+		RedirectURL: "https://redirect.com",
+		Scopes:      scopes,
+	}
+	f.cfg = oauthCfg
 
-	return f.locked.Config()
+	return oauthCfg
 }
 
 func (f *FakeIDP) OIDCConfigSkipIssuerChecks(t testing.TB, scopes []string, opts ...func(cfg *coderd.OIDCConfig)) *coderd.OIDCConfig {
-	ctx := oidc.InsecureIssuerURLContext(context.Background(), f.locked.Issuer())
+	ctx := oidc.InsecureIssuerURLContext(context.Background(), f.issuer)
 
 	return f.internalOIDCConfig(ctx, t, scopes, func(config *oidc.Config) {
 		config.SkipIssuerCheck = true
@@ -1552,7 +1456,7 @@ func (f *FakeIDP) internalOIDCConfig(ctx context.Context, t testing.TB, scopes [
 	oauthCfg := f.OauthConfig(t, scopes)
 
 	ctx = oidc.ClientContext(ctx, f.HTTPClient(nil))
-	p, err := oidc.NewProvider(ctx, f.locked.Issuer())
+	p, err := oidc.NewProvider(ctx, f.provider.Issuer)
 	require.NoError(t, err, "failed to create OIDC provider")
 
 	verifierConfig := &oidc.Config{
@@ -1569,8 +1473,8 @@ func (f *FakeIDP) internalOIDCConfig(ctx context.Context, t testing.TB, scopes [
 	cfg := &coderd.OIDCConfig{
 		OAuth2Config: oauthCfg,
 		Provider:     p,
-		Verifier: oidc.NewVerifier(f.locked.Issuer(), &oidc.StaticKeySet{
-			PublicKeys: []crypto.PublicKey{f.locked.PrivateKey().Public()},
+		Verifier: oidc.NewVerifier(f.provider.Issuer, &oidc.StaticKeySet{
+			PublicKeys: []crypto.PublicKey{f.key.Public()},
 		}, verifierConfig),
 		UsernameField:   "preferred_username",
 		EmailField:      "email",

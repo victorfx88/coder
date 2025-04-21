@@ -1,7 +1,5 @@
 package types
 
-import "github.com/google/uuid"
-
 // MessagePayload describes the JSON payload to be stored alongside the notification message, which specifies all of its
 // metadata, labels, and routing information.
 //
@@ -20,5 +18,4 @@ type MessagePayload struct {
 	Actions []TemplateAction  `json:"actions"`
 	Labels  map[string]string `json:"labels"`
 	Data    map[string]any    `json:"data"`
-	Targets []uuid.UUID       `json:"targets"`
 }

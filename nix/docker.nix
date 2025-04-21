@@ -50,6 +50,10 @@ let
     experimental-features = nix-command flakes
   '';
 
+  etcReleaseName = writeTextDir "etc/coderniximage-release" ''
+    0.0.0
+  '';
+
   etcPamdSudoFile = writeText "pam-sudo" ''
     # Allow root to bypass authentication (optional)
     auth      sufficient pam_rootok.so
@@ -111,7 +115,6 @@ let
       run ? null,
       maxLayers ? 100,
       uname ? "nixbld",
-      releaseName ? "0.0.0",
     }:
     assert lib.assertMsg (!(drv.drvAttrs.__structuredAttrs or false))
       "streamNixShellImage: Does not work with the derivation ${drv.name} because it uses __structuredAttrs";
@@ -203,10 +206,6 @@ let
           exit 0
         '';
       };
-
-      etcReleaseName = writeTextDir "etc/coderniximage-release" ''
-        ${releaseName}
-      '';
 
       # https://github.com/NixOS/nix/blob/2.8.0/src/libstore/globals.hh#L464-L465
       sandboxBuildDir = "/build";

@@ -1,18 +1,20 @@
-import { fireEvent, screen } from "@testing-library/react";
-import { renderComponent } from "testHelpers/renderHelpers";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { ThemeProvider } from "contexts/ThemeProvider";
 import { FileUpload } from "./FileUpload";
 
 test("accepts files with the correct extension", async () => {
 	const onUpload = jest.fn();
 
-	renderComponent(
-		<FileUpload
-			isUploading={false}
-			onUpload={onUpload}
-			removeLabel="Remove file"
-			title="Upload file"
-			extensions={["tar", "zip"]}
-		/>,
+	render(
+		<ThemeProvider>
+			<FileUpload
+				isUploading={false}
+				onUpload={onUpload}
+				removeLabel="Remove file"
+				title="Upload file"
+				extensions={["tar", "zip"]}
+			/>
+		</ThemeProvider>,
 	);
 
 	const dropZone = screen.getByTestId("drop-zone");

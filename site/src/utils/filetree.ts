@@ -96,9 +96,7 @@ export const traverse = (
 	) => void,
 	parent?: string,
 ) => {
-	for (const [filename, content] of Object.entries(fileTree).sort(([a], [b]) =>
-		a.localeCompare(b),
-	)) {
+	for (const [filename, content] of Object.entries(fileTree)) {
 		const fullPath = parent ? `${parent}/${filename}` : filename;
 		callback(content, filename, fullPath);
 		if (typeof content === "object") {

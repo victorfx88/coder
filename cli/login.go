@@ -48,7 +48,7 @@ func promptFirstUsername(inv *serpent.Invocation) (string, error) {
 		Text:    "What " + pretty.Sprint(cliui.DefaultStyles.Field, "username") + " would you like?",
 		Default: currentUser.Username,
 	})
-	if errors.Is(err, cliui.ErrCanceled) {
+	if errors.Is(err, cliui.Canceled) {
 		return "", nil
 	}
 	if err != nil {
@@ -64,7 +64,7 @@ func promptFirstName(inv *serpent.Invocation) (string, error) {
 		Default: "",
 	})
 	if err != nil {
-		if errors.Is(err, cliui.ErrCanceled) {
+		if errors.Is(err, cliui.Canceled) {
 			return "", nil
 		}
 		return "", err
@@ -76,9 +76,11 @@ func promptFirstName(inv *serpent.Invocation) (string, error) {
 func promptFirstPassword(inv *serpent.Invocation) (string, error) {
 retry:
 	password, err := cliui.Prompt(inv, cliui.PromptOptions{
-		Text:     "Enter a " + pretty.Sprint(cliui.DefaultStyles.Field, "password") + ":",
-		Secret:   true,
-		Validate: userpassword.Validate,
+		Text:   "Enter a " + pretty.Sprint(cliui.DefaultStyles.Field, "password") + ":",
+		Secret: true,
+		Validate: func(s string) error {
+			return userpassword.Validate(s)
+		},
 	})
 	if err != nil {
 		return "", xerrors.Errorf("specify password prompt: %w", err)
@@ -506,7 +508,7 @@ func promptTrialInfo(inv *serpent.Invocation, fieldName string) (string, error) 
 		},
 	})
 	if err != nil {
-		if errors.Is(err, cliui.ErrCanceled) {
+		if errors.Is(err, cliui.Canceled) {
 			return "", nil
 		}
 		return "", err

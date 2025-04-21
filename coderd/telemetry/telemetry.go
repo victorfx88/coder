@@ -497,7 +497,7 @@ func (r *remoteReporter) createSnapshot() (*Snapshot, error) {
 		return nil
 	})
 	eg.Go(func() error {
-		groupMembers, err := r.options.Database.GetGroupMembers(ctx, false)
+		groupMembers, err := r.options.Database.GetGroupMembers(ctx)
 		if err != nil {
 			return xerrors.Errorf("get groups: %w", err)
 		}
@@ -729,8 +729,7 @@ func ConvertWorkspaceBuild(build database.WorkspaceBuild) WorkspaceBuild {
 		WorkspaceID:       build.WorkspaceID,
 		JobID:             build.JobID,
 		TemplateVersionID: build.TemplateVersionID,
-		// #nosec G115 - Safe conversion as build numbers are expected to be positive and within uint32 range
-		BuildNumber: uint32(build.BuildNumber),
+		BuildNumber:       uint32(build.BuildNumber),
 	}
 }
 
@@ -1036,12 +1035,11 @@ func ConvertTemplate(dbTemplate database.Template) Template {
 		FailureTTLMillis:               time.Duration(dbTemplate.FailureTTL).Milliseconds(),
 		TimeTilDormantMillis:           time.Duration(dbTemplate.TimeTilDormant).Milliseconds(),
 		TimeTilDormantAutoDeleteMillis: time.Duration(dbTemplate.TimeTilDormantAutoDelete).Milliseconds(),
-		// #nosec G115 - Safe conversion as AutostopRequirementDaysOfWeek is a bitmap of 7 days, easily within uint8 range
-		AutostopRequirementDaysOfWeek: codersdk.BitmapToWeekdays(uint8(dbTemplate.AutostopRequirementDaysOfWeek)),
-		AutostopRequirementWeeks:      dbTemplate.AutostopRequirementWeeks,
-		AutostartAllowedDays:          codersdk.BitmapToWeekdays(dbTemplate.AutostartAllowedDays()),
-		RequireActiveVersion:          dbTemplate.RequireActiveVersion,
-		Deprecated:                    dbTemplate.Deprecated != "",
+		AutostopRequirementDaysOfWeek:  codersdk.BitmapToWeekdays(uint8(dbTemplate.AutostopRequirementDaysOfWeek)),
+		AutostopRequirementWeeks:       dbTemplate.AutostopRequirementWeeks,
+		AutostartAllowedDays:           codersdk.BitmapToWeekdays(dbTemplate.AutostartAllowedDays()),
+		RequireActiveVersion:           dbTemplate.RequireActiveVersion,
+		Deprecated:                     dbTemplate.Deprecated != "",
 	}
 }
 
@@ -1151,7 +1149,6 @@ type Snapshot struct {
 	NetworkEvents                        []NetworkEvent                        `json:"network_events"`
 	Organizations                        []Organization                        `json:"organizations"`
 	TelemetryItems                       []TelemetryItem                       `json:"telemetry_items"`
-	UserTailnetConnections               []UserTailnetConnection               `json:"user_tailnet_connections"`
 }
 
 // Deployment contains information about the host running Coder.
@@ -1712,16 +1709,6 @@ type TelemetryItem struct {
 	Value     string    `json:"value"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
-}
-
-type UserTailnetConnection struct {
-	ConnectedAt         time.Time  `json:"connected_at"`
-	DisconnectedAt      *time.Time `json:"disconnected_at"`
-	UserID              string     `json:"user_id"`
-	PeerID              string     `json:"peer_id"`
-	DeviceID            *string    `json:"device_id"`
-	DeviceOS            *string    `json:"device_os"`
-	CoderDesktopVersion *string    `json:"coder_desktop_version"`
 }
 
 type noopReporter struct{}

@@ -15,7 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"cdr.dev/slog/sloggers/slogtest"
-
 	"github.com/coder/coder/v2/coderd/coderdtest"
 	"github.com/coder/coder/v2/coderd/database"
 	"github.com/coder/coder/v2/coderd/database/db2sdk"
@@ -26,7 +25,6 @@ import (
 	"github.com/coder/coder/v2/coderd/database/dbtime"
 	"github.com/coder/coder/v2/coderd/database/migrations"
 	"github.com/coder/coder/v2/coderd/httpmw"
-	"github.com/coder/coder/v2/coderd/prebuilds"
 	"github.com/coder/coder/v2/coderd/rbac"
 	"github.com/coder/coder/v2/coderd/rbac/policy"
 	"github.com/coder/coder/v2/provisionersdk"
@@ -1259,15 +1257,6 @@ func TestQueuePosition(t *testing.T) {
 		time.Sleep(time.Millisecond)
 	}
 
-	// Create default provisioner daemon:
-	dbgen.ProvisionerDaemon(t, db, database.ProvisionerDaemon{
-		Name:         "default_provisioner",
-		Provisioners: []database.ProvisionerType{database.ProvisionerTypeEcho},
-		// Ensure the `tags` field is NOT NULL for the default provisioner;
-		// otherwise, it won't be able to pick up any jobs.
-		Tags: database.StringMap{},
-	})
-
 	queued, err := db.GetProvisionerJobsByIDsWithQueuePosition(ctx, jobIDs)
 	require.NoError(t, err)
 	require.Len(t, queued, jobCount)
@@ -1364,113 +1353,6 @@ func TestUserLastSeenFilter(t *testing.T) {
 		require.NoError(t, err)
 		requireUsersMatch(t, []database.User{today, yesterday}, allAfterLastWeek, "after last week")
 	})
-}
-
-func TestGetUsers_IncludeSystem(t *testing.T) {
-	t.Parallel()
-
-	tests := []struct {
-		name           string
-		includeSystem  bool
-		wantSystemUser bool
-	}{
-		{
-			name:           "include system users",
-			includeSystem:  true,
-			wantSystemUser: true,
-		},
-		{
-			name:           "exclude system users",
-			includeSystem:  false,
-			wantSystemUser: false,
-		},
-	}
-
-	for _, tt := range tests {
-		tt := tt
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			ctx := testutil.Context(t, testutil.WaitLong)
-
-			// Given: a system user
-			// postgres: introduced by migration coderd/database/migrations/00030*_system_user.up.sql
-			// dbmem: created in dbmem/dbmem.go
-			db, _ := dbtestutil.NewDB(t)
-			other := dbgen.User(t, db, database.User{})
-			users, err := db.GetUsers(ctx, database.GetUsersParams{
-				IncludeSystem: tt.includeSystem,
-			})
-			require.NoError(t, err)
-
-			// Should always find the regular user
-			foundRegularUser := false
-			foundSystemUser := false
-
-			for _, u := range users {
-				if u.IsSystem {
-					foundSystemUser = true
-					require.Equal(t, prebuilds.SystemUserID, u.ID)
-				} else {
-					foundRegularUser = true
-					require.Equalf(t, other.ID.String(), u.ID.String(), "found unexpected regular user")
-				}
-			}
-
-			require.True(t, foundRegularUser, "regular user should always be found")
-			require.Equal(t, tt.wantSystemUser, foundSystemUser, "system user presence should match includeSystem setting")
-			require.Equal(t, tt.wantSystemUser, len(users) == 2, "should have 2 users when including system user, 1 otherwise")
-		})
-	}
-}
-
-func TestUpdateSystemUser(t *testing.T) {
-	t.Parallel()
-
-	// TODO (sasswart): We've disabled the protection that prevents updates to system users
-	// while we reassess the mechanism to do so. Rather than skip the test, we've just inverted
-	// the assertions to ensure that the behavior is as desired.
-	// Once we've re-enabeld the system user protection, we'll revert the assertions.
-
-	ctx := testutil.Context(t, testutil.WaitLong)
-
-	// Given: a system user introduced by migration coderd/database/migrations/00030*_system_user.up.sql
-	db, _ := dbtestutil.NewDB(t)
-	users, err := db.GetUsers(ctx, database.GetUsersParams{
-		IncludeSystem: true,
-	})
-	require.NoError(t, err)
-	var systemUser database.GetUsersRow
-	for _, u := range users {
-		if u.IsSystem {
-			systemUser = u
-		}
-	}
-	require.NotNil(t, systemUser)
-
-	// When: attempting to update a system user's name.
-	_, err = db.UpdateUserProfile(ctx, database.UpdateUserProfileParams{
-		ID:   systemUser.ID,
-		Name: "not prebuilds",
-	})
-	// Then: the attempt is rejected by a postgres trigger.
-	// require.ErrorContains(t, err, "Cannot modify or delete system users")
-	require.NoError(t, err)
-
-	// When: attempting to delete a system user.
-	err = db.UpdateUserDeletedByID(ctx, systemUser.ID)
-	// Then: the attempt is rejected by a postgres trigger.
-	// require.ErrorContains(t, err, "Cannot modify or delete system users")
-	require.NoError(t, err)
-
-	// When: attempting to update a user's roles.
-	_, err = db.UpdateUserRoles(ctx, database.UpdateUserRolesParams{
-		ID:           systemUser.ID,
-		GrantedRoles: []string{rbac.RoleAuditor().String()},
-	})
-	// Then: the attempt is rejected by a postgres trigger.
-	// require.ErrorContains(t, err, "Cannot modify or delete system users")
-	require.NoError(t, err)
 }
 
 func TestUserChangeLoginType(t *testing.T) {
@@ -1614,10 +1496,7 @@ func TestWorkspaceQuotas(t *testing.T) {
 		})
 
 		// Fetch the 'Everyone' group members
-		everyoneMembers, err := db.GetGroupMembersByGroupID(ctx, database.GetGroupMembersByGroupIDParams{
-			GroupID:       everyoneGroup.ID,
-			IncludeSystem: false,
-		})
+		everyoneMembers, err := db.GetGroupMembersByGroupID(ctx, org.ID)
 		require.NoError(t, err)
 
 		require.ElementsMatch(t, db2sdk.List(everyoneMembers, groupMemberIDs),
@@ -2120,11 +1999,10 @@ func createTemplateVersion(t testing.TB, db database.Store, tpl database.Templat
 			dbgen.WorkspaceBuild(t, db, database.WorkspaceBuild{
 				WorkspaceID:       wrk.ID,
 				TemplateVersionID: version.ID,
-				// #nosec G115 - Safe conversion as build number is expected to be within int32 range
-				BuildNumber: int32(i) + 2,
-				Transition:  trans,
-				InitiatorID: tpl.CreatedBy,
-				JobID:       latestJob.ID,
+				BuildNumber:       int32(i) + 2,
+				Transition:        trans,
+				InitiatorID:       tpl.CreatedBy,
+				JobID:             latestJob.ID,
 			})
 		}
 
@@ -2281,306 +2159,6 @@ func TestExpectOne(t *testing.T) {
 
 func TestGetProvisionerJobsByIDsWithQueuePosition(t *testing.T) {
 	t.Parallel()
-
-	testCases := []struct {
-		name           string
-		jobTags        []database.StringMap
-		daemonTags     []database.StringMap
-		queueSizes     []int64
-		queuePositions []int64
-		// GetProvisionerJobsByIDsWithQueuePosition takes jobIDs as a parameter.
-		// If skipJobIDs is empty, all jobs are passed to the function; otherwise, the specified jobs are skipped.
-		// NOTE: Skipping job IDs means they will be excluded from the result,
-		// but this should not affect the queue position or queue size of other jobs.
-		skipJobIDs map[int]struct{}
-	}{
-		// Baseline test case
-		{
-			name: "test-case-1",
-			jobTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "c": "3"},
-			},
-			daemonTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-			},
-			queueSizes:     []int64{2, 2, 0},
-			queuePositions: []int64{1, 1, 0},
-		},
-		// Includes an additional provisioner
-		{
-			name: "test-case-2",
-			jobTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "c": "3"},
-			},
-			daemonTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "b": "2", "c": "3"},
-			},
-			queueSizes:     []int64{3, 3, 3},
-			queuePositions: []int64{1, 1, 3},
-		},
-		// Skips job at index 0
-		{
-			name: "test-case-3",
-			jobTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "c": "3"},
-			},
-			daemonTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "b": "2", "c": "3"},
-			},
-			queueSizes:     []int64{3, 3},
-			queuePositions: []int64{1, 3},
-			skipJobIDs: map[int]struct{}{
-				0: {},
-			},
-		},
-		// Skips job at index 1
-		{
-			name: "test-case-4",
-			jobTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "c": "3"},
-			},
-			daemonTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "b": "2", "c": "3"},
-			},
-			queueSizes:     []int64{3, 3},
-			queuePositions: []int64{1, 3},
-			skipJobIDs: map[int]struct{}{
-				1: {},
-			},
-		},
-		// Skips job at index 2
-		{
-			name: "test-case-5",
-			jobTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "c": "3"},
-			},
-			daemonTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "b": "2", "c": "3"},
-			},
-			queueSizes:     []int64{3, 3},
-			queuePositions: []int64{1, 1},
-			skipJobIDs: map[int]struct{}{
-				2: {},
-			},
-		},
-		// Skips jobs at indexes 0 and 2
-		{
-			name: "test-case-6",
-			jobTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "c": "3"},
-			},
-			daemonTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "b": "2", "c": "3"},
-			},
-			queueSizes:     []int64{3},
-			queuePositions: []int64{1},
-			skipJobIDs: map[int]struct{}{
-				0: {},
-				2: {},
-			},
-		},
-		// Includes two additional jobs that any provisioner can execute.
-		{
-			name: "test-case-7",
-			jobTags: []database.StringMap{
-				{},
-				{},
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "c": "3"},
-			},
-			daemonTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "b": "2", "c": "3"},
-			},
-			queueSizes:     []int64{5, 5, 5, 5, 5},
-			queuePositions: []int64{1, 2, 3, 3, 5},
-		},
-		// Includes two additional jobs that any provisioner can execute, but they are intentionally skipped.
-		{
-			name: "test-case-8",
-			jobTags: []database.StringMap{
-				{},
-				{},
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "c": "3"},
-			},
-			daemonTags: []database.StringMap{
-				{"a": "1", "b": "2"},
-				{"a": "1"},
-				{"a": "1", "b": "2", "c": "3"},
-			},
-			queueSizes:     []int64{5, 5, 5},
-			queuePositions: []int64{3, 3, 5},
-			skipJobIDs: map[int]struct{}{
-				0: {},
-				1: {},
-			},
-		},
-		// N jobs (1 job with 0 tags) & 0 provisioners exist
-		{
-			name: "test-case-9",
-			jobTags: []database.StringMap{
-				{},
-				{"a": "1"},
-				{"b": "2"},
-			},
-			daemonTags:     []database.StringMap{},
-			queueSizes:     []int64{0, 0, 0},
-			queuePositions: []int64{0, 0, 0},
-		},
-		// N jobs (1 job with 0 tags) & N provisioners
-		{
-			name: "test-case-10",
-			jobTags: []database.StringMap{
-				{},
-				{"a": "1"},
-				{"b": "2"},
-			},
-			daemonTags: []database.StringMap{
-				{},
-				{"a": "1"},
-				{"b": "2"},
-			},
-			queueSizes:     []int64{2, 2, 2},
-			queuePositions: []int64{1, 2, 2},
-		},
-		// (N + 1) jobs (1 job with 0 tags) & N provisioners
-		// 1 job not matching any provisioner (first in the list)
-		{
-			name: "test-case-11",
-			jobTags: []database.StringMap{
-				{"c": "3"},
-				{},
-				{"a": "1"},
-				{"b": "2"},
-			},
-			daemonTags: []database.StringMap{
-				{},
-				{"a": "1"},
-				{"b": "2"},
-			},
-			queueSizes:     []int64{0, 2, 2, 2},
-			queuePositions: []int64{0, 1, 2, 2},
-		},
-		// 0 jobs & 0 provisioners
-		{
-			name:           "test-case-12",
-			jobTags:        []database.StringMap{},
-			daemonTags:     []database.StringMap{},
-			queueSizes:     nil, // TODO(yevhenii): should it be empty array instead?
-			queuePositions: nil,
-		},
-	}
-
-	for _, tc := range testCases {
-		tc := tc // Capture loop variable to avoid data races
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-			db, _ := dbtestutil.NewDB(t)
-			now := dbtime.Now()
-			ctx := testutil.Context(t, testutil.WaitShort)
-
-			// Create provisioner jobs based on provided tags:
-			allJobs := make([]database.ProvisionerJob, len(tc.jobTags))
-			for idx, tags := range tc.jobTags {
-				// Make sure jobs are stored in correct order, first job should have the earliest createdAt timestamp.
-				// Example for 3 jobs:
-				// job_1 createdAt: now - 3 minutes
-				// job_2 createdAt: now - 2 minutes
-				// job_3 createdAt: now - 1 minute
-				timeOffsetInMinutes := len(tc.jobTags) - idx
-				timeOffset := time.Duration(timeOffsetInMinutes) * time.Minute
-				createdAt := now.Add(-timeOffset)
-
-				allJobs[idx] = dbgen.ProvisionerJob(t, db, nil, database.ProvisionerJob{
-					CreatedAt: createdAt,
-					Tags:      tags,
-				})
-			}
-
-			// Create provisioner daemons based on provided tags:
-			for idx, tags := range tc.daemonTags {
-				dbgen.ProvisionerDaemon(t, db, database.ProvisionerDaemon{
-					Name:         fmt.Sprintf("prov_%v", idx),
-					Provisioners: []database.ProvisionerType{database.ProvisionerTypeEcho},
-					Tags:         tags,
-				})
-			}
-
-			// Assert invariant: the jobs are in pending status
-			for idx, job := range allJobs {
-				require.Equal(t, database.ProvisionerJobStatusPending, job.JobStatus, "expected job %d to have status %s", idx, database.ProvisionerJobStatusPending)
-			}
-
-			filteredJobs := make([]database.ProvisionerJob, 0)
-			filteredJobIDs := make([]uuid.UUID, 0)
-			for idx, job := range allJobs {
-				if _, skip := tc.skipJobIDs[idx]; skip {
-					continue
-				}
-
-				filteredJobs = append(filteredJobs, job)
-				filteredJobIDs = append(filteredJobIDs, job.ID)
-			}
-
-			// When: we fetch the jobs by their IDs
-			actualJobs, err := db.GetProvisionerJobsByIDsWithQueuePosition(ctx, filteredJobIDs)
-			require.NoError(t, err)
-			require.Len(t, actualJobs, len(filteredJobs), "should return all unskipped jobs")
-
-			// Then: the jobs should be returned in the correct order (sorted by createdAt)
-			sort.Slice(filteredJobs, func(i, j int) bool {
-				return filteredJobs[i].CreatedAt.Before(filteredJobs[j].CreatedAt)
-			})
-			for idx, job := range actualJobs {
-				assert.EqualValues(t, filteredJobs[idx], job.ProvisionerJob)
-			}
-
-			// Then: the queue size should be set correctly
-			var queueSizes []int64
-			for _, job := range actualJobs {
-				queueSizes = append(queueSizes, job.QueueSize)
-			}
-			assert.EqualValues(t, tc.queueSizes, queueSizes, "expected queue positions to be set correctly")
-
-			// Then: the queue position should be set correctly:
-			var queuePositions []int64
-			for _, job := range actualJobs {
-				queuePositions = append(queuePositions, job.QueuePosition)
-			}
-			assert.EqualValues(t, tc.queuePositions, queuePositions, "expected queue positions to be set correctly")
-		})
-	}
-}
-
-func TestGetProvisionerJobsByIDsWithQueuePosition_MixedStatuses(t *testing.T) {
-	t.Parallel()
 	if !dbtestutil.WillUsePostgres() {
 		t.SkipNow()
 	}
@@ -2589,7 +2167,7 @@ func TestGetProvisionerJobsByIDsWithQueuePosition_MixedStatuses(t *testing.T) {
 	now := dbtime.Now()
 	ctx := testutil.Context(t, testutil.WaitShort)
 
-	// Create the following provisioner jobs:
+	// Given the following provisioner jobs:
 	allJobs := []database.ProvisionerJob{
 		// Pending. This will be the last in the queue because
 		// it was created most recently.
@@ -2599,9 +2177,6 @@ func TestGetProvisionerJobsByIDsWithQueuePosition_MixedStatuses(t *testing.T) {
 			CanceledAt:  sql.NullTime{},
 			CompletedAt: sql.NullTime{},
 			Error:       sql.NullString{},
-			// Ensure the `tags` field is NOT NULL for both provisioner jobs and provisioner daemons;
-			// otherwise, provisioner daemons won't be able to pick up any jobs.
-			Tags: database.StringMap{},
 		}),
 
 		// Another pending. This will come first in the queue
@@ -2612,7 +2187,6 @@ func TestGetProvisionerJobsByIDsWithQueuePosition_MixedStatuses(t *testing.T) {
 			CanceledAt:  sql.NullTime{},
 			CompletedAt: sql.NullTime{},
 			Error:       sql.NullString{},
-			Tags:        database.StringMap{},
 		}),
 
 		// Running
@@ -2622,7 +2196,6 @@ func TestGetProvisionerJobsByIDsWithQueuePosition_MixedStatuses(t *testing.T) {
 			CanceledAt:  sql.NullTime{},
 			CompletedAt: sql.NullTime{},
 			Error:       sql.NullString{},
-			Tags:        database.StringMap{},
 		}),
 
 		// Succeeded
@@ -2632,7 +2205,6 @@ func TestGetProvisionerJobsByIDsWithQueuePosition_MixedStatuses(t *testing.T) {
 			CanceledAt:  sql.NullTime{},
 			CompletedAt: sql.NullTime{Valid: true, Time: now},
 			Error:       sql.NullString{},
-			Tags:        database.StringMap{},
 		}),
 
 		// Canceling
@@ -2642,7 +2214,6 @@ func TestGetProvisionerJobsByIDsWithQueuePosition_MixedStatuses(t *testing.T) {
 			CanceledAt:  sql.NullTime{Valid: true, Time: now},
 			CompletedAt: sql.NullTime{},
 			Error:       sql.NullString{},
-			Tags:        database.StringMap{},
 		}),
 
 		// Canceled
@@ -2652,7 +2223,6 @@ func TestGetProvisionerJobsByIDsWithQueuePosition_MixedStatuses(t *testing.T) {
 			CanceledAt:  sql.NullTime{Valid: true, Time: now},
 			CompletedAt: sql.NullTime{Valid: true, Time: now},
 			Error:       sql.NullString{},
-			Tags:        database.StringMap{},
 		}),
 
 		// Failed
@@ -2662,16 +2232,8 @@ func TestGetProvisionerJobsByIDsWithQueuePosition_MixedStatuses(t *testing.T) {
 			CanceledAt:  sql.NullTime{},
 			CompletedAt: sql.NullTime{},
 			Error:       sql.NullString{String: "failed", Valid: true},
-			Tags:        database.StringMap{},
 		}),
 	}
-
-	// Create default provisioner daemon:
-	dbgen.ProvisionerDaemon(t, db, database.ProvisionerDaemon{
-		Name:         "default_provisioner",
-		Provisioners: []database.ProvisionerType{database.ProvisionerTypeEcho},
-		Tags:         database.StringMap{},
-	})
 
 	// Assert invariant: the jobs are in the expected order
 	require.Len(t, allJobs, 7, "expected 7 jobs")
@@ -2697,123 +2259,22 @@ func TestGetProvisionerJobsByIDsWithQueuePosition_MixedStatuses(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, actualJobs, len(allJobs), "should return all jobs")
 
-	// Then: the jobs should be returned in the correct order (sorted by createdAt)
-	sort.Slice(allJobs, func(i, j int) bool {
-		return allJobs[i].CreatedAt.Before(allJobs[j].CreatedAt)
-	})
+	// Then: the jobs should be returned in the correct order (by IDs in the input slice)
 	for idx, job := range actualJobs {
 		assert.EqualValues(t, allJobs[idx], job.ProvisionerJob)
 	}
 
 	// Then: the queue size should be set correctly
-	var queueSizes []int64
 	for _, job := range actualJobs {
-		queueSizes = append(queueSizes, job.QueueSize)
+		assert.EqualValues(t, job.QueueSize, 2, "should have queue size 2")
 	}
-	assert.EqualValues(t, []int64{0, 0, 0, 0, 0, 2, 2}, queueSizes, "expected queue positions to be set correctly")
 
 	// Then: the queue position should be set correctly:
 	var queuePositions []int64
 	for _, job := range actualJobs {
 		queuePositions = append(queuePositions, job.QueuePosition)
 	}
-	assert.EqualValues(t, []int64{0, 0, 0, 0, 0, 1, 2}, queuePositions, "expected queue positions to be set correctly")
-}
-
-func TestGetProvisionerJobsByIDsWithQueuePosition_OrderValidation(t *testing.T) {
-	t.Parallel()
-
-	db, _ := dbtestutil.NewDB(t)
-	now := dbtime.Now()
-	ctx := testutil.Context(t, testutil.WaitShort)
-
-	// Create the following provisioner jobs:
-	allJobs := []database.ProvisionerJob{
-		dbgen.ProvisionerJob(t, db, nil, database.ProvisionerJob{
-			CreatedAt: now.Add(-4 * time.Minute),
-			// Ensure the `tags` field is NOT NULL for both provisioner jobs and provisioner daemons;
-			// otherwise, provisioner daemons won't be able to pick up any jobs.
-			Tags: database.StringMap{},
-		}),
-
-		dbgen.ProvisionerJob(t, db, nil, database.ProvisionerJob{
-			CreatedAt: now.Add(-5 * time.Minute),
-			Tags:      database.StringMap{},
-		}),
-
-		dbgen.ProvisionerJob(t, db, nil, database.ProvisionerJob{
-			CreatedAt: now.Add(-6 * time.Minute),
-			Tags:      database.StringMap{},
-		}),
-
-		dbgen.ProvisionerJob(t, db, nil, database.ProvisionerJob{
-			CreatedAt: now.Add(-3 * time.Minute),
-			Tags:      database.StringMap{},
-		}),
-
-		dbgen.ProvisionerJob(t, db, nil, database.ProvisionerJob{
-			CreatedAt: now.Add(-2 * time.Minute),
-			Tags:      database.StringMap{},
-		}),
-
-		dbgen.ProvisionerJob(t, db, nil, database.ProvisionerJob{
-			CreatedAt: now.Add(-1 * time.Minute),
-			Tags:      database.StringMap{},
-		}),
-	}
-
-	// Create default provisioner daemon:
-	dbgen.ProvisionerDaemon(t, db, database.ProvisionerDaemon{
-		Name:         "default_provisioner",
-		Provisioners: []database.ProvisionerType{database.ProvisionerTypeEcho},
-		Tags:         database.StringMap{},
-	})
-
-	// Assert invariant: the jobs are in the expected order
-	require.Len(t, allJobs, 6, "expected 7 jobs")
-	for idx, status := range []database.ProvisionerJobStatus{
-		database.ProvisionerJobStatusPending,
-		database.ProvisionerJobStatusPending,
-		database.ProvisionerJobStatusPending,
-		database.ProvisionerJobStatusPending,
-		database.ProvisionerJobStatusPending,
-		database.ProvisionerJobStatusPending,
-	} {
-		require.Equal(t, status, allJobs[idx].JobStatus, "expected job %d to have status %s", idx, status)
-	}
-
-	var jobIDs []uuid.UUID
-	for _, job := range allJobs {
-		jobIDs = append(jobIDs, job.ID)
-	}
-
-	// When: we fetch the jobs by their IDs
-	actualJobs, err := db.GetProvisionerJobsByIDsWithQueuePosition(ctx, jobIDs)
-	require.NoError(t, err)
-	require.Len(t, actualJobs, len(allJobs), "should return all jobs")
-
-	// Then: the jobs should be returned in the correct order (sorted by createdAt)
-	sort.Slice(allJobs, func(i, j int) bool {
-		return allJobs[i].CreatedAt.Before(allJobs[j].CreatedAt)
-	})
-	for idx, job := range actualJobs {
-		assert.EqualValues(t, allJobs[idx], job.ProvisionerJob)
-		assert.EqualValues(t, allJobs[idx].CreatedAt, job.ProvisionerJob.CreatedAt)
-	}
-
-	// Then: the queue size should be set correctly
-	var queueSizes []int64
-	for _, job := range actualJobs {
-		queueSizes = append(queueSizes, job.QueueSize)
-	}
-	assert.EqualValues(t, []int64{6, 6, 6, 6, 6, 6}, queueSizes, "expected queue positions to be set correctly")
-
-	// Then: the queue position should be set correctly:
-	var queuePositions []int64
-	for _, job := range actualJobs {
-		queuePositions = append(queuePositions, job.QueuePosition)
-	}
-	assert.EqualValues(t, []int64{1, 2, 3, 4, 5, 6}, queuePositions, "expected queue positions to be set correctly")
+	assert.EqualValues(t, []int64{2, 1, 0, 0, 0, 0, 0}, queuePositions, "expected queue positions to be set correctly")
 }
 
 func TestGroupRemovalTrigger(t *testing.T) {
@@ -2915,7 +2376,6 @@ func TestGroupRemovalTrigger(t *testing.T) {
 
 func TestGetUserStatusCounts(t *testing.T) {
 	t.Parallel()
-	t.Skip("https://github.com/coder/internal/issues/464")
 
 	if !dbtestutil.WillUsePostgres() {
 		t.SkipNow()
@@ -3184,22 +2644,21 @@ func TestGetUserStatusCounts(t *testing.T) {
 								row.Date.In(location).String(),
 								i,
 							)
-							switch {
-							case row.Date.Before(createdAt):
+							if row.Date.Before(createdAt) {
 								require.Equal(t, int64(0), row.Count)
-							case row.Date.Before(firstTransitionTime):
+							} else if row.Date.Before(firstTransitionTime) {
 								if row.Status == tc.initialStatus {
 									require.Equal(t, int64(1), row.Count)
 								} else if row.Status == tc.targetStatus {
 									require.Equal(t, int64(0), row.Count)
 								}
-							case !row.Date.After(today):
+							} else if !row.Date.After(today) {
 								if row.Status == tc.initialStatus {
 									require.Equal(t, int64(0), row.Count)
 								} else if row.Status == tc.targetStatus {
 									require.Equal(t, int64(1), row.Count)
 								}
-							default:
+							} else {
 								t.Errorf("date %q beyond expected range end %q", row.Date, today)
 							}
 						}
@@ -3340,19 +2799,18 @@ func TestGetUserStatusCounts(t *testing.T) {
 							expectedCounts[d][tc.user2Transition.to] = 0
 
 							// Counted Values
-							switch {
-							case d.Before(createdAt):
+							if d.Before(createdAt) {
 								continue
-							case d.Before(firstTransitionTime):
+							} else if d.Before(firstTransitionTime) {
 								expectedCounts[d][tc.user1Transition.from]++
 								expectedCounts[d][tc.user2Transition.from]++
-							case d.Before(secondTransitionTime):
+							} else if d.Before(secondTransitionTime) {
 								expectedCounts[d][tc.user1Transition.to]++
 								expectedCounts[d][tc.user2Transition.from]++
-							case d.Before(today):
+							} else if d.Before(today) {
 								expectedCounts[d][tc.user1Transition.to]++
 								expectedCounts[d][tc.user2Transition.to]++
-							default:
+							} else {
 								t.Fatalf("date %q beyond expected range end %q", d, today)
 							}
 						}
@@ -3417,7 +2875,6 @@ func TestGetUserStatusCounts(t *testing.T) {
 
 			t.Run("User deleted during query range", func(t *testing.T) {
 				t.Parallel()
-
 				db, _ := dbtestutil.NewDB(t)
 				ctx := testutil.Context(t, testutil.WaitShort)
 
@@ -3445,12 +2902,11 @@ func TestGetUserStatusCounts(t *testing.T) {
 						i,
 					)
 					require.Equal(t, database.UserStatusActive, row.Status)
-					switch {
-					case row.Date.Before(createdAt):
+					if row.Date.Before(createdAt) {
 						require.Equal(t, int64(0), row.Count)
-					case i == len(userStatusChanges)-1:
+					} else if i == len(userStatusChanges)-1 {
 						require.Equal(t, int64(0), row.Count)
-					default:
+					} else {
 						require.Equal(t, int64(1), row.Count)
 					}
 				}
@@ -3512,6 +2968,7 @@ func TestOrganizationDeleteTrigger(t *testing.T) {
 		require.Error(t, err)
 		// cannot delete organization: organization has 0 workspaces and 1 templates that must be deleted first
 		require.ErrorContains(t, err, "cannot delete organization")
+		require.ErrorContains(t, err, "has 0 workspaces")
 		require.ErrorContains(t, err, "1 templates")
 	})
 
@@ -3585,782 +3042,6 @@ func TestOrganizationDeleteTrigger(t *testing.T) {
 		// cannot delete organization: organization has 1 members that must be deleted first
 		require.ErrorContains(t, err, "cannot delete organization")
 		require.ErrorContains(t, err, "has 1 members")
-	})
-}
-
-type templateVersionWithPreset struct {
-	database.TemplateVersion
-	preset database.TemplateVersionPreset
-}
-
-func createTemplate(t *testing.T, db database.Store, orgID uuid.UUID, userID uuid.UUID) database.Template {
-	// create template
-	tmpl := dbgen.Template(t, db, database.Template{
-		OrganizationID:  orgID,
-		CreatedBy:       userID,
-		ActiveVersionID: uuid.New(),
-	})
-
-	return tmpl
-}
-
-type tmplVersionOpts struct {
-	DesiredInstances int32
-}
-
-func createTmplVersionAndPreset(
-	t *testing.T,
-	db database.Store,
-	tmpl database.Template,
-	versionID uuid.UUID,
-	now time.Time,
-	opts *tmplVersionOpts,
-) templateVersionWithPreset {
-	// Create template version with corresponding preset and preset prebuild
-	tmplVersion := dbgen.TemplateVersion(t, db, database.TemplateVersion{
-		ID: versionID,
-		TemplateID: uuid.NullUUID{
-			UUID:  tmpl.ID,
-			Valid: true,
-		},
-		OrganizationID: tmpl.OrganizationID,
-		CreatedAt:      now,
-		UpdatedAt:      now,
-		CreatedBy:      tmpl.CreatedBy,
-	})
-	desiredInstances := int32(1)
-	if opts != nil {
-		desiredInstances = opts.DesiredInstances
-	}
-	preset := dbgen.Preset(t, db, database.InsertPresetParams{
-		TemplateVersionID: tmplVersion.ID,
-		Name:              "preset",
-		DesiredInstances: sql.NullInt32{
-			Int32: desiredInstances,
-			Valid: true,
-		},
-	})
-
-	return templateVersionWithPreset{
-		TemplateVersion: tmplVersion,
-		preset:          preset,
-	}
-}
-
-type createPrebuiltWorkspaceOpts struct {
-	failedJob      bool
-	createdAt      time.Time
-	readyAgents    int
-	notReadyAgents int
-}
-
-func createPrebuiltWorkspace(
-	ctx context.Context,
-	t *testing.T,
-	db database.Store,
-	tmpl database.Template,
-	extTmplVersion templateVersionWithPreset,
-	orgID uuid.UUID,
-	now time.Time,
-	opts *createPrebuiltWorkspaceOpts,
-) {
-	// Create job with corresponding resource and agent
-	jobError := sql.NullString{}
-	if opts != nil && opts.failedJob {
-		jobError = sql.NullString{String: "failed", Valid: true}
-	}
-	job := dbgen.ProvisionerJob(t, db, nil, database.ProvisionerJob{
-		Type:           database.ProvisionerJobTypeWorkspaceBuild,
-		OrganizationID: orgID,
-
-		CreatedAt: now.Add(-1 * time.Minute),
-		Error:     jobError,
-	})
-
-	// create ready agents
-	readyAgents := 0
-	if opts != nil {
-		readyAgents = opts.readyAgents
-	}
-	for i := 0; i < readyAgents; i++ {
-		resource := dbgen.WorkspaceResource(t, db, database.WorkspaceResource{
-			JobID: job.ID,
-		})
-		agent := dbgen.WorkspaceAgent(t, db, database.WorkspaceAgent{
-			ResourceID: resource.ID,
-		})
-		err := db.UpdateWorkspaceAgentLifecycleStateByID(ctx, database.UpdateWorkspaceAgentLifecycleStateByIDParams{
-			ID:             agent.ID,
-			LifecycleState: database.WorkspaceAgentLifecycleStateReady,
-		})
-		require.NoError(t, err)
-	}
-
-	// create not ready agents
-	notReadyAgents := 1
-	if opts != nil {
-		notReadyAgents = opts.notReadyAgents
-	}
-	for i := 0; i < notReadyAgents; i++ {
-		resource := dbgen.WorkspaceResource(t, db, database.WorkspaceResource{
-			JobID: job.ID,
-		})
-		agent := dbgen.WorkspaceAgent(t, db, database.WorkspaceAgent{
-			ResourceID: resource.ID,
-		})
-		err := db.UpdateWorkspaceAgentLifecycleStateByID(ctx, database.UpdateWorkspaceAgentLifecycleStateByIDParams{
-			ID:             agent.ID,
-			LifecycleState: database.WorkspaceAgentLifecycleStateCreated,
-		})
-		require.NoError(t, err)
-	}
-
-	// Create corresponding workspace and workspace build
-	workspace := dbgen.Workspace(t, db, database.WorkspaceTable{
-		OwnerID:        uuid.MustParse("c42fdf75-3097-471c-8c33-fb52454d81c0"),
-		OrganizationID: tmpl.OrganizationID,
-		TemplateID:     tmpl.ID,
-	})
-	createdAt := now
-	if opts != nil {
-		createdAt = opts.createdAt
-	}
-	dbgen.WorkspaceBuild(t, db, database.WorkspaceBuild{
-		CreatedAt:         createdAt,
-		WorkspaceID:       workspace.ID,
-		TemplateVersionID: extTmplVersion.ID,
-		BuildNumber:       1,
-		Transition:        database.WorkspaceTransitionStart,
-		InitiatorID:       tmpl.CreatedBy,
-		JobID:             job.ID,
-		TemplateVersionPresetID: uuid.NullUUID{
-			UUID:  extTmplVersion.preset.ID,
-			Valid: true,
-		},
-	})
-}
-
-func TestWorkspacePrebuildsView(t *testing.T) {
-	t.Parallel()
-	if !dbtestutil.WillUsePostgres() {
-		t.SkipNow()
-	}
-
-	now := dbtime.Now()
-	orgID := uuid.New()
-	userID := uuid.New()
-
-	type workspacePrebuild struct {
-		ID              uuid.UUID
-		Name            string
-		CreatedAt       time.Time
-		Ready           bool
-		CurrentPresetID uuid.UUID
-	}
-	getWorkspacePrebuilds := func(sqlDB *sql.DB) []*workspacePrebuild {
-		rows, err := sqlDB.Query("SELECT id, name, created_at, ready, current_preset_id FROM workspace_prebuilds")
-		require.NoError(t, err)
-		defer rows.Close()
-
-		workspacePrebuilds := make([]*workspacePrebuild, 0)
-		for rows.Next() {
-			var wp workspacePrebuild
-			err := rows.Scan(&wp.ID, &wp.Name, &wp.CreatedAt, &wp.Ready, &wp.CurrentPresetID)
-			require.NoError(t, err)
-
-			workspacePrebuilds = append(workspacePrebuilds, &wp)
-		}
-
-		return workspacePrebuilds
-	}
-
-	testCases := []struct {
-		name           string
-		readyAgents    int
-		notReadyAgents int
-		expectReady    bool
-	}{
-		{
-			name:           "one ready agent",
-			readyAgents:    1,
-			notReadyAgents: 0,
-			expectReady:    true,
-		},
-		{
-			name:           "one not ready agent",
-			readyAgents:    0,
-			notReadyAgents: 1,
-			expectReady:    false,
-		},
-		{
-			name:           "one ready, one not ready",
-			readyAgents:    1,
-			notReadyAgents: 1,
-			expectReady:    false,
-		},
-		{
-			name:           "both ready",
-			readyAgents:    2,
-			notReadyAgents: 0,
-			expectReady:    true,
-		},
-		{
-			name:           "five ready, one not ready",
-			readyAgents:    5,
-			notReadyAgents: 1,
-			expectReady:    false,
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			sqlDB := testSQLDB(t)
-			err := migrations.Up(sqlDB)
-			require.NoError(t, err)
-			db := database.New(sqlDB)
-
-			ctx := testutil.Context(t, testutil.WaitShort)
-
-			dbgen.Organization(t, db, database.Organization{
-				ID: orgID,
-			})
-			dbgen.User(t, db, database.User{
-				ID: userID,
-			})
-
-			tmpl := createTemplate(t, db, orgID, userID)
-			tmplV1 := createTmplVersionAndPreset(t, db, tmpl, tmpl.ActiveVersionID, now, nil)
-			createPrebuiltWorkspace(ctx, t, db, tmpl, tmplV1, orgID, now, &createPrebuiltWorkspaceOpts{
-				readyAgents:    tc.readyAgents,
-				notReadyAgents: tc.notReadyAgents,
-			})
-
-			workspacePrebuilds := getWorkspacePrebuilds(sqlDB)
-			require.Len(t, workspacePrebuilds, 1)
-			require.Equal(t, tc.expectReady, workspacePrebuilds[0].Ready)
-		})
-	}
-}
-
-func TestGetPresetsBackoff(t *testing.T) {
-	t.Parallel()
-	if !dbtestutil.WillUsePostgres() {
-		t.SkipNow()
-	}
-
-	now := dbtime.Now()
-	orgID := uuid.New()
-	userID := uuid.New()
-
-	findBackoffByTmplVersionID := func(backoffs []database.GetPresetsBackoffRow, tmplVersionID uuid.UUID) *database.GetPresetsBackoffRow {
-		for _, backoff := range backoffs {
-			if backoff.TemplateVersionID == tmplVersionID {
-				return &backoff
-			}
-		}
-
-		return nil
-	}
-
-	t.Run("Single Workspace Build", func(t *testing.T) {
-		t.Parallel()
-
-		db, _ := dbtestutil.NewDB(t)
-		ctx := testutil.Context(t, testutil.WaitShort)
-		dbgen.Organization(t, db, database.Organization{
-			ID: orgID,
-		})
-		dbgen.User(t, db, database.User{
-			ID: userID,
-		})
-
-		tmpl := createTemplate(t, db, orgID, userID)
-		tmplV1 := createTmplVersionAndPreset(t, db, tmpl, tmpl.ActiveVersionID, now, nil)
-		createPrebuiltWorkspace(ctx, t, db, tmpl, tmplV1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-
-		backoffs, err := db.GetPresetsBackoff(ctx, now.Add(-time.Hour))
-		require.NoError(t, err)
-
-		require.Len(t, backoffs, 1)
-		backoff := backoffs[0]
-		require.Equal(t, backoff.TemplateVersionID, tmpl.ActiveVersionID)
-		require.Equal(t, backoff.PresetID, tmplV1.preset.ID)
-		require.Equal(t, int32(1), backoff.NumFailed)
-	})
-
-	t.Run("Multiple Workspace Builds", func(t *testing.T) {
-		t.Parallel()
-
-		db, _ := dbtestutil.NewDB(t)
-		ctx := testutil.Context(t, testutil.WaitShort)
-		dbgen.Organization(t, db, database.Organization{
-			ID: orgID,
-		})
-		dbgen.User(t, db, database.User{
-			ID: userID,
-		})
-
-		tmpl := createTemplate(t, db, orgID, userID)
-		tmplV1 := createTmplVersionAndPreset(t, db, tmpl, tmpl.ActiveVersionID, now, nil)
-		createPrebuiltWorkspace(ctx, t, db, tmpl, tmplV1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl, tmplV1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl, tmplV1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-
-		backoffs, err := db.GetPresetsBackoff(ctx, now.Add(-time.Hour))
-		require.NoError(t, err)
-
-		require.Len(t, backoffs, 1)
-		backoff := backoffs[0]
-		require.Equal(t, backoff.TemplateVersionID, tmpl.ActiveVersionID)
-		require.Equal(t, backoff.PresetID, tmplV1.preset.ID)
-		require.Equal(t, int32(3), backoff.NumFailed)
-	})
-
-	t.Run("Ignore Inactive Version", func(t *testing.T) {
-		t.Parallel()
-
-		db, _ := dbtestutil.NewDB(t)
-		ctx := testutil.Context(t, testutil.WaitShort)
-		dbgen.Organization(t, db, database.Organization{
-			ID: orgID,
-		})
-		dbgen.User(t, db, database.User{
-			ID: userID,
-		})
-
-		tmpl := createTemplate(t, db, orgID, userID)
-		tmplV1 := createTmplVersionAndPreset(t, db, tmpl, uuid.New(), now, nil)
-		createPrebuiltWorkspace(ctx, t, db, tmpl, tmplV1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-
-		// Active Version
-		tmplV2 := createTmplVersionAndPreset(t, db, tmpl, tmpl.ActiveVersionID, now, nil)
-		createPrebuiltWorkspace(ctx, t, db, tmpl, tmplV2, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl, tmplV2, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-
-		backoffs, err := db.GetPresetsBackoff(ctx, now.Add(-time.Hour))
-		require.NoError(t, err)
-
-		require.Len(t, backoffs, 1)
-		backoff := backoffs[0]
-		require.Equal(t, backoff.TemplateVersionID, tmpl.ActiveVersionID)
-		require.Equal(t, backoff.PresetID, tmplV2.preset.ID)
-		require.Equal(t, int32(2), backoff.NumFailed)
-	})
-
-	t.Run("Multiple Templates", func(t *testing.T) {
-		t.Parallel()
-
-		db, _ := dbtestutil.NewDB(t)
-		ctx := testutil.Context(t, testutil.WaitShort)
-		dbgen.Organization(t, db, database.Organization{
-			ID: orgID,
-		})
-		dbgen.User(t, db, database.User{
-			ID: userID,
-		})
-
-		tmpl1 := createTemplate(t, db, orgID, userID)
-		tmpl1V1 := createTmplVersionAndPreset(t, db, tmpl1, tmpl1.ActiveVersionID, now, nil)
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-
-		tmpl2 := createTemplate(t, db, orgID, userID)
-		tmpl2V1 := createTmplVersionAndPreset(t, db, tmpl2, tmpl2.ActiveVersionID, now, nil)
-		createPrebuiltWorkspace(ctx, t, db, tmpl2, tmpl2V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-
-		backoffs, err := db.GetPresetsBackoff(ctx, now.Add(-time.Hour))
-		require.NoError(t, err)
-
-		require.Len(t, backoffs, 2)
-		{
-			backoff := findBackoffByTmplVersionID(backoffs, tmpl1.ActiveVersionID)
-			require.Equal(t, backoff.TemplateVersionID, tmpl1.ActiveVersionID)
-			require.Equal(t, backoff.PresetID, tmpl1V1.preset.ID)
-			require.Equal(t, int32(1), backoff.NumFailed)
-		}
-		{
-			backoff := findBackoffByTmplVersionID(backoffs, tmpl2.ActiveVersionID)
-			require.Equal(t, backoff.TemplateVersionID, tmpl2.ActiveVersionID)
-			require.Equal(t, backoff.PresetID, tmpl2V1.preset.ID)
-			require.Equal(t, int32(1), backoff.NumFailed)
-		}
-	})
-
-	t.Run("Multiple Templates, Versions and Workspace Builds", func(t *testing.T) {
-		t.Parallel()
-
-		db, _ := dbtestutil.NewDB(t)
-		ctx := testutil.Context(t, testutil.WaitShort)
-		dbgen.Organization(t, db, database.Organization{
-			ID: orgID,
-		})
-		dbgen.User(t, db, database.User{
-			ID: userID,
-		})
-
-		tmpl1 := createTemplate(t, db, orgID, userID)
-		tmpl1V1 := createTmplVersionAndPreset(t, db, tmpl1, tmpl1.ActiveVersionID, now, nil)
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-
-		tmpl2 := createTemplate(t, db, orgID, userID)
-		tmpl2V1 := createTmplVersionAndPreset(t, db, tmpl2, tmpl2.ActiveVersionID, now, nil)
-		createPrebuiltWorkspace(ctx, t, db, tmpl2, tmpl2V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl2, tmpl2V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-
-		tmpl3 := createTemplate(t, db, orgID, userID)
-		tmpl3V1 := createTmplVersionAndPreset(t, db, tmpl3, uuid.New(), now, nil)
-		createPrebuiltWorkspace(ctx, t, db, tmpl3, tmpl3V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-
-		tmpl3V2 := createTmplVersionAndPreset(t, db, tmpl3, tmpl3.ActiveVersionID, now, nil)
-		createPrebuiltWorkspace(ctx, t, db, tmpl3, tmpl3V2, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl3, tmpl3V2, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl3, tmpl3V2, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-		})
-
-		backoffs, err := db.GetPresetsBackoff(ctx, now.Add(-time.Hour))
-		require.NoError(t, err)
-
-		require.Len(t, backoffs, 3)
-		{
-			backoff := findBackoffByTmplVersionID(backoffs, tmpl1.ActiveVersionID)
-			require.Equal(t, backoff.TemplateVersionID, tmpl1.ActiveVersionID)
-			require.Equal(t, backoff.PresetID, tmpl1V1.preset.ID)
-			require.Equal(t, int32(1), backoff.NumFailed)
-		}
-		{
-			backoff := findBackoffByTmplVersionID(backoffs, tmpl2.ActiveVersionID)
-			require.Equal(t, backoff.TemplateVersionID, tmpl2.ActiveVersionID)
-			require.Equal(t, backoff.PresetID, tmpl2V1.preset.ID)
-			require.Equal(t, int32(2), backoff.NumFailed)
-		}
-		{
-			backoff := findBackoffByTmplVersionID(backoffs, tmpl3.ActiveVersionID)
-			require.Equal(t, backoff.TemplateVersionID, tmpl3.ActiveVersionID)
-			require.Equal(t, backoff.PresetID, tmpl3V2.preset.ID)
-			require.Equal(t, int32(3), backoff.NumFailed)
-		}
-	})
-
-	t.Run("No Workspace Builds", func(t *testing.T) {
-		t.Parallel()
-
-		db, _ := dbtestutil.NewDB(t)
-		ctx := testutil.Context(t, testutil.WaitShort)
-		dbgen.Organization(t, db, database.Organization{
-			ID: orgID,
-		})
-		dbgen.User(t, db, database.User{
-			ID: userID,
-		})
-
-		tmpl1 := createTemplate(t, db, orgID, userID)
-		tmpl1V1 := createTmplVersionAndPreset(t, db, tmpl1, tmpl1.ActiveVersionID, now, nil)
-		_ = tmpl1V1
-
-		backoffs, err := db.GetPresetsBackoff(ctx, now.Add(-time.Hour))
-		require.NoError(t, err)
-		require.Nil(t, backoffs)
-	})
-
-	t.Run("No Failed Workspace Builds", func(t *testing.T) {
-		t.Parallel()
-
-		db, _ := dbtestutil.NewDB(t)
-		ctx := testutil.Context(t, testutil.WaitShort)
-		dbgen.Organization(t, db, database.Organization{
-			ID: orgID,
-		})
-		dbgen.User(t, db, database.User{
-			ID: userID,
-		})
-
-		tmpl1 := createTemplate(t, db, orgID, userID)
-		tmpl1V1 := createTmplVersionAndPreset(t, db, tmpl1, tmpl1.ActiveVersionID, now, nil)
-		successfulJobOpts := createPrebuiltWorkspaceOpts{}
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &successfulJobOpts)
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &successfulJobOpts)
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &successfulJobOpts)
-
-		backoffs, err := db.GetPresetsBackoff(ctx, now.Add(-time.Hour))
-		require.NoError(t, err)
-		require.Nil(t, backoffs)
-	})
-
-	t.Run("Last job is successful - no backoff", func(t *testing.T) {
-		t.Parallel()
-
-		db, _ := dbtestutil.NewDB(t)
-		ctx := testutil.Context(t, testutil.WaitShort)
-		dbgen.Organization(t, db, database.Organization{
-			ID: orgID,
-		})
-		dbgen.User(t, db, database.User{
-			ID: userID,
-		})
-
-		tmpl1 := createTemplate(t, db, orgID, userID)
-		tmpl1V1 := createTmplVersionAndPreset(t, db, tmpl1, tmpl1.ActiveVersionID, now, &tmplVersionOpts{
-			DesiredInstances: 1,
-		})
-		failedJobOpts := createPrebuiltWorkspaceOpts{
-			failedJob: true,
-			createdAt: now.Add(-2 * time.Minute),
-		}
-		successfulJobOpts := createPrebuiltWorkspaceOpts{
-			failedJob: false,
-			createdAt: now.Add(-1 * time.Minute),
-		}
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &failedJobOpts)
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &successfulJobOpts)
-
-		backoffs, err := db.GetPresetsBackoff(ctx, now.Add(-time.Hour))
-		require.NoError(t, err)
-		require.Nil(t, backoffs)
-	})
-
-	t.Run("Last 3 jobs are successful - no backoff", func(t *testing.T) {
-		t.Parallel()
-
-		db, _ := dbtestutil.NewDB(t)
-		ctx := testutil.Context(t, testutil.WaitShort)
-		dbgen.Organization(t, db, database.Organization{
-			ID: orgID,
-		})
-		dbgen.User(t, db, database.User{
-			ID: userID,
-		})
-
-		tmpl1 := createTemplate(t, db, orgID, userID)
-		tmpl1V1 := createTmplVersionAndPreset(t, db, tmpl1, tmpl1.ActiveVersionID, now, &tmplVersionOpts{
-			DesiredInstances: 3,
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-			createdAt: now.Add(-4 * time.Minute),
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: false,
-			createdAt: now.Add(-3 * time.Minute),
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: false,
-			createdAt: now.Add(-2 * time.Minute),
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: false,
-			createdAt: now.Add(-1 * time.Minute),
-		})
-
-		backoffs, err := db.GetPresetsBackoff(ctx, now.Add(-time.Hour))
-		require.NoError(t, err)
-		require.Nil(t, backoffs)
-	})
-
-	t.Run("1 job failed out of 3 - backoff", func(t *testing.T) {
-		t.Parallel()
-
-		db, _ := dbtestutil.NewDB(t)
-		ctx := testutil.Context(t, testutil.WaitShort)
-		dbgen.Organization(t, db, database.Organization{
-			ID: orgID,
-		})
-		dbgen.User(t, db, database.User{
-			ID: userID,
-		})
-
-		tmpl1 := createTemplate(t, db, orgID, userID)
-		tmpl1V1 := createTmplVersionAndPreset(t, db, tmpl1, tmpl1.ActiveVersionID, now, &tmplVersionOpts{
-			DesiredInstances: 3,
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-			createdAt: now.Add(-3 * time.Minute),
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: false,
-			createdAt: now.Add(-2 * time.Minute),
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: false,
-			createdAt: now.Add(-1 * time.Minute),
-		})
-
-		backoffs, err := db.GetPresetsBackoff(ctx, now.Add(-time.Hour))
-		require.NoError(t, err)
-
-		require.Len(t, backoffs, 1)
-		{
-			backoff := backoffs[0]
-			require.Equal(t, backoff.TemplateVersionID, tmpl1.ActiveVersionID)
-			require.Equal(t, backoff.PresetID, tmpl1V1.preset.ID)
-			require.Equal(t, int32(1), backoff.NumFailed)
-		}
-	})
-
-	t.Run("3 job failed out of 5 - backoff", func(t *testing.T) {
-		t.Parallel()
-
-		db, _ := dbtestutil.NewDB(t)
-		ctx := testutil.Context(t, testutil.WaitShort)
-		dbgen.Organization(t, db, database.Organization{
-			ID: orgID,
-		})
-		dbgen.User(t, db, database.User{
-			ID: userID,
-		})
-		lookbackPeriod := time.Hour
-
-		tmpl1 := createTemplate(t, db, orgID, userID)
-		tmpl1V1 := createTmplVersionAndPreset(t, db, tmpl1, tmpl1.ActiveVersionID, now, &tmplVersionOpts{
-			DesiredInstances: 3,
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-			createdAt: now.Add(-lookbackPeriod - time.Minute), // earlier than lookback period - skipped
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-			createdAt: now.Add(-4 * time.Minute), // within lookback period - counted as failed job
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-			createdAt: now.Add(-3 * time.Minute), // within lookback period - counted as failed job
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: false,
-			createdAt: now.Add(-2 * time.Minute),
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: false,
-			createdAt: now.Add(-1 * time.Minute),
-		})
-
-		backoffs, err := db.GetPresetsBackoff(ctx, now.Add(-lookbackPeriod))
-		require.NoError(t, err)
-
-		require.Len(t, backoffs, 1)
-		{
-			backoff := backoffs[0]
-			require.Equal(t, backoff.TemplateVersionID, tmpl1.ActiveVersionID)
-			require.Equal(t, backoff.PresetID, tmpl1V1.preset.ID)
-			require.Equal(t, int32(2), backoff.NumFailed)
-		}
-	})
-
-	t.Run("check LastBuildAt timestamp", func(t *testing.T) {
-		t.Parallel()
-
-		db, _ := dbtestutil.NewDB(t)
-		ctx := testutil.Context(t, testutil.WaitShort)
-		dbgen.Organization(t, db, database.Organization{
-			ID: orgID,
-		})
-		dbgen.User(t, db, database.User{
-			ID: userID,
-		})
-		lookbackPeriod := time.Hour
-
-		tmpl1 := createTemplate(t, db, orgID, userID)
-		tmpl1V1 := createTmplVersionAndPreset(t, db, tmpl1, tmpl1.ActiveVersionID, now, &tmplVersionOpts{
-			DesiredInstances: 6,
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-			createdAt: now.Add(-lookbackPeriod - time.Minute), // earlier than lookback period - skipped
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-			createdAt: now.Add(-4 * time.Minute),
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-			createdAt: now.Add(-0 * time.Minute),
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-			createdAt: now.Add(-3 * time.Minute),
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-			createdAt: now.Add(-1 * time.Minute),
-		})
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-			createdAt: now.Add(-2 * time.Minute),
-		})
-
-		backoffs, err := db.GetPresetsBackoff(ctx, now.Add(-lookbackPeriod))
-		require.NoError(t, err)
-
-		require.Len(t, backoffs, 1)
-		{
-			backoff := backoffs[0]
-			require.Equal(t, backoff.TemplateVersionID, tmpl1.ActiveVersionID)
-			require.Equal(t, backoff.PresetID, tmpl1V1.preset.ID)
-			require.Equal(t, int32(5), backoff.NumFailed)
-			// make sure LastBuildAt is equal to latest failed build timestamp
-			require.Equal(t, 0, now.Compare(backoff.LastBuildAt))
-		}
-	})
-
-	t.Run("failed job outside lookback period", func(t *testing.T) {
-		t.Parallel()
-
-		db, _ := dbtestutil.NewDB(t)
-		ctx := testutil.Context(t, testutil.WaitShort)
-		dbgen.Organization(t, db, database.Organization{
-			ID: orgID,
-		})
-		dbgen.User(t, db, database.User{
-			ID: userID,
-		})
-		lookbackPeriod := time.Hour
-
-		tmpl1 := createTemplate(t, db, orgID, userID)
-		tmpl1V1 := createTmplVersionAndPreset(t, db, tmpl1, tmpl1.ActiveVersionID, now, &tmplVersionOpts{
-			DesiredInstances: 1,
-		})
-
-		createPrebuiltWorkspace(ctx, t, db, tmpl1, tmpl1V1, orgID, now, &createPrebuiltWorkspaceOpts{
-			failedJob: true,
-			createdAt: now.Add(-lookbackPeriod - time.Minute), // earlier than lookback period - skipped
-		})
-
-		backoffs, err := db.GetPresetsBackoff(ctx, now.Add(-lookbackPeriod))
-		require.NoError(t, err)
-		require.Len(t, backoffs, 0)
 	})
 }
 

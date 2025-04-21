@@ -15,7 +15,6 @@ import (
 	"github.com/coder/coder/v2/coderd/database/dbauthz"
 	"github.com/coder/coder/v2/coderd/database/dbtime"
 	"github.com/coder/coder/v2/codersdk"
-	"github.com/coder/quartz"
 	"github.com/coder/retry"
 )
 
@@ -27,7 +26,6 @@ import (
 type Cache struct {
 	database  database.Store
 	log       slog.Logger
-	clock     quartz.Clock
 	intervals Intervals
 
 	templateWorkspaceOwners  atomic.Pointer[map[uuid.UUID]int]
@@ -47,7 +45,7 @@ type Intervals struct {
 	DeploymentStats    time.Duration
 }
 
-func New(db database.Store, log slog.Logger, clock quartz.Clock, intervals Intervals, usage bool) *Cache {
+func New(db database.Store, log slog.Logger, intervals Intervals, usage bool) *Cache {
 	if intervals.TemplateBuildTimes <= 0 {
 		intervals.TemplateBuildTimes = time.Hour
 	}
@@ -57,7 +55,6 @@ func New(db database.Store, log slog.Logger, clock quartz.Clock, intervals Inter
 	ctx, cancel := context.WithCancel(context.Background())
 
 	c := &Cache{
-		clock:     clock,
 		database:  db,
 		intervals: intervals,
 		log:       log,
@@ -107,7 +104,7 @@ func (c *Cache) refreshTemplateBuildTimes(ctx context.Context) error {
 				Valid: true,
 			},
 			StartTime: sql.NullTime{
-				Time:  dbtime.Time(c.clock.Now().AddDate(0, 0, -30)),
+				Time:  dbtime.Time(time.Now().AddDate(0, 0, -30)),
 				Valid: true,
 			},
 		})
@@ -134,7 +131,7 @@ func (c *Cache) refreshTemplateBuildTimes(ctx context.Context) error {
 
 func (c *Cache) refreshDeploymentStats(ctx context.Context) error {
 	var (
-		from       = c.clock.Now().Add(-15 * time.Minute)
+		from       = dbtime.Now().Add(-15 * time.Minute)
 		agentStats database.GetDeploymentWorkspaceAgentStatsRow
 		err        error
 	)
@@ -158,8 +155,8 @@ func (c *Cache) refreshDeploymentStats(ctx context.Context) error {
 	}
 	c.deploymentStatsResponse.Store(&codersdk.DeploymentStats{
 		AggregatedFrom: from,
-		CollectedAt:    dbtime.Time(c.clock.Now()),
-		NextUpdateAt:   dbtime.Time(c.clock.Now().Add(c.intervals.DeploymentStats)),
+		CollectedAt:    dbtime.Now(),
+		NextUpdateAt:   dbtime.Now().Add(c.intervals.DeploymentStats),
 		Workspaces: codersdk.WorkspaceDeploymentStats{
 			Pending:  workspaceStats.PendingWorkspaces,
 			Building: workspaceStats.BuildingWorkspaces,
