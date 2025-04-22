@@ -123,7 +123,7 @@ func (i *Injector) Start(ctx context.Context) error {
 				return nil
 			}
 
-			stdout, stderr, err = run(ctx, i.execer, "docker", "container", "exec", container.ID, "chmod +x /tmp/bootstrap.sh")
+			stdout, stderr, err = run(ctx, i.execer, "docker", "container", "exec", container.ID, "chmod", "+x", "/tmp/bootstrap.sh")
 			i.logger.Info(ctx, stdout)
 			i.logger.Error(ctx, stderr)
 			if err != nil {
@@ -131,11 +131,12 @@ func (i *Injector) Start(ctx context.Context) error {
 				return nil
 			}
 
-			cmd := i.execer.CommandContext(ctx, "docker", "container", "exec", container.ID,
+			cmd := i.execer.CommandContext(ctx, "docker", "container", "exec",
 				"--detach",
 				"--env", fmt.Sprintf("ACCESS_URL=%s", accessURL),
 				"--env", fmt.Sprintf("AUTH_TYPE=%s", authType),
 				"--env", fmt.Sprintf("CODER_AGENT_TOKEN=%s", childAuthToken.String()),
+				container.ID,
 				"bash", "-c", "/tmp/bootstrap.sh",
 			)
 
