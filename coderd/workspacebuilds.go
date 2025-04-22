@@ -337,8 +337,7 @@ func (api *API) postWorkspaceBuilds(rw http.ResponseWriter, r *http.Request) {
 		Initiator(apiKey.UserID).
 		RichParameterValues(createBuild.RichParameterValues).
 		LogLevel(string(createBuild.LogLevel)).
-		DeploymentValues(api.Options.DeploymentValues).
-		TemplateVersionPresetID(createBuild.TemplateVersionPresetID)
+		DeploymentValues(api.Options.DeploymentValues)
 
 	var (
 		previousWorkspaceBuild database.WorkspaceBuild
@@ -1066,11 +1065,6 @@ func (api *API) convertWorkspaceBuild(
 		return apiResources[i].Name < apiResources[j].Name
 	})
 
-	var presetID *uuid.UUID
-	if build.TemplateVersionPresetID.Valid {
-		presetID = &build.TemplateVersionPresetID.UUID
-	}
-
 	apiJob := convertProvisionerJob(job)
 	transition := codersdk.WorkspaceTransition(build.Transition)
 	return codersdk.WorkspaceBuild{
@@ -1096,7 +1090,6 @@ func (api *API) convertWorkspaceBuild(
 		Status:                  codersdk.ConvertWorkspaceStatus(apiJob.Status, transition),
 		DailyCost:               build.DailyCost,
 		MatchedProvisioners:     &matchedProvisioners,
-		TemplateVersionPresetID: presetID,
 	}, nil
 }
 

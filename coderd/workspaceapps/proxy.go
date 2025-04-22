@@ -110,8 +110,8 @@ type Server struct {
 	//
 	// Subdomain apps are safer with their cookies scoped to the subdomain, and XSS
 	// calls to the dashboard are not possible due to CORs.
-	DisablePathApps bool
-	Cookies         codersdk.HTTPCookieConfig
+	DisablePathApps  bool
+	SecureAuthCookie bool
 
 	AgentProvider  AgentProvider
 	StatsCollector *StatsCollector
@@ -230,14 +230,16 @@ func (s *Server) handleAPIKeySmuggling(rw http.ResponseWriter, r *http.Request, 
 	// We use different cookie names for path apps and for subdomain apps to
 	// avoid both being set and sent to the server at the same time and the
 	// server using the wrong value.
-	http.SetCookie(rw, s.Cookies.Apply(&http.Cookie{
+	http.SetCookie(rw, &http.Cookie{
 		Name:     AppConnectSessionTokenCookieName(accessMethod),
 		Value:    payload.APIKey,
 		Domain:   domain,
 		Path:     "/",
 		MaxAge:   0,
 		HttpOnly: true,
-	}))
+		SameSite: http.SameSiteLaxMode,
+		Secure:   s.SecureAuthCookie,
+	})
 
 	// Strip the query parameter.
 	path := r.URL.Path
@@ -298,7 +300,6 @@ func (s *Server) workspaceAppsProxyPath(rw http.ResponseWriter, r *http.Request)
 	// permissions to connect to a workspace.
 	token, ok := ResolveRequest(rw, r, ResolveRequestOptions{
 		Logger:              s.Logger,
-		CookieCfg:           s.Cookies,
 		SignedTokenProvider: s.SignedTokenProvider,
 		DashboardURL:        s.DashboardURL,
 		PathAppBaseURL:      s.AccessURL,
@@ -404,7 +405,6 @@ func (s *Server) HandleSubdomain(middlewares ...func(http.Handler) http.Handler)
 
 				token, ok := ResolveRequest(rw, r, ResolveRequestOptions{
 					Logger:              s.Logger,
-					CookieCfg:           s.Cookies,
 					SignedTokenProvider: s.SignedTokenProvider,
 					DashboardURL:        s.DashboardURL,
 					PathAppBaseURL:      s.AccessURL,
@@ -630,7 +630,6 @@ func (s *Server) workspaceAgentPTY(rw http.ResponseWriter, r *http.Request) {
 
 	appToken, ok := ResolveRequest(rw, r, ResolveRequestOptions{
 		Logger:              s.Logger,
-		CookieCfg:           s.Cookies,
 		SignedTokenProvider: s.SignedTokenProvider,
 		DashboardURL:        s.DashboardURL,
 		PathAppBaseURL:      s.AccessURL,

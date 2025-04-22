@@ -99,6 +99,7 @@ export const NotificationsPage: FC = () => {
 				title="Notifications"
 				description="Control which notifications you receive."
 				layout="fluid"
+				featureStage="beta"
 			>
 				{ready ? (
 					<Stack spacing={4}>

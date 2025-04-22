@@ -118,7 +118,7 @@ func TestBatchCreateLogs(t *testing.T) {
 				level = database.LogLevel(strings.ToLower(logEntry.Level.String()))
 			}
 			insertWorkspaceAgentLogsParams.Level[i] = level
-			insertWorkspaceAgentLogsParams.OutputLength += int32(len(logEntry.Output)) // nolint:gosec
+			insertWorkspaceAgentLogsParams.OutputLength += int32(len(logEntry.Output))
 
 			insertWorkspaceAgentLogsReturn[i] = database.WorkspaceAgentLog{
 				AgentID:     agent.ID,
@@ -270,7 +270,7 @@ func TestBatchCreateLogs(t *testing.T) {
 			CreatedAt:    now,
 			Output:       []string{"hello world"},
 			Level:        []database.LogLevel{database.LogLevelInfo},
-			OutputLength: int32(len(req.Logs[0].Output)), // nolint:gosec
+			OutputLength: int32(len(req.Logs[0].Output)),
 		}
 		dbInsertRes := []database.WorkspaceAgentLog{
 			{

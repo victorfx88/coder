@@ -534,7 +534,7 @@ func TestTemplatePush(t *testing.T) {
 						"test_name": tt.name,
 					}))
 
-					templateName := testutil.GetRandomNameHyphenated(t)
+					templateName := strings.ReplaceAll(testutil.GetRandomName(t), "_", "-")
 
 					inv, root := clitest.New(t, "templates", "push", templateName, "-d", tempDir, "--yes")
 					clitest.SetupConfig(t, templateAdmin, root)

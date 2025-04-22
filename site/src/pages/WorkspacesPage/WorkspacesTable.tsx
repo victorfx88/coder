@@ -221,7 +221,7 @@ export const WorkspacesTable: FC<WorkspacesTableProps> = ({
 											}
 											subtitle={
 												<div>
-													<span css={{ ...visuallyHidden }}>Owner: </span>
+													<span css={{ ...visuallyHidden }}>User: </span>
 													{workspace.owner_name}
 												</div>
 											}
@@ -230,7 +230,6 @@ export const WorkspacesTable: FC<WorkspacesTableProps> = ({
 													variant="icon"
 													src={workspace.template_icon}
 													fallback={workspace.name}
-													size="lg"
 												/>
 											}
 										/>

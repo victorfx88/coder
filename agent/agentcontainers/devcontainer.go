@@ -8,16 +8,8 @@ import (
 	"strings"
 
 	"cdr.dev/slog"
-	"github.com/coder/coder/v2/codersdk"
-)
 
-const (
-	// DevcontainerLocalFolderLabel is the label that contains the path to
-	// the local workspace folder for a devcontainer.
-	DevcontainerLocalFolderLabel = "devcontainer.local_folder"
-	// DevcontainerConfigFileLabel is the label that contains the path to
-	// the devcontainer.json configuration file.
-	DevcontainerConfigFileLabel = "devcontainer.config_file"
+	"github.com/coder/coder/v2/codersdk"
 )
 
 const devcontainerUpScriptTemplate = `
@@ -60,10 +52,8 @@ ScriptLoop:
 }
 
 func devcontainerStartupScript(dc codersdk.WorkspaceAgentDevcontainer, script codersdk.WorkspaceAgentScript) codersdk.WorkspaceAgentScript {
-	args := []string{
-		"--log-format json",
-		fmt.Sprintf("--workspace-folder %q", dc.WorkspaceFolder),
-	}
+	var args []string
+	args = append(args, fmt.Sprintf("--workspace-folder %q", dc.WorkspaceFolder))
 	if dc.ConfigPath != "" {
 		args = append(args, fmt.Sprintf("--config %q", dc.ConfigPath))
 	}

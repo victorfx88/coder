@@ -57,8 +57,5 @@
 	"[css][html][markdown][yaml]": {
 		"editor.defaultFormatter": "esbenp.prettier-vscode"
 	},
-	"typos.config": ".github/workflows/typos.toml",
-	"[markdown]": {
-		"editor.defaultFormatter": "DavidAnson.vscode-markdownlint"
-	}
+	"typos.config": ".github/workflows/typos.toml"
 }

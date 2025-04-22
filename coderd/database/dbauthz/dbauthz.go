@@ -18,13 +18,13 @@ import (
 
 	"cdr.dev/slog"
 
-	"github.com/coder/coder/v2/coderd/prebuilds"
 	"github.com/coder/coder/v2/coderd/rbac/policy"
 	"github.com/coder/coder/v2/coderd/rbac/rolestore"
 
 	"github.com/coder/coder/v2/coderd/database"
 	"github.com/coder/coder/v2/coderd/database/dbtime"
 	"github.com/coder/coder/v2/coderd/httpapi/httpapiconstraints"
+	"github.com/coder/coder/v2/coderd/httpmw/loggermw"
 	"github.com/coder/coder/v2/coderd/rbac"
 	"github.com/coder/coder/v2/coderd/util/slice"
 	"github.com/coder/coder/v2/provisionersdk"
@@ -163,6 +163,7 @@ func ActorFromContext(ctx context.Context) (rbac.Subject, bool) {
 
 var (
 	subjectProvisionerd = rbac.Subject{
+		Type:         rbac.SubjectTypeProvisionerd,
 		FriendlyName: "Provisioner Daemon",
 		ID:           uuid.Nil.String(),
 		Roles: rbac.Roles([]rbac.Role{
@@ -197,6 +198,7 @@ var (
 	}.WithCachedASTValue()
 
 	subjectAutostart = rbac.Subject{
+		Type:         rbac.SubjectTypeAutostart,
 		FriendlyName: "Autostart",
 		ID:           uuid.Nil.String(),
 		Roles: rbac.Roles([]rbac.Role{
@@ -220,6 +222,7 @@ var (
 
 	// See unhanger package.
 	subjectHangDetector = rbac.Subject{
+		Type:         rbac.SubjectTypeHangDetector,
 		FriendlyName: "Hang Detector",
 		ID:           uuid.Nil.String(),
 		Roles: rbac.Roles([]rbac.Role{
@@ -240,6 +243,7 @@ var (
 
 	// See cryptokeys package.
 	subjectCryptoKeyRotator = rbac.Subject{
+		Type:         rbac.SubjectTypeCryptoKeyRotator,
 		FriendlyName: "Crypto Key Rotator",
 		ID:           uuid.Nil.String(),
 		Roles: rbac.Roles([]rbac.Role{
@@ -258,6 +262,7 @@ var (
 
 	// See cryptokeys package.
 	subjectCryptoKeyReader = rbac.Subject{
+		Type:         rbac.SubjectTypeCryptoKeyReader,
 		FriendlyName: "Crypto Key Reader",
 		ID:           uuid.Nil.String(),
 		Roles: rbac.Roles([]rbac.Role{
@@ -275,6 +280,7 @@ var (
 	}.WithCachedASTValue()
 
 	subjectNotifier = rbac.Subject{
+		Type:         rbac.SubjectTypeNotifier,
 		FriendlyName: "Notifier",
 		ID:           uuid.Nil.String(),
 		Roles: rbac.Roles([]rbac.Role{
@@ -295,6 +301,7 @@ var (
 	}.WithCachedASTValue()
 
 	subjectResourceMonitor = rbac.Subject{
+		Type:         rbac.SubjectTypeResourceMonitor,
 		FriendlyName: "Resource Monitor",
 		ID:           uuid.Nil.String(),
 		Roles: rbac.Roles([]rbac.Role{
@@ -313,6 +320,7 @@ var (
 	}.WithCachedASTValue()
 
 	subjectSystemRestricted = rbac.Subject{
+		Type:         rbac.SubjectTypeSystemRestricted,
 		FriendlyName: "System",
 		ID:           uuid.Nil.String(),
 		Roles: rbac.Roles([]rbac.Role{
@@ -347,6 +355,7 @@ var (
 	}.WithCachedASTValue()
 
 	subjectSystemReadProvisionerDaemons = rbac.Subject{
+		Type:         rbac.SubjectTypeSystemReadProvisionerDaemons,
 		FriendlyName: "Provisioner Daemons Reader",
 		ID:           uuid.Nil.String(),
 		Roles: rbac.Roles([]rbac.Role{
@@ -362,85 +371,58 @@ var (
 		}),
 		Scope: rbac.ScopeAll,
 	}.WithCachedASTValue()
-
-	subjectPrebuildsOrchestrator = rbac.Subject{
-		FriendlyName: "Prebuilds Orchestrator",
-		ID:           prebuilds.SystemUserID.String(),
-		Roles: rbac.Roles([]rbac.Role{
-			{
-				Identifier:  rbac.RoleIdentifier{Name: "prebuilds-orchestrator"},
-				DisplayName: "Coder",
-				Site: rbac.Permissions(map[string][]policy.Action{
-					// May use template, read template-related info, & insert template-related resources (preset prebuilds).
-					rbac.ResourceTemplate.Type: {policy.ActionRead, policy.ActionUpdate, policy.ActionUse, policy.ActionViewInsights},
-					// May CRUD workspaces, and start/stop them.
-					rbac.ResourceWorkspace.Type: {
-						policy.ActionCreate, policy.ActionDelete, policy.ActionRead, policy.ActionUpdate,
-						policy.ActionWorkspaceStart, policy.ActionWorkspaceStop,
-					},
-				}),
-			},
-		}),
-		Scope: rbac.ScopeAll,
-	}.WithCachedASTValue()
 )
 
 // AsProvisionerd returns a context with an actor that has permissions required
 // for provisionerd to function.
 func AsProvisionerd(ctx context.Context) context.Context {
-	return context.WithValue(ctx, authContextKey{}, subjectProvisionerd)
+	return As(ctx, subjectProvisionerd)
 }
 
 // AsAutostart returns a context with an actor that has permissions required
 // for autostart to function.
 func AsAutostart(ctx context.Context) context.Context {
-	return context.WithValue(ctx, authContextKey{}, subjectAutostart)
+	return As(ctx, subjectAutostart)
 }
 
 // AsHangDetector returns a context with an actor that has permissions required
 // for unhanger.Detector to function.
 func AsHangDetector(ctx context.Context) context.Context {
-	return context.WithValue(ctx, authContextKey{}, subjectHangDetector)
+	return As(ctx, subjectHangDetector)
 }
 
 // AsKeyRotator returns a context with an actor that has permissions required for rotating crypto keys.
 func AsKeyRotator(ctx context.Context) context.Context {
-	return context.WithValue(ctx, authContextKey{}, subjectCryptoKeyRotator)
+	return As(ctx, subjectCryptoKeyRotator)
 }
 
 // AsKeyReader returns a context with an actor that has permissions required for reading crypto keys.
 func AsKeyReader(ctx context.Context) context.Context {
-	return context.WithValue(ctx, authContextKey{}, subjectCryptoKeyReader)
+	return As(ctx, subjectCryptoKeyReader)
 }
 
 // AsNotifier returns a context with an actor that has permissions required for
 // creating/reading/updating/deleting notifications.
 func AsNotifier(ctx context.Context) context.Context {
-	return context.WithValue(ctx, authContextKey{}, subjectNotifier)
+	return As(ctx, subjectNotifier)
 }
 
 // AsResourceMonitor returns a context with an actor that has permissions required for
 // updating resource monitors.
 func AsResourceMonitor(ctx context.Context) context.Context {
-	return context.WithValue(ctx, authContextKey{}, subjectResourceMonitor)
+	return As(ctx, subjectResourceMonitor)
 }
 
 // AsSystemRestricted returns a context with an actor that has permissions
 // required for various system operations (login, logout, metrics cache).
 func AsSystemRestricted(ctx context.Context) context.Context {
-	return context.WithValue(ctx, authContextKey{}, subjectSystemRestricted)
+	return As(ctx, subjectSystemRestricted)
 }
 
 // AsSystemReadProvisionerDaemons returns a context with an actor that has permissions
 // to read provisioner daemons.
 func AsSystemReadProvisionerDaemons(ctx context.Context) context.Context {
-	return context.WithValue(ctx, authContextKey{}, subjectSystemReadProvisionerDaemons)
-}
-
-// AsPrebuildsOrchestrator returns a context with an actor that has permissions
-// to read orchestrator workspace prebuilds.
-func AsPrebuildsOrchestrator(ctx context.Context) context.Context {
-	return context.WithValue(ctx, authContextKey{}, subjectPrebuildsOrchestrator)
+	return As(ctx, subjectSystemReadProvisionerDaemons)
 }
 
 var AsRemoveActor = rbac.Subject{
@@ -457,6 +439,9 @@ func As(ctx context.Context, actor rbac.Subject) context.Context {
 		// AsRemoveActor is a special case that is used to indicate that the actor
 		// should be removed from the context.
 		return context.WithValue(ctx, authContextKey{}, nil)
+	}
+	if rlogger := loggermw.RequestLoggerFromContext(ctx); rlogger != nil {
+		rlogger.WithAuthContext(actor)
 	}
 	return context.WithValue(ctx, authContextKey{}, actor)
 }
@@ -1137,31 +1122,6 @@ func (q *querier) BulkMarkNotificationMessagesSent(ctx context.Context, arg data
 	return q.db.BulkMarkNotificationMessagesSent(ctx, arg)
 }
 
-func (q *querier) ClaimPrebuiltWorkspace(ctx context.Context, arg database.ClaimPrebuiltWorkspaceParams) (database.ClaimPrebuiltWorkspaceRow, error) {
-	empty := database.ClaimPrebuiltWorkspaceRow{}
-
-	preset, err := q.db.GetPresetByID(ctx, arg.PresetID)
-	if err != nil {
-		return empty, err
-	}
-
-	workspaceObject := rbac.ResourceWorkspace.WithOwner(arg.NewUserID.String()).InOrg(preset.OrganizationID)
-	err = q.authorizeContext(ctx, policy.ActionCreate, workspaceObject.RBACObject())
-	if err != nil {
-		return empty, err
-	}
-
-	tpl, err := q.GetTemplateByID(ctx, preset.TemplateID.UUID)
-	if err != nil {
-		return empty, xerrors.Errorf("verify template by id: %w", err)
-	}
-	if err := q.authorizeContext(ctx, policy.ActionUse, tpl); err != nil {
-		return empty, xerrors.Errorf("use template for workspace: %w", err)
-	}
-
-	return q.db.ClaimPrebuiltWorkspace(ctx, arg)
-}
-
 func (q *querier) CleanTailnetCoordinators(ctx context.Context) error {
 	if err := q.authorizeContext(ctx, policy.ActionDelete, rbac.ResourceTailnetCoordinator); err != nil {
 		return err
@@ -1181,13 +1141,6 @@ func (q *querier) CleanTailnetTunnels(ctx context.Context) error {
 		return err
 	}
 	return q.db.CleanTailnetTunnels(ctx)
-}
-
-func (q *querier) CountInProgressPrebuilds(ctx context.Context) ([]database.CountInProgressPrebuildsRow, error) {
-	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceWorkspace.All()); err != nil {
-		return nil, err
-	}
-	return q.db.CountInProgressPrebuilds(ctx)
 }
 
 func (q *querier) CountUnreadInboxNotificationsByUserID(ctx context.Context, userID uuid.UUID) (int64, error) {
@@ -1801,22 +1754,6 @@ func (q *querier) GetFileByID(ctx context.Context, id uuid.UUID) (database.File,
 	return file, nil
 }
 
-func (q *querier) GetFileIDByTemplateVersionID(ctx context.Context, templateVersionID uuid.UUID) (uuid.UUID, error) {
-	fileID, err := q.db.GetFileIDByTemplateVersionID(ctx, templateVersionID)
-	if err != nil {
-		return uuid.Nil, err
-	}
-	// This is a kind of weird check, because users will almost never have this
-	// permission. Since this query is not currently used to provide data in a
-	// user facing way, it's expected that this query is run as some system
-	// subject in order to be authorized.
-	err = q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceFile.WithID(fileID))
-	if err != nil {
-		return uuid.Nil, err
-	}
-	return fileID, nil
-}
-
 func (q *querier) GetFileTemplates(ctx context.Context, fileID uuid.UUID) ([]database.GetFileTemplatesRow, error) {
 	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
 		return nil, err
@@ -1893,6 +1830,13 @@ func (q *querier) GetInboxNotificationByID(ctx context.Context, id uuid.UUID) (d
 
 func (q *querier) GetInboxNotificationsByUserID(ctx context.Context, userID database.GetInboxNotificationsByUserIDParams) ([]database.InboxNotification, error) {
 	return fetchWithPostFilter(q.auth, policy.ActionRead, q.db.GetInboxNotificationsByUserID)(ctx, userID)
+}
+
+func (q *querier) GetJFrogXrayScanByWorkspaceAndAgentID(ctx context.Context, arg database.GetJFrogXrayScanByWorkspaceAndAgentIDParams) (database.JfrogXrayScan, error) {
+	if _, err := fetch(q.log, q.auth, q.db.GetWorkspaceByID)(ctx, arg.WorkspaceID); err != nil {
+		return database.JfrogXrayScan{}, err
+	}
+	return q.db.GetJFrogXrayScanByWorkspaceAndAgentID(ctx, arg)
 }
 
 func (q *querier) GetLastUpdateCheck(ctx context.Context) (string, error) {
@@ -2149,30 +2093,6 @@ func (q *querier) GetParameterSchemasByJobID(ctx context.Context, jobID uuid.UUI
 	return q.db.GetParameterSchemasByJobID(ctx, jobID)
 }
 
-func (q *querier) GetPrebuildMetrics(ctx context.Context) ([]database.GetPrebuildMetricsRow, error) {
-	// GetPrebuildMetrics returns metrics related to prebuilt workspaces,
-	// such as the number of created and failed prebuilt workspaces.
-	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceWorkspace.All()); err != nil {
-		return nil, err
-	}
-	return q.db.GetPrebuildMetrics(ctx)
-}
-
-func (q *querier) GetPresetByID(ctx context.Context, presetID uuid.UUID) (database.GetPresetByIDRow, error) {
-	empty := database.GetPresetByIDRow{}
-
-	preset, err := q.db.GetPresetByID(ctx, presetID)
-	if err != nil {
-		return empty, err
-	}
-	_, err = q.GetTemplateByID(ctx, preset.TemplateID.UUID)
-	if err != nil {
-		return empty, err
-	}
-
-	return preset, nil
-}
-
 func (q *querier) GetPresetByWorkspaceBuildID(ctx context.Context, workspaceID uuid.UUID) (database.TemplateVersionPreset, error) {
 	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceTemplate); err != nil {
 		return database.TemplateVersionPreset{}, err
@@ -2180,32 +2100,14 @@ func (q *querier) GetPresetByWorkspaceBuildID(ctx context.Context, workspaceID u
 	return q.db.GetPresetByWorkspaceBuildID(ctx, workspaceID)
 }
 
-func (q *querier) GetPresetParametersByPresetID(ctx context.Context, presetID uuid.UUID) ([]database.TemplateVersionPresetParameter, error) {
+func (q *querier) GetPresetParametersByTemplateVersionID(ctx context.Context, templateVersionID uuid.UUID) ([]database.TemplateVersionPresetParameter, error) {
 	// An actor can read template version presets if they can read the related template version.
-	_, err := q.GetPresetByID(ctx, presetID)
+	_, err := q.GetTemplateVersionByID(ctx, templateVersionID)
 	if err != nil {
 		return nil, err
 	}
 
-	return q.db.GetPresetParametersByPresetID(ctx, presetID)
-}
-
-func (q *querier) GetPresetParametersByTemplateVersionID(ctx context.Context, args uuid.UUID) ([]database.TemplateVersionPresetParameter, error) {
-	// An actor can read template version presets if they can read the related template version.
-	_, err := q.GetTemplateVersionByID(ctx, args)
-	if err != nil {
-		return nil, err
-	}
-
-	return q.db.GetPresetParametersByTemplateVersionID(ctx, args)
-}
-
-func (q *querier) GetPresetsBackoff(ctx context.Context, lookback time.Time) ([]database.GetPresetsBackoffRow, error) {
-	// GetPresetsBackoff returns a list of template version presets along with metadata such as the number of failed prebuilds.
-	if err := q.authorizeContext(ctx, policy.ActionViewInsights, rbac.ResourceTemplate.All()); err != nil {
-		return nil, err
-	}
-	return q.db.GetPresetsBackoff(ctx, lookback)
+	return q.db.GetPresetParametersByTemplateVersionID(ctx, templateVersionID)
 }
 
 func (q *querier) GetPresetsByTemplateVersionID(ctx context.Context, templateVersionID uuid.UUID) ([]database.TemplateVersionPreset, error) {
@@ -2259,13 +2161,13 @@ func (q *querier) GetProvisionerJobByID(ctx context.Context, id uuid.UUID) (data
 		// can read the job.
 		_, err := q.GetWorkspaceBuildByJobID(ctx, id)
 		if err != nil {
-			return database.ProvisionerJob{}, xerrors.Errorf("fetch related workspace build: %w", err)
+			return database.ProvisionerJob{}, err
 		}
 	case database.ProvisionerJobTypeTemplateVersionDryRun, database.ProvisionerJobTypeTemplateVersionImport:
 		// Authorized call to get template version.
 		_, err := authorizedTemplateVersionFromJob(ctx, q, job)
 		if err != nil {
-			return database.ProvisionerJob{}, xerrors.Errorf("fetch related template version: %w", err)
+			return database.ProvisionerJob{}, err
 		}
 	default:
 		return database.ProvisionerJob{}, xerrors.Errorf("unknown job type: %q", job.Type)
@@ -2356,14 +2258,6 @@ func (q *querier) GetReplicasUpdatedAfter(ctx context.Context, updatedAt time.Ti
 		return nil, err
 	}
 	return q.db.GetReplicasUpdatedAfter(ctx, updatedAt)
-}
-
-func (q *querier) GetRunningPrebuiltWorkspaces(ctx context.Context) ([]database.GetRunningPrebuiltWorkspacesRow, error) {
-	// This query returns only prebuilt workspaces, but we decided to require permissions for all workspaces.
-	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceWorkspace.All()); err != nil {
-		return nil, err
-	}
-	return q.db.GetRunningPrebuiltWorkspaces(ctx)
 }
 
 func (q *querier) GetRuntimeConfig(ctx context.Context, key string) (string, error) {
@@ -2490,15 +2384,6 @@ func (q *querier) GetTemplateParameterInsights(ctx context.Context, arg database
 	return q.db.GetTemplateParameterInsights(ctx, arg)
 }
 
-func (q *querier) GetTemplatePresetsWithPrebuilds(ctx context.Context, templateID uuid.NullUUID) ([]database.GetTemplatePresetsWithPrebuildsRow, error) {
-	// GetTemplatePresetsWithPrebuilds retrieves template versions with configured presets and prebuilds.
-	// Presets and prebuilds are part of the template, so if you can access templates - you can access them as well.
-	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceTemplate.All()); err != nil {
-		return nil, err
-	}
-	return q.db.GetTemplatePresetsWithPrebuilds(ctx, templateID)
-}
-
 func (q *querier) GetTemplateUsageStats(ctx context.Context, arg database.GetTemplateUsageStatsParams) ([]database.TemplateUsageStat, error) {
 	if err := q.authorizeTemplateInsights(ctx, arg.TemplateIDs); err != nil {
 		return nil, err
@@ -2579,18 +2464,6 @@ func (q *querier) GetTemplateVersionParameters(ctx context.Context, templateVers
 		return nil, err
 	}
 	return q.db.GetTemplateVersionParameters(ctx, templateVersionID)
-}
-
-func (q *querier) GetTemplateVersionTerraformValues(ctx context.Context, templateVersionID uuid.UUID) (database.TemplateVersionTerraformValue, error) {
-	// The template_version_terraform_values table should follow the same access
-	// control as the template_version table. Rather than reimplement the checks,
-	// we just defer to existing implementation. (plus we'd need to use this query
-	// to reimplement the proper checks anyway)
-	_, err := q.GetTemplateVersionByID(ctx, templateVersionID)
-	if err != nil {
-		return database.TemplateVersionTerraformValue{}, err
-	}
-	return q.db.GetTemplateVersionTerraformValues(ctx, templateVersionID)
 }
 
 func (q *querier) GetTemplateVersionVariables(ctx context.Context, templateVersionID uuid.UUID) ([]database.TemplateVersionVariable, error) {
@@ -2714,6 +2587,17 @@ func (q *querier) GetUserActivityInsights(ctx context.Context, arg database.GetU
 	return q.db.GetUserActivityInsights(ctx, arg)
 }
 
+func (q *querier) GetUserAppearanceSettings(ctx context.Context, userID uuid.UUID) (string, error) {
+	u, err := q.db.GetUserByID(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	if err := q.authorizeContext(ctx, policy.ActionReadPersonal, u); err != nil {
+		return "", err
+	}
+	return q.db.GetUserAppearanceSettings(ctx, userID)
+}
+
 func (q *querier) GetUserByEmailOrUsername(ctx context.Context, arg database.GetUserByEmailOrUsernameParams) (database.User, error) {
 	return fetch(q.log, q.auth, q.db.GetUserByEmailOrUsername)(ctx, arg)
 }
@@ -2784,28 +2668,6 @@ func (q *querier) GetUserStatusCounts(ctx context.Context, arg database.GetUserS
 		return nil, err
 	}
 	return q.db.GetUserStatusCounts(ctx, arg)
-}
-
-func (q *querier) GetUserTerminalFont(ctx context.Context, userID uuid.UUID) (string, error) {
-	u, err := q.db.GetUserByID(ctx, userID)
-	if err != nil {
-		return "", err
-	}
-	if err := q.authorizeContext(ctx, policy.ActionReadPersonal, u); err != nil {
-		return "", err
-	}
-	return q.db.GetUserTerminalFont(ctx, userID)
-}
-
-func (q *querier) GetUserThemePreference(ctx context.Context, userID uuid.UUID) (string, error) {
-	u, err := q.db.GetUserByID(ctx, userID)
-	if err != nil {
-		return "", err
-	}
-	if err := q.authorizeContext(ctx, policy.ActionReadPersonal, u); err != nil {
-		return "", err
-	}
-	return q.db.GetUserThemePreference(ctx, userID)
 }
 
 func (q *querier) GetUserWorkspaceBuildParameters(ctx context.Context, params database.GetUserWorkspaceBuildParametersParams) ([]database.GetUserWorkspaceBuildParametersRow, error) {
@@ -4325,6 +4187,17 @@ func (q *querier) UpdateTemplateWorkspacesLastUsedAt(ctx context.Context, arg da
 	return fetchAndExec(q.log, q.auth, policy.ActionUpdate, fetch, q.db.UpdateTemplateWorkspacesLastUsedAt)(ctx, arg)
 }
 
+func (q *querier) UpdateUserAppearanceSettings(ctx context.Context, arg database.UpdateUserAppearanceSettingsParams) (database.UserConfig, error) {
+	u, err := q.db.GetUserByID(ctx, arg.UserID)
+	if err != nil {
+		return database.UserConfig{}, err
+	}
+	if err := q.authorizeContext(ctx, policy.ActionUpdatePersonal, u); err != nil {
+		return database.UserConfig{}, err
+	}
+	return q.db.UpdateUserAppearanceSettings(ctx, arg)
+}
+
 func (q *querier) UpdateUserDeletedByID(ctx context.Context, id uuid.UUID) error {
 	return deleteQ(q.log, q.auth, q.db.GetUserByID, q.db.UpdateUserDeletedByID)(ctx, id)
 }
@@ -4460,28 +4333,6 @@ func (q *querier) UpdateUserStatus(ctx context.Context, arg database.UpdateUserS
 		return q.db.GetUserByID(ctx, arg.ID)
 	}
 	return updateWithReturn(q.log, q.auth, fetch, q.db.UpdateUserStatus)(ctx, arg)
-}
-
-func (q *querier) UpdateUserTerminalFont(ctx context.Context, arg database.UpdateUserTerminalFontParams) (database.UserConfig, error) {
-	u, err := q.db.GetUserByID(ctx, arg.UserID)
-	if err != nil {
-		return database.UserConfig{}, err
-	}
-	if err := q.authorizeContext(ctx, policy.ActionUpdatePersonal, u); err != nil {
-		return database.UserConfig{}, err
-	}
-	return q.db.UpdateUserTerminalFont(ctx, arg)
-}
-
-func (q *querier) UpdateUserThemePreference(ctx context.Context, arg database.UpdateUserThemePreferenceParams) (database.UserConfig, error) {
-	u, err := q.db.GetUserByID(ctx, arg.UserID)
-	if err != nil {
-		return database.UserConfig{}, err
-	}
-	if err := q.authorizeContext(ctx, policy.ActionUpdatePersonal, u); err != nil {
-		return database.UserConfig{}, err
-	}
-	return q.db.UpdateUserThemePreference(ctx, arg)
 }
 
 func (q *querier) UpdateVolumeResourceMonitor(ctx context.Context, arg database.UpdateVolumeResourceMonitorParams) error {
@@ -4758,6 +4609,27 @@ func (q *querier) UpsertHealthSettings(ctx context.Context, value string) error 
 		return err
 	}
 	return q.db.UpsertHealthSettings(ctx, value)
+}
+
+func (q *querier) UpsertJFrogXrayScanByWorkspaceAndAgentID(ctx context.Context, arg database.UpsertJFrogXrayScanByWorkspaceAndAgentIDParams) error {
+	// TODO: Having to do all this extra querying makes me a sad panda.
+	workspace, err := q.db.GetWorkspaceByID(ctx, arg.WorkspaceID)
+	if err != nil {
+		return xerrors.Errorf("get workspace by id: %w", err)
+	}
+
+	template, err := q.db.GetTemplateByID(ctx, workspace.TemplateID)
+	if err != nil {
+		return xerrors.Errorf("get template by id: %w", err)
+	}
+
+	// Only template admins should be able to write JFrog Xray scans to a workspace.
+	// We don't want this to be a workspace-level permission because then users
+	// could overwrite their own results.
+	if err := q.authorizeContext(ctx, policy.ActionCreate, template); err != nil {
+		return err
+	}
+	return q.db.UpsertJFrogXrayScanByWorkspaceAndAgentID(ctx, arg)
 }
 
 func (q *querier) UpsertLastUpdateCheck(ctx context.Context, value string) error {

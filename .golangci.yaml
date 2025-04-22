@@ -164,7 +164,6 @@ linters-settings:
       - name: unnecessary-stmt
       - name: unreachable-code
       - name: unused-parameter
-        exclude: "**/*_test.go"
       - name: unused-receiver
       - name: var-declaration
       - name: var-naming
@@ -196,6 +195,8 @@ issues:
         - errcheck
         - forcetypeassert
         - exhaustruct # This is unhelpful in tests.
+        - revive # TODO(JonA): disabling in order to update golangci-lint
+        - gosec # TODO(JonA): disabling in order to update golangci-lint
     - path: scripts/*
       linters:
         - exhaustruct

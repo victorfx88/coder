@@ -95,8 +95,8 @@ const TemplatePermissionsPage = lazy(
 const TemplateSummaryPage = lazy(
 	() => import("./pages/TemplatePage/TemplateSummaryPage/TemplateSummaryPage"),
 );
-const CreateWorkspaceExperimentRouter = lazy(
-	() => import("./pages/CreateWorkspacePage/CreateWorkspaceExperimentRouter"),
+const CreateWorkspacePage = lazy(
+	() => import("./pages/CreateWorkspacePage/CreateWorkspacePage"),
 );
 const OverviewPage = lazy(
 	() => import("./pages/DeploymentSettingsPage/OverviewPage/OverviewPage"),
@@ -264,10 +264,7 @@ const CreateEditRolePage = lazy(
 		),
 );
 const ProvisionersPage = lazy(
-	() =>
-		import(
-			"./pages/OrganizationSettingsPage/OrganizationProvisionersPage/OrganizationProvisionersPage"
-		),
+	() => import("./pages/OrganizationSettingsPage/OrganizationProvisionersPage"),
 );
 const TemplateEmbedPage = lazy(
 	() => import("./pages/TemplatePage/TemplateEmbedPage/TemplateEmbedPage"),
@@ -337,7 +334,7 @@ const templateRouter = () => {
 					<Route path="insights" element={<TemplateInsightsPage />} />
 				</Route>
 
-				<Route path="workspace" element={<CreateWorkspaceExperimentRouter />} />
+				<Route path="workspace" element={<CreateWorkspacePage />} />
 
 				<Route path="settings" element={<TemplateSettingsLayout />}>
 					<Route index element={<TemplateSettingsPage />} />

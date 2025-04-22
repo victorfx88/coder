@@ -229,21 +229,13 @@ type agent struct {
 	// we track 2 contexts and associated cancel functions: "graceful" which is Done when it is time
 	// to start gracefully shutting down and "hard" which is Done when it is time to close
 	// everything down (regardless of whether graceful shutdown completed).
-	gracefulCtx    context.Context
-	gracefulCancel context.CancelFunc
-	hardCtx        context.Context
-	hardCancel     context.CancelFunc
-
-	// closeMutex protects the following:
-	closeMutex        sync.Mutex
+	gracefulCtx       context.Context
+	gracefulCancel    context.CancelFunc
+	hardCtx           context.Context
+	hardCancel        context.CancelFunc
 	closeWaitGroup    sync.WaitGroup
+	closeMutex        sync.Mutex
 	coordDisconnected chan struct{}
-	closing           bool
-	// note that once the network is set to non-nil, it is never modified, as with the statsReporter. So, routines
-	// that run after createOrUpdateNetwork and check the networkOK checkpoint do not need to hold the lock to use them.
-	network       *tailnet.Conn
-	statsReporter *statsReporter
-	// end fields protected by closeMutex
 
 	environmentVariables map[string]string
 
@@ -267,7 +259,9 @@ type agent struct {
 	reportConnectionsMu     sync.Mutex
 	reportConnections       []*proto.ReportConnectionRequest
 
-	logSender *agentsdk.LogSender
+	network       *tailnet.Conn
+	statsReporter *statsReporter
+	logSender     *agentsdk.LogSender
 
 	prometheusRegistry *prometheus.Registry
 	// metrics are prometheus registered metrics that will be collected and
@@ -280,8 +274,6 @@ type agent struct {
 }
 
 func (a *agent) TailnetConn() *tailnet.Conn {
-	a.closeMutex.Lock()
-	defer a.closeMutex.Unlock()
 	return a.network
 }
 
@@ -1194,9 +1186,9 @@ func (a *agent) createOrUpdateNetwork(manifestOK, networkOK *checkpoint) func(co
 		network := a.network
 		a.closeMutex.Unlock()
 		if network == nil {
-			keySeed, err := SSHKeySeed(manifest.OwnerName, manifest.WorkspaceName, manifest.AgentName)
+			keySeed, err := WorkspaceKeySeed(manifest.WorkspaceID, manifest.AgentName)
 			if err != nil {
-				return xerrors.Errorf("generate SSH key seed: %w", err)
+				return xerrors.Errorf("generate seed from workspace id: %w", err)
 			}
 			// use the graceful context here, because creating the tailnet is not itself tied to the
 			// agent API.
@@ -1213,15 +1205,15 @@ func (a *agent) createOrUpdateNetwork(manifestOK, networkOK *checkpoint) func(co
 			}
 			a.closeMutex.Lock()
 			// Re-check if agent was closed while initializing the network.
-			closing := a.closing
-			if !closing {
+			closed := a.isClosed()
+			if !closed {
 				a.network = network
 				a.statsReporter = newStatsReporter(a.logger, network, a)
 			}
 			a.closeMutex.Unlock()
-			if closing {
+			if closed {
 				_ = network.Close()
-				return xerrors.New("agent is closing")
+				return xerrors.New("agent is closed")
 			}
 		} else {
 			// Update the wireguard IPs if the agent ID changed.
@@ -1336,8 +1328,8 @@ func (*agent) wireguardAddresses(agentID uuid.UUID) []netip.Prefix {
 func (a *agent) trackGoroutine(fn func()) error {
 	a.closeMutex.Lock()
 	defer a.closeMutex.Unlock()
-	if a.closing {
-		return xerrors.New("track conn goroutine: agent is closing")
+	if a.isClosed() {
+		return xerrors.New("track conn goroutine: agent is closed")
 	}
 	a.closeWaitGroup.Add(1)
 	go func() {
@@ -1416,7 +1408,7 @@ func (a *agent) createTailnet(
 		if rPTYServeErr != nil &&
 			a.gracefulCtx.Err() == nil &&
 			!strings.Contains(rPTYServeErr.Error(), "use of closed network connection") {
-			a.logger.Error(ctx, "error serving reconnecting PTY", slog.Error(rPTYServeErr))
+			a.logger.Error(ctx, "error serving reconnecting PTY", slog.Error(err))
 		}
 	}); err != nil {
 		return nil, err
@@ -1526,11 +1518,14 @@ func (a *agent) runCoordinator(ctx context.Context, tClient tailnetproto.DRPCTai
 	a.logger.Info(ctx, "connected to coordination RPC")
 
 	// This allows the Close() routine to wait for the coordinator to gracefully disconnect.
-	disconnected := a.setCoordDisconnected()
-	if disconnected == nil {
-		return nil // already closed by something else
+	a.closeMutex.Lock()
+	if a.isClosed() {
+		return nil
 	}
+	disconnected := make(chan struct{})
+	a.coordDisconnected = disconnected
 	defer close(disconnected)
+	a.closeMutex.Unlock()
 
 	ctrl := tailnet.NewAgentCoordinationController(a.logger, network)
 	coordination := ctrl.New(coordinate)
@@ -1550,17 +1545,6 @@ func (a *agent) runCoordinator(ctx context.Context, tClient tailnetproto.DRPCTai
 		}
 	}()
 	return <-errCh
-}
-
-func (a *agent) setCoordDisconnected() chan struct{} {
-	a.closeMutex.Lock()
-	defer a.closeMutex.Unlock()
-	if a.closing {
-		return nil
-	}
-	disconnected := make(chan struct{})
-	a.coordDisconnected = disconnected
-	return disconnected
 }
 
 // runDERPMapSubscriber runs a coordinator and returns if a reconnect should occur.
@@ -1780,10 +1764,7 @@ func (a *agent) HTTPDebug() http.Handler {
 
 func (a *agent) Close() error {
 	a.closeMutex.Lock()
-	network := a.network
-	coordDisconnected := a.coordDisconnected
-	a.closing = true
-	a.closeMutex.Unlock()
+	defer a.closeMutex.Unlock()
 	if a.isClosed() {
 		return nil
 	}
@@ -1792,22 +1773,15 @@ func (a *agent) Close() error {
 	a.setLifecycle(codersdk.WorkspaceAgentLifecycleShuttingDown)
 
 	// Attempt to gracefully shut down all active SSH connections and
-	// stop accepting new ones. If all processes have not exited after 5
-	// seconds, we just log it and move on as it's more important to run
-	// the shutdown scripts. A typical shutdown time for containers is
-	// 10 seconds, so this still leaves a bit of time to run the
-	// shutdown scripts in the worst-case.
-	sshShutdownCtx, sshShutdownCancel := context.WithTimeout(a.hardCtx, 5*time.Second)
-	defer sshShutdownCancel()
-	err := a.sshServer.Shutdown(sshShutdownCtx)
+	// stop accepting new ones.
+	err := a.sshServer.Shutdown(a.hardCtx)
 	if err != nil {
-		if errors.Is(err, context.DeadlineExceeded) {
-			a.logger.Warn(sshShutdownCtx, "ssh server shutdown timeout", slog.Error(err))
-		} else {
-			a.logger.Error(sshShutdownCtx, "ssh server shutdown", slog.Error(err))
-		}
+		a.logger.Error(a.hardCtx, "ssh server shutdown", slog.Error(err))
 	}
-
+	err = a.sshServer.Close()
+	if err != nil {
+		a.logger.Error(a.hardCtx, "ssh server close", slog.Error(err))
+	}
 	// wait for SSH to shut down before the general graceful cancel, because
 	// this triggers a disconnect in the tailnet layer, telling all clients to
 	// shut down their wireguard tunnels to us. If SSH sessions are still up,
@@ -1860,7 +1834,7 @@ lifecycleWaitLoop:
 	select {
 	case <-a.hardCtx.Done():
 		a.logger.Warn(context.Background(), "timed out waiting for Coordinator RPC disconnect")
-	case <-coordDisconnected:
+	case <-a.coordDisconnected:
 		a.logger.Debug(context.Background(), "coordinator RPC disconnected")
 	}
 
@@ -1871,8 +1845,8 @@ lifecycleWaitLoop:
 	}
 
 	a.hardCancel()
-	if network != nil {
-		_ = network.Close()
+	if a.network != nil {
+		_ = a.network.Close()
 	}
 	a.closeWaitGroup.Wait()
 
@@ -2087,31 +2061,12 @@ func PrometheusMetricsHandler(prometheusRegistry *prometheus.Registry, logger sl
 	})
 }
 
-// SSHKeySeed converts an owner userName, workspaceName and agentName to an int64 hash.
+// WorkspaceKeySeed converts a WorkspaceID UUID and agent name to an int64 hash.
 // This uses the FNV-1a hash algorithm which provides decent distribution and collision
 // resistance for string inputs.
-//
-// Why owner username, workspace name, and agent name? These are the components that are used in hostnames for the
-// workspace over SSH, and so we want the workspace to have a stable key with respect to these.  We don't use the
-// respective UUIDs.  The workspace UUID would be different if you delete and recreate a workspace with the same name.
-// The agent UUID is regenerated on each build. Since Coder's Tailnet networking is handling the authentication, we
-// should not be showing users warnings about host SSH keys.
-func SSHKeySeed(userName, workspaceName, agentName string) (int64, error) {
+func WorkspaceKeySeed(workspaceID uuid.UUID, agentName string) (int64, error) {
 	h := fnv.New64a()
-	_, err := h.Write([]byte(userName))
-	if err != nil {
-		return 42, err
-	}
-	// null separators between strings so that (dog, foodstuff) is distinct from (dogfood, stuff)
-	_, err = h.Write([]byte{0})
-	if err != nil {
-		return 42, err
-	}
-	_, err = h.Write([]byte(workspaceName))
-	if err != nil {
-		return 42, err
-	}
-	_, err = h.Write([]byte{0})
+	_, err := h.Write(workspaceID[:])
 	if err != nil {
 		return 42, err
 	}

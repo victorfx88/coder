@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import {
 	MockWorkspace,
-	MockWorkspaceAgent,
 	MockWorkspaceAgentContainer,
 	MockWorkspaceAgentContainerPorts,
 } from "testHelpers/entities";
@@ -14,7 +13,7 @@ const meta: Meta<typeof AgentDevcontainerCard> = {
 		container: MockWorkspaceAgentContainer,
 		workspace: MockWorkspace,
 		wildcardHostname: "*.wildcard.hostname",
-		agent: MockWorkspaceAgent,
+		agentName: "dev",
 	},
 };
 

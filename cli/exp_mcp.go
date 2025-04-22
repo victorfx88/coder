@@ -6,19 +6,19 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 
-	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/spf13/afero"
 	"golang.org/x/xerrors"
 
+	"cdr.dev/slog"
+	"cdr.dev/slog/sloggers/sloghuman"
 	"github.com/coder/coder/v2/buildinfo"
 	"github.com/coder/coder/v2/cli/cliui"
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/codersdk/agentsdk"
-	"github.com/coder/coder/v2/codersdk/toolsdk"
+	codermcp "github.com/coder/coder/v2/mcp"
 	"github.com/coder/serpent"
 )
 
@@ -110,14 +110,12 @@ func (*RootCmd) mcpConfigureClaudeDesktop() *serpent.Command {
 
 func (*RootCmd) mcpConfigureClaudeCode() *serpent.Command {
 	var (
-		claudeAPIKey     string
+		apiKey           string
 		claudeConfigPath string
 		claudeMDPath     string
 		systemPrompt     string
 		appStatusSlug    string
 		testBinaryName   string
-
-		deprecatedCoderMCPClaudeAPIKey string
 	)
 	cmd := &serpent.Command{
 		Use:   "claude-code <project-directory>",
@@ -142,14 +140,6 @@ func (*RootCmd) mcpConfigureClaudeCode() *serpent.Command {
 			} else {
 				configureClaudeEnv["CODER_AGENT_TOKEN"] = agentToken
 			}
-			if claudeAPIKey == "" {
-				if deprecatedCoderMCPClaudeAPIKey == "" {
-					cliui.Warnf(inv.Stderr, "CLAUDE_API_KEY is not set.")
-				} else {
-					cliui.Warnf(inv.Stderr, "CODER_MCP_CLAUDE_API_KEY is deprecated, use CLAUDE_API_KEY instead")
-					claudeAPIKey = deprecatedCoderMCPClaudeAPIKey
-				}
-			}
 			if appStatusSlug != "" {
 				configureClaudeEnv["CODER_MCP_APP_STATUS_SLUG"] = appStatusSlug
 			}
@@ -161,7 +151,7 @@ func (*RootCmd) mcpConfigureClaudeCode() *serpent.Command {
 			if err := configureClaude(fs, ClaudeConfig{
 				// TODO: will this always be stable?
 				AllowedTools:     []string{`mcp__coder__coder_report_task`},
-				APIKey:           claudeAPIKey,
+				APIKey:           apiKey,
 				ConfigPath:       claudeConfigPath,
 				ProjectDirectory: projectDirectory,
 				MCPServers: map[string]ClaudeConfigMCP{
@@ -201,18 +191,11 @@ func (*RootCmd) mcpConfigureClaudeCode() *serpent.Command {
 				Default:     filepath.Join(os.Getenv("HOME"), ".claude", "CLAUDE.md"),
 			},
 			{
-				Name:        "claude-api-key",
-				Description: "The API key to use for the Claude Code server. This is also read from CLAUDE_API_KEY.",
-				Env:         "CLAUDE_API_KEY",
-				Flag:        "claude-api-key",
-				Value:       serpent.StringOf(&claudeAPIKey),
-			},
-			{
-				Name:        "mcp-claude-api-key",
-				Description: "Hidden alias for CLAUDE_API_KEY. This will be removed in a future version.",
+				Name:        "api-key",
+				Description: "The API key to use for the Claude Code server.",
 				Env:         "CODER_MCP_CLAUDE_API_KEY",
-				Value:       serpent.StringOf(&deprecatedCoderMCPClaudeAPIKey),
-				Hidden:      true,
+				Flag:        "claude-api-key",
+				Value:       serpent.StringOf(&apiKey),
 			},
 			{
 				Name:        "system-prompt",
@@ -365,8 +348,6 @@ func mcpServerHandler(inv *serpent.Invocation, client *codersdk.Client, instruct
 	ctx, cancel := context.WithCancel(inv.Context())
 	defer cancel()
 
-	fs := afero.NewOsFs()
-
 	me, err := client.User(ctx, codersdk.Me)
 	if err != nil {
 		cliui.Errorf(inv.Stderr, "Failed to log in to the Coder deployment.")
@@ -399,43 +380,40 @@ func mcpServerHandler(inv *serpent.Invocation, client *codersdk.Client, instruct
 		server.WithInstructions(instructions),
 	)
 
-	// Create a new context for the tools with all relevant information.
-	clientCtx := toolsdk.WithClient(ctx, client)
+	// Create a separate logger for the tools.
+	toolLogger := slog.Make(sloghuman.Sink(invStderr))
+
+	toolDeps := codermcp.ToolDeps{
+		Client:        client,
+		Logger:        &toolLogger,
+		AppStatusSlug: appStatusSlug,
+		AgentClient:   agentsdk.New(client.URL),
+	}
+
 	// Get the workspace agent token from the environment.
-	var hasAgentClient bool
-	if agentToken, err := getAgentToken(fs); err == nil && agentToken != "" {
-		hasAgentClient = true
-		agentClient := agentsdk.New(client.URL)
-		agentClient.SetSessionToken(agentToken)
-		clientCtx = toolsdk.WithAgentClient(clientCtx, agentClient)
+	agentToken, ok := os.LookupEnv("CODER_AGENT_TOKEN")
+	if ok && agentToken != "" {
+		toolDeps.AgentClient.SetSessionToken(agentToken)
 	} else {
 		cliui.Warnf(inv.Stderr, "CODER_AGENT_TOKEN is not set, task reporting will not be available")
 	}
 	if appStatusSlug == "" {
 		cliui.Warnf(inv.Stderr, "CODER_MCP_APP_STATUS_SLUG is not set, task reporting will not be available.")
-	} else {
-		clientCtx = toolsdk.WithWorkspaceAppStatusSlug(clientCtx, appStatusSlug)
 	}
 
 	// Register tools based on the allowlist (if specified)
-	for _, tool := range toolsdk.All {
-		// Skip adding the coder_report_task tool if there is no agent client
-		if !hasAgentClient && tool.Tool.Name == "coder_report_task" {
-			cliui.Warnf(inv.Stderr, "Task reporting not available")
-			continue
-		}
-		if len(allowedTools) == 0 || slices.ContainsFunc(allowedTools, func(t string) bool {
-			return t == tool.Tool.Name
-		}) {
-			mcpSrv.AddTools(mcpFromSDK(tool))
-		}
+	reg := codermcp.AllTools()
+	if len(allowedTools) > 0 {
+		reg = reg.WithOnlyAllowed(allowedTools...)
 	}
+
+	reg.Register(mcpSrv, toolDeps)
 
 	srv := server.NewStdioServer(mcpSrv)
 	done := make(chan error)
 	go func() {
 		defer close(done)
-		srvErr := srv.Listen(clientCtx, invStdin, invStdout)
+		srvErr := srv.Listen(ctx, invStdin, invStdout)
 		done <- srvErr
 	}()
 
@@ -532,8 +510,8 @@ func configureClaude(fs afero.Fs, cfg ClaudeConfig) error {
 	if !ok {
 		mcpServers = make(map[string]any)
 	}
-	for name, cfgmcp := range cfg.MCPServers {
-		mcpServers[name] = cfgmcp
+	for name, mcp := range cfg.MCPServers {
+		mcpServers[name] = mcp
 	}
 	project["mcpServers"] = mcpServers
 	// Prevents Claude from asking the user to complete the project onboarding.
@@ -679,7 +657,7 @@ func indexOf(s, substr string) int {
 
 func getAgentToken(fs afero.Fs) (string, error) {
 	token, ok := os.LookupEnv("CODER_AGENT_TOKEN")
-	if ok && token != "" {
+	if ok {
 		return token, nil
 	}
 	tokenFile, ok := os.LookupEnv("CODER_AGENT_TOKEN_FILE")
@@ -691,50 +669,4 @@ func getAgentToken(fs afero.Fs) (string, error) {
 		return "", xerrors.Errorf("failed to read agent token file: %w", err)
 	}
 	return string(bs), nil
-}
-
-// mcpFromSDK adapts a toolsdk.Tool to go-mcp's server.ServerTool.
-// It assumes that the tool responds with a valid JSON object.
-func mcpFromSDK(sdkTool toolsdk.Tool[any]) server.ServerTool {
-	// NOTE: some clients will silently refuse to use tools if there is an issue
-	// with the tool's schema or configuration.
-	if sdkTool.Schema.Properties == nil {
-		panic("developer error: schema properties cannot be nil")
-	}
-	return server.ServerTool{
-		Tool: mcp.Tool{
-			Name:        sdkTool.Tool.Name,
-			Description: sdkTool.Description,
-			InputSchema: mcp.ToolInputSchema{
-				Type:       "object", // Default of mcp.NewTool()
-				Properties: sdkTool.Schema.Properties,
-				Required:   sdkTool.Schema.Required,
-			},
-		},
-		Handler: func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			result, err := sdkTool.Handler(ctx, request.Params.Arguments)
-			if err != nil {
-				return nil, err
-			}
-			var sb strings.Builder
-			if err := json.NewEncoder(&sb).Encode(result); err == nil {
-				return &mcp.CallToolResult{
-					Content: []mcp.Content{
-						mcp.NewTextContent(sb.String()),
-					},
-				}, nil
-			}
-			// If the result is not JSON, return it as a string.
-			// This is a fallback for tools that return non-JSON data.
-			resultStr, ok := result.(string)
-			if !ok {
-				return nil, xerrors.Errorf("tool call result is neither valid JSON or a string, got: %T", result)
-			}
-			return &mcp.CallToolResult{
-				Content: []mcp.Content{
-					mcp.NewTextContent(resultStr),
-				},
-			}, nil
-		},
-	}
 }
