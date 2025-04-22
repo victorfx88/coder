@@ -1,11 +1,12 @@
-import { useDeploymentConfig } from "modules/management/DeploymentConfigProvider";
+import { Loader } from "components/Loader/Loader";
+import { useDeploymentSettings } from "modules/management/DeploymentSettingsProvider";
 import type { FC } from "react";
 import { Helmet } from "react-helmet-async";
 import { pageTitle } from "utils/page";
 import { UserAuthSettingsPageView } from "./UserAuthSettingsPageView";
 
 const UserAuthSettingsPage: FC = () => {
-	const { deploymentConfig } = useDeploymentConfig();
+	const { deploymentConfig } = useDeploymentSettings();
 
 	return (
 		<>

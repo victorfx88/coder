@@ -1,7 +1,8 @@
 # Telemetry
 
-> [!NOTE]
-> TL;DR: disable telemetry by setting <code>CODER_TELEMETRY_ENABLE=false</code>.
+<blockquote class="info">
+TL;DR: disable telemetry by setting <code>CODER_TELEMETRY_ENABLE=false</code>.
+</blockquote>
 
 Coder collects telemetry from all installations by default. We believe our users
 should have the right to know what we collect, why we collect it, and how we use

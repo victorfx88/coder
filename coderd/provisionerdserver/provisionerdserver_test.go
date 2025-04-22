@@ -377,7 +377,6 @@ func TestAcquireJob(t *testing.T) {
 						WorkspaceOwnerSshPrivateKey:   sshKey.PrivateKey,
 						WorkspaceBuildId:              build.ID.String(),
 						WorkspaceOwnerLoginType:       string(user.LoginType),
-						WorkspaceOwnerRbacRoles:       []*sdkproto.Role{{Name: "member", OrgId: pd.OrganizationID.String()}},
 					},
 				},
 			})
@@ -1060,7 +1059,6 @@ func TestCompleteJob(t *testing.T) {
 						ExternalAuthProviders: []*sdkproto.ExternalAuthProviderResource{{
 							Id: "github",
 						}},
-						Plan: []byte("{}"),
 					},
 				},
 			})
@@ -1116,7 +1114,6 @@ func TestCompleteJob(t *testing.T) {
 						}},
 						StopResources:         []*sdkproto.Resource{},
 						ExternalAuthProviders: []*sdkproto.ExternalAuthProviderResource{{Id: "github"}},
-						Plan:                  []byte("{}"),
 					},
 				},
 			})
@@ -1525,7 +1522,6 @@ func TestCompleteJob(t *testing.T) {
 									Source:  "github.com/example2/example",
 								},
 							},
-							Plan: []byte("{}"),
 						},
 					},
 				},
@@ -1734,34 +1730,6 @@ func TestInsertWorkspacePresetsAndParameters(t *testing.T) {
 			},
 		},
 		{
-			name: "one preset, no parameters, requesting prebuilds",
-			givenPresets: []*sdkproto.Preset{
-				{
-					Name: "preset1",
-					Prebuild: &sdkproto.Prebuild{
-						Instances: 1,
-					},
-				},
-			},
-		},
-		{
-			name: "one preset with multiple parameters, requesting 0 prebuilds",
-			givenPresets: []*sdkproto.Preset{
-				{
-					Name: "preset1",
-					Parameters: []*sdkproto.PresetParameter{
-						{
-							Name:  "param1",
-							Value: "value1",
-						},
-					},
-					Prebuild: &sdkproto.Prebuild{
-						Instances: 0,
-					},
-				},
-			},
-		},
-		{
 			name: "one preset with multiple parameters",
 			givenPresets: []*sdkproto.Preset{
 				{
@@ -1780,27 +1748,6 @@ func TestInsertWorkspacePresetsAndParameters(t *testing.T) {
 			},
 		},
 		{
-			name: "one preset, multiple parameters, requesting prebuilds",
-			givenPresets: []*sdkproto.Preset{
-				{
-					Name: "preset1",
-					Parameters: []*sdkproto.PresetParameter{
-						{
-							Name:  "param1",
-							Value: "value1",
-						},
-						{
-							Name:  "param2",
-							Value: "value2",
-						},
-					},
-					Prebuild: &sdkproto.Prebuild{
-						Instances: 1,
-					},
-				},
-			},
-		},
-		{
 			name: "multiple presets with parameters",
 			givenPresets: []*sdkproto.Preset{
 				{
@@ -1814,9 +1761,6 @@ func TestInsertWorkspacePresetsAndParameters(t *testing.T) {
 							Name:  "param2",
 							Value: "value2",
 						},
-					},
-					Prebuild: &sdkproto.Prebuild{
-						Instances: 1,
 					},
 				},
 				{
@@ -1846,7 +1790,6 @@ func TestInsertWorkspacePresetsAndParameters(t *testing.T) {
 			db, ps := dbtestutil.NewDB(t)
 			org := dbgen.Organization(t, db, database.Organization{})
 			user := dbgen.User(t, db, database.User{})
-
 			job := dbgen.ProvisionerJob(t, db, ps, database.ProvisionerJob{
 				Type:           database.ProvisionerJobTypeWorkspaceBuild,
 				OrganizationID: org.ID,
@@ -1873,37 +1816,42 @@ func TestInsertWorkspacePresetsAndParameters(t *testing.T) {
 			require.Len(t, gotPresets, len(c.givenPresets))
 
 			for _, givenPreset := range c.givenPresets {
-				var foundPreset *database.TemplateVersionPreset
+				foundMatch := false
 				for _, gotPreset := range gotPresets {
 					if givenPreset.Name == gotPreset.Name {
-						foundPreset = &gotPreset
+						foundMatch = true
 						break
 					}
 				}
-				require.NotNil(t, foundPreset, "preset %s not found in parameters", givenPreset.Name)
+				require.True(t, foundMatch, "preset %s not found in parameters", givenPreset.Name)
+			}
 
-				gotPresetParameters, err := db.GetPresetParametersByPresetID(ctx, foundPreset.ID)
-				require.NoError(t, err)
-				require.Len(t, gotPresetParameters, len(givenPreset.Parameters))
+			gotPresetParameters, err := db.GetPresetParametersByTemplateVersionID(ctx, templateVersion.ID)
+			require.NoError(t, err)
 
+			for _, givenPreset := range c.givenPresets {
 				for _, givenParameter := range givenPreset.Parameters {
 					foundMatch := false
 					for _, gotParameter := range gotPresetParameters {
 						nameMatches := givenParameter.Name == gotParameter.Name
 						valueMatches := givenParameter.Value == gotParameter.Value
-						if nameMatches && valueMatches {
+
+						// ensure that preset parameters are matched to the correct preset:
+						var gotPreset database.TemplateVersionPreset
+						for _, preset := range gotPresets {
+							if preset.ID == gotParameter.TemplateVersionPresetID {
+								gotPreset = preset
+								break
+							}
+						}
+						presetMatches := gotPreset.Name == givenPreset.Name
+
+						if nameMatches && valueMatches && presetMatches {
 							foundMatch = true
 							break
 						}
 					}
-					require.True(t, foundMatch, "preset parameter %s not found in parameters", givenParameter.Name)
-				}
-				if givenPreset.Prebuild == nil {
-					require.False(t, foundPreset.DesiredInstances.Valid)
-				}
-				if givenPreset.Prebuild != nil {
-					require.True(t, foundPreset.DesiredInstances.Valid)
-					require.Equal(t, givenPreset.Prebuild.Instances, foundPreset.DesiredInstances.Int32)
+					require.True(t, foundMatch, "preset parameter %s not found in presets", givenParameter.Name)
 				}
 			}
 		})
@@ -2240,40 +2188,6 @@ func TestInsertWorkspaceResource(t *testing.T) {
 		require.Equal(t, "/volume1", volMonitors[0].Path)
 		require.Equal(t, int32(50), volMonitors[1].Threshold)
 		require.Equal(t, "/volume2", volMonitors[1].Path)
-	})
-
-	t.Run("Devcontainers", func(t *testing.T) {
-		t.Parallel()
-		db := dbmem.New()
-		job := uuid.New()
-		err := insert(db, job, &sdkproto.Resource{
-			Name: "something",
-			Type: "aws_instance",
-			Agents: []*sdkproto.Agent{{
-				Name: "dev",
-				Devcontainers: []*sdkproto.Devcontainer{
-					{Name: "foo", WorkspaceFolder: "/workspace1"},
-					{Name: "bar", WorkspaceFolder: "/workspace2", ConfigPath: "/workspace2/.devcontainer/devcontainer.json"},
-				},
-			}},
-		})
-		require.NoError(t, err)
-		resources, err := db.GetWorkspaceResourcesByJobID(ctx, job)
-		require.NoError(t, err)
-		require.Len(t, resources, 1)
-		agents, err := db.GetWorkspaceAgentsByResourceIDs(ctx, []uuid.UUID{resources[0].ID})
-		require.NoError(t, err)
-		require.Len(t, agents, 1)
-		agent := agents[0]
-		devcontainers, err := db.GetWorkspaceAgentDevcontainersByAgentID(ctx, agent.ID)
-		require.NoError(t, err)
-		require.Len(t, devcontainers, 2)
-		require.Equal(t, "foo", devcontainers[0].Name)
-		require.Equal(t, "/workspace1", devcontainers[0].WorkspaceFolder)
-		require.Equal(t, "", devcontainers[0].ConfigPath)
-		require.Equal(t, "bar", devcontainers[1].Name)
-		require.Equal(t, "/workspace2", devcontainers[1].WorkspaceFolder)
-		require.Equal(t, "/workspace2/.devcontainer/devcontainer.json", devcontainers[1].ConfigPath)
 	})
 }
 

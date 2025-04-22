@@ -31,33 +31,10 @@ func Table() table.Writer {
 // e.g. `[]any{someRow, TableSeparator, someRow}`
 type TableSeparator struct{}
 
-// filterHeaders filters the headers to only include the columns
-// that are provided in the array. If the array is empty, all
-// headers are included.
-func filterHeaders(header table.Row, columns []string) table.Row {
-	if len(columns) == 0 {
-		return header
-	}
-
-	filteredHeaders := make(table.Row, len(columns))
-	for i, column := range columns {
-		column = strings.ReplaceAll(column, "_", " ")
-
-		for _, headerTextRaw := range header {
-			headerText, _ := headerTextRaw.(string)
-			if strings.EqualFold(column, headerText) {
-				filteredHeaders[i] = headerText
-				break
-			}
-		}
-	}
-	return filteredHeaders
-}
-
-// createColumnConfigs returns configuration to hide columns
+// filterTableColumns returns configurations to hide columns
 // that are not provided in the array. If the array is empty,
 // no filtering will occur!
-func createColumnConfigs(header table.Row, columns []string) []table.ColumnConfig {
+func filterTableColumns(header table.Row, columns []string) []table.ColumnConfig {
 	if len(columns) == 0 {
 		return nil
 	}
@@ -180,13 +157,10 @@ func DisplayTable(out any, sort string, filterColumns []string) (string, error) 
 func renderTable(out any, sort string, headers table.Row, filterColumns []string) (string, error) {
 	v := reflect.Indirect(reflect.ValueOf(out))
 
-	headers = filterHeaders(headers, filterColumns)
-	columnConfigs := createColumnConfigs(headers, filterColumns)
-
 	// Setup the table formatter.
 	tw := Table()
 	tw.AppendHeader(headers)
-	tw.SetColumnConfigs(columnConfigs)
+	tw.SetColumnConfigs(filterTableColumns(headers, filterColumns))
 	if sort != "" {
 		tw.SortBy([]table.SortBy{{
 			Name: sort,

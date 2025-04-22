@@ -492,6 +492,7 @@ func (p *PGPubsub) startListener(ctx context.Context, connectURL string) error {
 	p.connected.Set(0)
 	// Creates a new listener using pq.
 	var (
+		errCh  = make(chan error)
 		dialer = logDialer{
 			logger: p.logger,
 			// pq.defaultDialer uses a zero net.Dialer as well.
@@ -524,10 +525,6 @@ func (p *PGPubsub) startListener(ctx context.Context, connectURL string) error {
 		dc.Dialer(dialer)
 	}
 
-	var (
-		errCh     = make(chan error, 1)
-		sentErrCh = false
-	)
 	p.pgListener = pqListenerShim{
 		Listener: pq.NewConnectorListener(connector, connectURL, time.Second, time.Minute, func(t pq.ListenerEventType, err error) {
 			switch t {
@@ -544,16 +541,18 @@ func (p *PGPubsub) startListener(ctx context.Context, connectURL string) error {
 				p.logger.Error(ctx, "pubsub failed to connect to postgres", slog.Error(err))
 			}
 			// This callback gets events whenever the connection state changes.
-			// Only send the first error.
-			if sentErrCh {
+			// Don't send if the errChannel has already been closed.
+			select {
+			case <-errCh:
 				return
+			default:
+				errCh <- err
+				close(errCh)
 			}
-			errCh <- err // won't block because we are buffered.
-			sentErrCh = true
 		}),
 	}
 	select {
-	case err = <-errCh:
+	case err := <-errCh:
 		if err != nil {
 			_ = p.pgListener.Close()
 			return xerrors.Errorf("create pq listener: %w", err)

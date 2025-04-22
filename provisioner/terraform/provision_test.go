@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 	"testing"
@@ -118,6 +119,10 @@ func sendApply(sess proto.DRPCProvisioner_SessionClient, transition proto.Worksp
 // one process tries to do this simultaneously, it can cause "text file busy"
 // nolint: paralleltest
 func TestProvision_Cancel(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("This test uses interrupts and is not supported on Windows")
+	}
+
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 	fakeBin := filepath.Join(cwd, "testdata", "fake_cancel.sh")
@@ -210,6 +215,10 @@ func TestProvision_Cancel(t *testing.T) {
 // one process tries to do this, it can cause "text file busy"
 // nolint: paralleltest
 func TestProvision_CancelTimeout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("This test uses interrupts and is not supported on Windows")
+	}
+
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 	fakeBin := filepath.Join(cwd, "testdata", "fake_cancel_hang.sh")
@@ -269,6 +278,10 @@ func TestProvision_CancelTimeout(t *testing.T) {
 // terraform-provider-coder
 // nolint: paralleltest
 func TestProvision_TextFileBusy(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("This test uses unix sockets and is not supported on Windows")
+	}
+
 	cwd, err := os.Getwd()
 	require.NoError(t, err)
 	fakeBin := filepath.Join(cwd, "testdata", "fake_text_file_busy.sh")
@@ -748,53 +761,6 @@ func TestProvision(t *testing.T) {
 					Key:     "hello.there",
 					Version: "",
 					Source:  "./inner_module",
-				}},
-			},
-		},
-		{
-			Name:       "workspace-owner-rbac-roles",
-			SkipReason: "field will be added in provider version 2.2.0",
-			Files: map[string]string{
-				"main.tf": `terraform {
-					required_providers {
-					  coder = {
-						source  = "coder/coder"
-						version = "2.2.0"
-					  }
-					}
-				}
-
-				resource "null_resource" "example" {}
-				data "coder_workspace_owner" "me" {}
-				resource "coder_metadata" "example" {
-					resource_id = null_resource.example.id
-					item {
-						key = "rbac_roles_name"
-						value = data.coder_workspace_owner.me.rbac_roles[0].name
-					}
-					item {
-						key = "rbac_roles_org_id"
-						value = data.coder_workspace_owner.me.rbac_roles[0].org_id
-					}
-				}
-				`,
-			},
-			Request: &proto.PlanRequest{
-				Metadata: &proto.Metadata{
-					WorkspaceOwnerRbacRoles: []*proto.Role{{Name: "member", OrgId: ""}},
-				},
-			},
-			Response: &proto.PlanComplete{
-				Resources: []*proto.Resource{{
-					Name: "example",
-					Type: "null_resource",
-					Metadata: []*proto.Resource_Metadata{{
-						Key:   "rbac_roles_name",
-						Value: "member",
-					}, {
-						Key:   "rbac_roles_org_id",
-						Value: "",
-					}},
 				}},
 			},
 		},

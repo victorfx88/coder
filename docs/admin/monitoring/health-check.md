@@ -40,7 +40,7 @@ If there is an issue, you may see one of the following errors reported:
 [`url.Parse`](https://pkg.go.dev/net/url#Parse). Example:
 `https://dev.coder.com/`.
 
-You can use [the Go playground](https://go.dev/play/p/CabcJZyTwt9) for additional testing.
+> **Tip:** You can check this [here](https://go.dev/play/p/CabcJZyTwt9).
 
 ### EACS03
 
@@ -117,12 +117,15 @@ Coder's current activity and usage. It may be necessary to increase the
 resources allocated to Coder's database. Alternatively, you can raise the
 configured threshold to a higher value (this will not address the root cause).
 
-> [!TIP]
-> You can enable
-> [detailed database metrics](../../reference/cli/server.md#--prometheus-collect-db-metrics)
-> in Coder's Prometheus endpoint. If you have
-> [tracing enabled](../../reference/cli/server.md#--trace), these traces may also
-> contain useful information regarding Coder's database activity.
+<blockquote class="admonition tip">
+
+You can enable
+[detailed database metrics](../../reference/cli/server.md#--prometheus-collect-db-metrics)
+in Coder's Prometheus endpoint. If you have
+[tracing enabled](../../reference/cli/server.md#--trace), these traces may also
+contain useful information regarding Coder's database activity.
+
+</blockquote>
 
 ## DERP
 
@@ -147,9 +150,12 @@ This is not necessarily a fatal error, but a possible indication of a
 misconfigured reverse HTTP proxy. Additionally, while workspace users should
 still be able to reach their workspaces, connection performance may be degraded.
 
-> [!NOTE]
-> This may also be shown if you have
-> [forced websocket connections for DERP](../../reference/cli/server.md#--derp-force-websockets).
+<blockquote class="admonition note">
+
+**Note:** This may also be shown if you have
+[forced websocket connections for DERP](../../reference/cli/server.md#--derp-force-websockets).
+
+</blockquote>
 
 **Solution:** ensure that any proxies you use allow connection upgrade with the
 `Upgrade: derp` header.
@@ -294,14 +300,17 @@ be built until there is at least one provisioner daemon running.
 **Solution:**
 
 If you are using
-[External Provisioner Daemons](../provisioners/index.md#external-provisioners), ensure
+[External Provisioner Daemons](../provisioners.md#external-provisioners), ensure
 that they are able to successfully connect to Coder. Otherwise, ensure
 [`--provisioner-daemons`](../../reference/cli/server.md#--provisioner-daemons)
 is set to a value greater than 0.
 
-> [!NOTE]
-> This may be a transient issue if you are currently in the process of
+<blockquote class="admonition note">
+
+**Note:** This may be a transient issue if you are currently in the process of
 updating your deployment.
+
+</blockquote>
 
 ### EPD02
 
@@ -315,9 +324,12 @@ of API incompatibility.
 **Solution:** Update the provisioner daemon to match the currently running
 version of Coder.
 
-> [!NOTE]
-> This may be a transient issue if you are currently in the process of
+<blockquote class="admonition note">
+
+**Note:** This may be a transient issue if you are currently in the process of
 updating your deployment.
+
+</blockquote>
 
 ### EPD03
 
@@ -331,9 +343,12 @@ connect to Coder.
 **Solution:** Update the provisioner daemon to match the currently running
 version of Coder.
 
-> [!NOTE]
-> This may be a transient issue if you are currently in the process of
+<blockquote class="admonition note">
+
+**Note:** This may be a transient issue if you are currently in the process of
 updating your deployment.
+
+</blockquote>
 
 ### EUNKNOWN
 

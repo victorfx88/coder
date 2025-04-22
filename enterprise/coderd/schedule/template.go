@@ -78,7 +78,6 @@ func (*EnterpriseTemplateScheduleStore) Get(ctx context.Context, db database.Sto
 	if tpl.AutostopRequirementWeeks == 0 {
 		tpl.AutostopRequirementWeeks = 1
 	}
-	// #nosec G115 - Safe conversion as we've verified tpl.AutostopRequirementDaysOfWeek is <= 255
 	err = agpl.VerifyTemplateAutostopRequirement(uint8(tpl.AutostopRequirementDaysOfWeek), tpl.AutostopRequirementWeeks)
 	if err != nil {
 		return agpl.TemplateScheduleOptions{}, err
@@ -90,7 +89,6 @@ func (*EnterpriseTemplateScheduleStore) Get(ctx context.Context, db database.Sto
 		DefaultTTL:           time.Duration(tpl.DefaultTTL),
 		ActivityBump:         time.Duration(tpl.ActivityBump),
 		AutostopRequirement: agpl.TemplateAutostopRequirement{
-			// #nosec G115 - Safe conversion as we've verified tpl.AutostopRequirementDaysOfWeek is <= 255
 			DaysOfWeek: uint8(tpl.AutostopRequirementDaysOfWeek),
 			Weeks:      tpl.AutostopRequirementWeeks,
 		},

@@ -23,6 +23,7 @@ export const Default: Story = {
 		error: undefined,
 		isLoading: false,
 		organizationName: "my-org",
+		canAssignOrgRole: true,
 	},
 };
 
@@ -80,6 +81,7 @@ export const InvalidCharsError: Story = {
 export const CannotEditRoleName: Story = {
 	args: {
 		...Default.args,
+		canAssignOrgRole: false,
 	},
 };
 

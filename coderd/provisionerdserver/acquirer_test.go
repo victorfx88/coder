@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -16,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+	"golang.org/x/exp/slices"
 
 	"github.com/coder/coder/v2/coderd/database"
 	"github.com/coder/coder/v2/coderd/database/dbmem"
@@ -518,7 +518,7 @@ func TestAcquirer_MatchTags(t *testing.T) {
 
 	t.Run("GenTable", func(t *testing.T) {
 		t.Parallel()
-		// Generate a table that can be copy-pasted into docs/admin/provisioners/index.md
+		// Generate a table that can be copy-pasted into docs/admin/provisioners.md
 		lines := []string{
 			"\n",
 			"| Provisioner Tags | Job Tags | Same Org | Can Run Job? |",
@@ -547,7 +547,7 @@ func TestAcquirer_MatchTags(t *testing.T) {
 			s := fmt.Sprintf("| %s | %s | %s | %s |", kvs(tt.acquireJobTags), kvs(tt.provisionerJobTags), sameOrg, acquire)
 			lines = append(lines, s)
 		}
-		t.Log("You can paste this into docs/admin/provisioners/index.md")
+		t.Log("You can paste this into docs/admin/provisioners.md")
 		t.Log(strings.Join(lines, "\n"))
 	})
 }

@@ -393,12 +393,11 @@ type DeploymentValues struct {
 	TermsOfServiceURL               serpent.String                       `json:"terms_of_service_url,omitempty" typescript:",notnull"`
 	Notifications                   NotificationsConfig                  `json:"notifications,omitempty" typescript:",notnull"`
 	AdditionalCSPPolicy             serpent.StringArray                  `json:"additional_csp_policy,omitempty" typescript:",notnull"`
-	WorkspaceHostnameSuffix         serpent.String                       `json:"workspace_hostname_suffix,omitempty" typescript:",notnull"`
 
 	Config      serpent.YAMLConfigPath `json:"config,omitempty" typescript:",notnull"`
 	WriteConfig serpent.Bool           `json:"write_config,omitempty" typescript:",notnull"`
 
-	// Deprecated: Use HTTPAddress or TLS.Address instead.
+	// DEPRECATED: Use HTTPAddress or TLS.Address instead.
 	Address serpent.HostPort `json:"address,omitempty" typescript:",notnull"`
 }
 
@@ -699,17 +698,10 @@ type NotificationsConfig struct {
 	SMTP NotificationsEmailConfig `json:"email" typescript:",notnull"`
 	// Webhook settings.
 	Webhook NotificationsWebhookConfig `json:"webhook" typescript:",notnull"`
-	// Inbox settings.
-	Inbox NotificationsInboxConfig `json:"inbox" typescript:",notnull"`
 }
 
-// Are either of the notification methods enabled?
 func (n *NotificationsConfig) Enabled() bool {
 	return n.SMTP.Smarthost != "" || n.Webhook.Endpoint != serpent.URL{}
-}
-
-type NotificationsInboxConfig struct {
-	Enabled serpent.Bool `json:"enabled" typescript:",notnull"`
 }
 
 type NotificationsEmailConfig struct {
@@ -945,7 +937,7 @@ func (c *DeploymentValues) Options() serpent.OptionSet {
 		deploymentGroupClient = serpent.Group{
 			Name: "Client",
 			Description: "These options change the behavior of how clients interact with the Coder. " +
-				"Clients include the Coder CLI, Coder Desktop, IDE extensions, and the web UI.",
+				"Clients include the coder cli, vs code extension, and the web UI.",
 			YAML: "client",
 		}
 		deploymentGroupConfig = serpent.Group{
@@ -996,11 +988,6 @@ func (c *DeploymentValues) Options() serpent.OptionSet {
 			Name:   "Webhook",
 			Parent: &deploymentGroupNotifications,
 			YAML:   "webhook",
-		}
-		deploymentGroupInbox = serpent.Group{
-			Name:   "Inbox",
-			Parent: &deploymentGroupNotifications,
-			YAML:   "inbox",
 		}
 	)
 
@@ -2551,17 +2538,6 @@ func (c *DeploymentValues) Options() serpent.OptionSet {
 			Default:     "coder.",
 		},
 		{
-			Name:        "Workspace Hostname Suffix",
-			Description: "Workspace hostnames use this suffix in SSH config and Coder Connect on Coder Desktop. By default it is coder, resulting in names like myworkspace.coder.",
-			Flag:        "workspace-hostname-suffix",
-			Env:         "CODER_WORKSPACE_HOSTNAME_SUFFIX",
-			YAML:        "workspaceHostnameSuffix",
-			Group:       &deploymentGroupClient,
-			Value:       &c.WorkspaceHostnameSuffix,
-			Hidden:      false,
-			Default:     "coder",
-		},
-		{
 			Name: "SSH Config Options",
 			Description: "These SSH config options will override the default SSH config options. " +
 				"Provide options in \"key=value\" or \"key value\" format separated by commas." +
@@ -2881,16 +2857,6 @@ Write out the current server config as YAML to stdout.`,
 			YAML:        "endpoint",
 		},
 		{
-			Name:        "Notifications: Inbox: Enabled",
-			Description: "Enable Coder Inbox.",
-			Flag:        "notifications-inbox-enabled",
-			Env:         "CODER_NOTIFICATIONS_INBOX_ENABLED",
-			Value:       &c.Notifications.Inbox.Enabled,
-			Default:     "true",
-			Group:       &deploymentGroupInbox,
-			YAML:        "enabled",
-		},
-		{
 			Name:        "Notifications: Max Send Attempts",
 			Description: "The upper limit of attempts to send a notification.",
 			Flag:        "notifications-max-send-attempts",
@@ -2980,7 +2946,6 @@ Write out the current server config as YAML to stdout.`,
 			Annotations: serpent.Annotations{}.Mark(annotationFormatDuration, "true"),
 			Hidden:      true, // Hidden because most operators should not need to modify this.
 		},
-		// Push notifications.
 	}
 
 	return opts
@@ -3160,9 +3125,6 @@ type BuildInfoResponse struct {
 
 	// DeploymentID is the unique identifier for this deployment.
 	DeploymentID string `json:"deployment_id"`
-
-	// WebPushPublicKey is the public key for push notifications via Web Push.
-	WebPushPublicKey string `json:"webpush_public_key,omitempty"`
 }
 
 type WorkspaceProxyBuildInfo struct {
@@ -3205,8 +3167,6 @@ const (
 	ExperimentAutoFillParameters Experiment = "auto-fill-parameters" // This should not be taken out of experiments until we have redesigned the feature.
 	ExperimentNotifications      Experiment = "notifications"        // Sends notifications via SMTP and webhooks following certain events.
 	ExperimentWorkspaceUsage     Experiment = "workspace-usage"      // Enables the new workspace usage tracking.
-	ExperimentWebPush            Experiment = "web-push"             // Enables web push notifications through the browser.
-	ExperimentDynamicParameters  Experiment = "dynamic-parameters"   // Enables dynamic parameters when creating a workspace.
 )
 
 // ExperimentsAll should include all experiments that are safe for
@@ -3393,12 +3353,7 @@ type DeploymentStats struct {
 }
 
 type SSHConfigResponse struct {
-	// HostnamePrefix is the prefix we append to workspace names for SSH hostnames.
-	// Deprecated: use HostnameSuffix instead.
-	HostnamePrefix string `json:"hostname_prefix"`
-
-	// HostnameSuffix is the suffix to append to workspace names for SSH hostnames.
-	HostnameSuffix   string            `json:"hostname_suffix"`
+	HostnamePrefix   string            `json:"hostname_prefix"`
 	SSHConfigOptions map[string]string `json:"ssh_config_options"`
 }
 

@@ -11,20 +11,20 @@ import {
 } from "components/Breadcrumb/Breadcrumb";
 import { Loader } from "components/Loader/Loader";
 import { useDashboard } from "modules/dashboard/useDashboard";
-import {
-	type OrganizationPermissions,
-	canViewOrganization,
-} from "modules/permissions/organizations";
 import NotFoundPage from "pages/404Page/404Page";
 import { type FC, Suspense, createContext, useContext } from "react";
 import { useQuery } from "react-query";
 import { Outlet, useParams } from "react-router-dom";
+import {
+	type OrganizationPermissions,
+	canViewOrganization,
+} from "./organizationPermissions";
 
 export const OrganizationSettingsContext = createContext<
 	OrganizationSettingsValue | undefined
 >(undefined);
 
-export type OrganizationSettingsValue = Readonly<{
+type OrganizationSettingsValue = Readonly<{
 	organizations: readonly Organization[];
 	organizationPermissionsByOrganizationId: Record<
 		string,
@@ -36,10 +36,9 @@ export type OrganizationSettingsValue = Readonly<{
 
 export const useOrganizationSettings = (): OrganizationSettingsValue => {
 	const context = useContext(OrganizationSettingsContext);
-
 	if (!context) {
 		throw new Error(
-			"useOrganizationSettings should be used inside of OrganizationSettingsLayout or with the default values in case of testing.",
+			"useOrganizationSettings should be used inside of OrganizationSettingsLayout",
 		);
 	}
 
@@ -47,7 +46,7 @@ export const useOrganizationSettings = (): OrganizationSettingsValue => {
 };
 
 const OrganizationSettingsLayout: FC = () => {
-	const { organizations } = useDashboard();
+	const { organizations, showOrganizations } = useDashboard();
 	const { organization: orgName } = useParams() as {
 		organization?: string;
 	};

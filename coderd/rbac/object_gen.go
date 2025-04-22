@@ -119,15 +119,6 @@ var (
 		Type: "idpsync_settings",
 	}
 
-	// ResourceInboxNotification
-	// Valid Actions
-	//  - "ActionCreate" :: create inbox notifications
-	//  - "ActionRead" :: read inbox notifications
-	//  - "ActionUpdate" :: update inbox notifications
-	ResourceInboxNotification = Object{
-		Type: "inbox_notification",
-	}
-
 	// ResourceLicense
 	// Valid Actions
 	//  - "ActionCreate" :: create a license
@@ -242,9 +233,6 @@ var (
 	//  - "ActionDelete" :: delete system resources
 	//  - "ActionRead" :: view system resources
 	//  - "ActionUpdate" :: update system resources
-	// DEPRECATED: New resources should be created for new things, rather than adding them to System, which has become
-	//             an unmanaged collection of things that don't relate to one another. We can't effectively enforce
-	//             least privilege access control when unrelated resources are grouped together.
 	ResourceSystem = Object{
 		Type: "system",
 	}
@@ -283,15 +271,6 @@ var (
 		Type: "user",
 	}
 
-	// ResourceWebpushSubscription
-	// Valid Actions
-	//  - "ActionCreate" :: create webpush subscriptions
-	//  - "ActionDelete" :: delete webpush subscriptions
-	//  - "ActionRead" :: read webpush subscriptions
-	ResourceWebpushSubscription = Object{
-		Type: "webpush_subscription",
-	}
-
 	// ResourceWorkspace
 	// Valid Actions
 	//  - "ActionApplicationConnect" :: connect to workspace apps via browser
@@ -304,13 +283,6 @@ var (
 	//  - "ActionUpdate" :: edit workspace settings (scheduling, permissions, parameters)
 	ResourceWorkspace = Object{
 		Type: "workspace",
-	}
-
-	// ResourceWorkspaceAgentDevcontainers
-	// Valid Actions
-	//  - "ActionCreate" :: create workspace agent devcontainers
-	ResourceWorkspaceAgentDevcontainers = Object{
-		Type: "workspace_agent_devcontainers",
 	}
 
 	// ResourceWorkspaceAgentResourceMonitor
@@ -362,7 +334,6 @@ func AllResources() []Objecter {
 		ResourceGroup,
 		ResourceGroupMember,
 		ResourceIdpsyncSettings,
-		ResourceInboxNotification,
 		ResourceLicense,
 		ResourceNotificationMessage,
 		ResourceNotificationPreference,
@@ -379,9 +350,7 @@ func AllResources() []Objecter {
 		ResourceTailnetCoordinator,
 		ResourceTemplate,
 		ResourceUser,
-		ResourceWebpushSubscription,
 		ResourceWorkspace,
-		ResourceWorkspaceAgentDevcontainers,
 		ResourceWorkspaceAgentResourceMonitor,
 		ResourceWorkspaceDormant,
 		ResourceWorkspaceProxy,

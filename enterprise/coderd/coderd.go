@@ -529,9 +529,8 @@ func New(ctx context.Context, options *Options) (_ *API, err error) {
 	// We always want to run the replica manager even if we don't have DERP
 	// enabled, since it's used to detect other coder servers for licensing.
 	api.replicaManager, err = replicasync.New(ctx, options.Logger, options.Database, options.Pubsub, &replicasync.Options{
-		ID:           api.AGPL.ID,
-		RelayAddress: options.DERPServerRelayAddress,
-		// #nosec G115 - DERP region IDs are small and fit in int32
+		ID:             api.AGPL.ID,
+		RelayAddress:   options.DERPServerRelayAddress,
 		RegionID:       int32(options.DERPServerRegionID),
 		TLSConfig:      meshTLSConfig,
 		UpdateInterval: options.ReplicaSyncUpdateInterval,

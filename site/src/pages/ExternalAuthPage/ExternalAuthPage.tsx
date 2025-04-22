@@ -6,15 +6,10 @@ import {
 	externalAuthProvider,
 } from "api/queries/externalAuth";
 import { isAxiosError } from "axios";
-import {
-	isExchangeErrorRetryable,
-	newRetryDelay,
-} from "components/GitDeviceAuth/GitDeviceAuth";
 import { SignInLayout } from "components/SignInLayout/SignInLayout";
 import { Welcome } from "components/Welcome/Welcome";
 import { useAuthenticated } from "contexts/auth/RequireAuth";
 import type { FC } from "react";
-import { useMemo } from "react";
 import { useQuery, useQueryClient } from "react-query";
 import { useParams, useSearchParams } from "react-router-dom";
 import ExternalAuthPageView from "./ExternalAuthPageView";
@@ -37,10 +32,6 @@ const ExternalAuthPage: FC = () => {
 			Boolean(externalAuthProviderQuery.data?.device),
 		refetchOnMount: false,
 	});
-	const retryDelay = useMemo(
-		() => newRetryDelay(externalAuthDeviceQuery.data?.interval),
-		[externalAuthDeviceQuery.data],
-	);
 	const exchangeExternalAuthDeviceQuery = useQuery({
 		...exchangeExternalAuthDevice(
 			provider,
@@ -48,11 +39,10 @@ const ExternalAuthPage: FC = () => {
 			queryClient,
 		),
 		enabled: Boolean(externalAuthDeviceQuery.data),
-		retry: isExchangeErrorRetryable,
-		retryDelay,
-		// We don't want to refetch the query outside of the standard retry
-		// logic, because the device auth flow is very strict about rate limits.
-		refetchOnWindowFocus: false,
+		retry: true,
+		retryDelay: (externalAuthDeviceQuery.data?.interval || 5) * 1000,
+		refetchOnWindowFocus: (query) =>
+			query.state.status === "success" ? false : "always",
 	});
 
 	if (externalAuthProviderQuery.isLoading || !externalAuthProviderQuery.data) {
@@ -114,7 +104,7 @@ const ExternalAuthPage: FC = () => {
 					authenticated: false,
 				});
 			}}
-			viewExternalAuthConfig={permissions.viewDeploymentConfig}
+			viewExternalAuthConfig={permissions.viewExternalAuthConfig}
 			deviceExchangeError={deviceExchangeError}
 			externalAuthDevice={externalAuthDeviceQuery.data}
 		/>

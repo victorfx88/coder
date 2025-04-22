@@ -175,6 +175,11 @@ func (api *API) provisionerDaemonServe(rw http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	id, _ := uuid.Parse(r.URL.Query().Get("id"))
+	if id == uuid.Nil {
+		id = uuid.New()
+	}
+
 	provisionersMap := map[codersdk.ProvisionerType]struct{}{}
 	for _, provisioner := range r.URL.Query()["provisioner"] {
 		switch provisioner {
@@ -290,7 +295,7 @@ func (api *API) provisionerDaemonServe(rw http.ResponseWriter, r *http.Request) 
 	api.AGPL.WebsocketWaitMutex.Unlock()
 	defer api.AGPL.WebsocketWaitGroup.Done()
 
-	tep := telemetry.ConvertExternalProvisioner(daemon.ID, tags, provisioners)
+	tep := telemetry.ConvertExternalProvisioner(id, tags, provisioners)
 	api.Telemetry.Report(&telemetry.Snapshot{ExternalProvisioners: []telemetry.ExternalProvisioner{tep}})
 	defer func() {
 		tep.ShutdownAt = ptr.Ref(time.Now())

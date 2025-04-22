@@ -1,12 +1,13 @@
+import { Loader } from "components/Loader/Loader";
 import { useDashboard } from "modules/dashboard/useDashboard";
-import { useDeploymentConfig } from "modules/management/DeploymentConfigProvider";
+import { useDeploymentSettings } from "modules/management/DeploymentSettingsProvider";
 import type { FC } from "react";
 import { Helmet } from "react-helmet-async";
 import { pageTitle } from "utils/page";
 import { SecuritySettingsPageView } from "./SecuritySettingsPageView";
 
 const SecuritySettingsPage: FC = () => {
-	const { deploymentConfig } = useDeploymentConfig();
+	const { deploymentConfig } = useDeploymentSettings();
 	const { entitlements } = useDashboard();
 
 	return (

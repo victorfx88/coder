@@ -22,7 +22,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: FC<SidebarProps> = ({ user }) => {
-	const { entitlements } = useDashboard();
+	const { entitlements, experiments } = useDashboard();
 	const showSchedulePage =
 		entitlements.features.advanced_template_scheduling.enabled;
 
@@ -57,7 +57,7 @@ export const Sidebar: FC<SidebarProps> = ({ user }) => {
 				Tokens
 			</SidebarNavItem>
 			<SidebarNavItem href="notifications" icon={NotificationsIcon}>
-				Notifications
+				Notifications <FeatureStageBadge contentType="beta" size="sm" />
 			</SidebarNavItem>
 		</BaseSidebar>
 	);

@@ -20,10 +20,10 @@ export const defaultPassword = "SomeSecurePassword!";
 
 // Credentials for users
 export const users = {
-	owner: {
-		username: "owner",
+	admin: {
+		username: "admin",
 		password: defaultPassword,
-		email: "owner@coder.com",
+		email: "admin@coder.com",
 	},
 	templateAdmin: {
 		username: "template-admin",
@@ -41,7 +41,7 @@ export const users = {
 		username: "auditor",
 		password: defaultPassword,
 		email: "auditor@coder.com",
-		roles: ["Auditor"],
+		roles: ["Template Admin", "Auditor"],
 	},
 	member: {
 		username: "member",

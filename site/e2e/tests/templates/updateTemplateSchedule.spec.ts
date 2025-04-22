@@ -1,13 +1,12 @@
 import { expect, test } from "@playwright/test";
 import { API } from "api/api";
 import { getCurrentOrgId, setupApiCalls } from "../../api";
-import { users } from "../../constants";
 import { login } from "../../helpers";
 import { beforeCoderTest } from "../../hooks";
 
 test.beforeEach(async ({ page }) => {
 	beforeCoderTest(page);
-	await login(page, users.templateAdmin);
+	await login(page);
 	await setupApiCalls(page);
 });
 

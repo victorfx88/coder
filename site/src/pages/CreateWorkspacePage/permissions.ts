@@ -1,6 +1,6 @@
 export const createWorkspaceChecks = (organizationId: string) =>
 	({
-		createWorkspaceForAny: {
+		createWorkspaceForUser: {
 			object: {
 				resource_type: "workspace",
 				organization_id: organizationId,
@@ -10,7 +10,7 @@ export const createWorkspaceChecks = (organizationId: string) =>
 		},
 	}) as const;
 
-export type CreateWorkspacePermissions = Record<
+export type CreateWSPermissions = Record<
 	keyof ReturnType<typeof createWorkspaceChecks>,
 	boolean
 >;

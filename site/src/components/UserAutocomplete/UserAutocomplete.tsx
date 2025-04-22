@@ -69,6 +69,7 @@ export const MemberAutocomplete: FC<MemberAutocompleteProps> = ({
 }) => {
 	const [filter, setFilter] = useState<string>();
 
+	// Currently this queries all members, as there is no pagination.
 	const membersQuery = useQuery({
 		...organizationMembers(organizationId),
 		enabled: filter !== undefined,
@@ -79,7 +80,7 @@ export const MemberAutocomplete: FC<MemberAutocompleteProps> = ({
 			error={membersQuery.error}
 			isFetching={membersQuery.isFetching}
 			setFilter={setFilter}
-			users={membersQuery.data?.members}
+			users={membersQuery.data}
 			{...props}
 		/>
 	);

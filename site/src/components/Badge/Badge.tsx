@@ -12,7 +12,7 @@ export const badgeVariants = cva(
 		variants: {
 			variant: {
 				default:
-					"border-transparent bg-surface-secondary text-content-secondary shadow",
+					"border-transparent bg-surface-secondary text-content-secondary shadow hover:bg-surface-tertiary",
 			},
 			size: {
 				sm: "text-2xs font-regular",

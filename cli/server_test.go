@@ -25,6 +25,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -201,16 +202,7 @@ func TestServer(t *testing.T) {
 		go func() {
 			errCh <- inv.WithContext(ctx).Run()
 		}()
-		matchCh1 := make(chan string, 1)
-		go func() {
-			matchCh1 <- pty.ExpectMatchContext(ctx, "Using an ephemeral deployment directory")
-		}()
-		select {
-		case err := <-errCh:
-			require.NoError(t, err)
-		case <-matchCh1:
-			// OK!
-		}
+		pty.ExpectMatch("Using an ephemeral deployment directory")
 		rootDirLine := pty.ReadLine(ctx)
 		rootDir := strings.TrimPrefix(rootDirLine, "Using an ephemeral deployment directory")
 		rootDir = strings.TrimSpace(rootDir)
@@ -219,17 +211,7 @@ func TestServer(t *testing.T) {
 		require.NotEmpty(t, rootDir)
 		require.DirExists(t, rootDir)
 
-		matchCh2 := make(chan string, 1)
-		go func() {
-			// The "View the Web UI" log is a decent indicator that the server was successfully started.
-			matchCh2 <- pty.ExpectMatchContext(ctx, "View the Web UI")
-		}()
-		select {
-		case err := <-errCh:
-			require.NoError(t, err)
-		case <-matchCh2:
-			// OK!
-		}
+		pty.ExpectMatchContext(ctx, "View the Web UI")
 
 		cancelFunc()
 		<-errCh
@@ -271,8 +253,10 @@ func TestServer(t *testing.T) {
 			"--access-url", "http://localhost:3000/",
 			"--cache-dir", t.TempDir(),
 		)
-		pty := ptytest.New(t).Attach(inv)
-		require.NoError(t, pty.Resize(20, 80))
+		stdoutRW := syncReaderWriter{}
+		stderrRW := syncReaderWriter{}
+		inv.Stdout = io.MultiWriter(os.Stdout, &stdoutRW)
+		inv.Stderr = io.MultiWriter(os.Stderr, &stderrRW)
 		clitest.Start(t, inv)
 
 		// Wait for startup
@@ -286,9 +270,8 @@ func TestServer(t *testing.T) {
 		// normally shown to the user, so we'll ignore them.
 		ignoreLines := []string{
 			"isn't externally reachable",
-			"open install.sh: file does not exist",
+			"install.sh will be unavailable",
 			"telemetry disabled, unable to notify of security issues",
-			"installed terraform version newer than expected",
 		}
 
 		countLines := func(fullOutput string) int {
@@ -299,11 +282,9 @@ func TestServer(t *testing.T) {
 			for _, line := range linesByNewline {
 				for _, ignoreLine := range ignoreLines {
 					if strings.Contains(line, ignoreLine) {
-						t.Logf("Ignoring: %q", line)
 						continue lineLoop
 					}
 				}
-				t.Logf("Counting: %q", line)
 				if line == "" {
 					// Empty lines take up one line.
 					countByWidth++
@@ -314,10 +295,17 @@ func TestServer(t *testing.T) {
 			return countByWidth
 		}
 
-		out := pty.ReadAll()
-		numLines := countLines(string(out))
-		t.Logf("numLines: %d", numLines)
-		require.Less(t, numLines, 20, "expected less than 20 lines of output (terminal width 80), got %d", numLines)
+		stdout, err := io.ReadAll(&stdoutRW)
+		if err != nil {
+			t.Fatalf("failed to read stdout: %v", err)
+		}
+		stderr, err := io.ReadAll(&stderrRW)
+		if err != nil {
+			t.Fatalf("failed to read stderr: %v", err)
+		}
+
+		numLines := countLines(string(stdout)) + countLines(string(stderr))
+		require.Less(t, numLines, 20)
 	})
 
 	t.Run("OAuth2GitHubDefaultProvider", func(t *testing.T) {
@@ -1720,7 +1708,6 @@ func TestServer(t *testing.T) {
 			// Next, we instruct the same server to display the YAML config
 			// and then save it.
 			inv = inv.WithContext(testutil.Context(t, testutil.WaitMedium))
-			//nolint:gocritic
 			inv.Args = append(args, "--write-config")
 			fi, err := os.OpenFile(testutil.TempFile(t, "", "coder-config-test-*"), os.O_WRONLY|os.O_CREATE, 0o600)
 			require.NoError(t, err)
@@ -2367,4 +2354,23 @@ func mockTelemetryServer(t *testing.T) (*url.URL, chan *telemetry.Deployment, ch
 	require.NoError(t, err)
 
 	return serverURL, deployment, snapshot
+}
+
+// syncWriter provides a thread-safe io.ReadWriter implementation
+type syncReaderWriter struct {
+	buf bytes.Buffer
+	mu  sync.Mutex
+}
+
+func (w *syncReaderWriter) Write(p []byte) (n int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	return w.buf.Write(p)
+}
+
+func (w *syncReaderWriter) Read(p []byte) (n int, err error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+
+	return w.buf.Read(p)
 }

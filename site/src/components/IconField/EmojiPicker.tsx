@@ -1,6 +1,11 @@
 import data from "@emoji-mart/data/sets/15/apple.json";
 import EmojiMart from "@emoji-mart/react";
-import { type ComponentProps, type FC, useEffect } from "react";
+import {
+	type ComponentProps,
+	type FC,
+	useEffect,
+	useLayoutEffect,
+} from "react";
 import icons from "theme/icons.json";
 
 const custom = [

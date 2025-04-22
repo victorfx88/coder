@@ -263,7 +263,6 @@ export interface BuildInfoResponse {
 	readonly provisioner_api_version: string;
 	readonly upgrade_message: string;
 	readonly deployment_id: string;
-	readonly webpush_public_key?: string;
 }
 
 // From codersdk/workspacebuilds.go
@@ -290,9 +289,6 @@ export interface ChangePasswordWithOneTimePasscodeRequest {
 	readonly password: string;
 	readonly one_time_passcode: string;
 }
-
-// From codersdk/client.go
-export const CoderDesktopTelemetryHeader = "Coder-Desktop-Telemetry";
 
 // From codersdk/insights.go
 export interface ConnectionLatency {
@@ -589,6 +585,9 @@ export interface DangerousConfig {
 	readonly allow_all_cors: boolean;
 }
 
+// From codersdk/database.go
+export const DatabaseNotReachable = "database not reachable";
+
 // From healthsdk/healthsdk.go
 export interface DatabaseReport extends BaseReport {
 	readonly healthy: boolean;
@@ -596,11 +595,6 @@ export interface DatabaseReport extends BaseReport {
 	readonly latency: string;
 	readonly latency_ms: number;
 	readonly threshold_ms: number;
-}
-
-// From codersdk/notifications.go
-export interface DeleteWebpushSubscription {
-	readonly endpoint: string;
 }
 
 // From codersdk/workspaceagentportshare.go
@@ -684,7 +678,6 @@ export interface DeploymentValues {
 	readonly terms_of_service_url?: string;
 	readonly notifications?: NotificationsConfig;
 	readonly additional_csp_policy?: string;
-	readonly workspace_hostname_suffix?: string;
 	readonly config?: string;
 	readonly write_config?: boolean;
 	readonly address?: string;
@@ -750,10 +743,8 @@ export const EntitlementsWarningHeader = "X-Coder-Entitlements-Warning";
 // From codersdk/deployment.go
 export type Experiment =
 	| "auto-fill-parameters"
-	| "dynamic-parameters"
 	| "example"
 	| "notifications"
-	| "web-push"
 	| "workspace-usage";
 
 // From codersdk/deployment.go
@@ -902,12 +893,6 @@ export const FormatZip = "zip";
 // From codersdk/apikey.go
 export interface GenerateAPIKeyResponse {
 	readonly key: string;
-}
-
-// From codersdk/inboxnotification.go
-export interface GetInboxNotificationResponse {
-	readonly notification: InboxNotification;
-	readonly unread_count: number;
 }
 
 // From codersdk/insights.go
@@ -1094,38 +1079,6 @@ export interface IDPSyncMapping<ResourceIdType extends string | string> {
 	readonly Gets: ResourceIdType;
 }
 
-// From codersdk/inboxnotification.go
-export interface InboxNotification {
-	readonly id: string;
-	readonly user_id: string;
-	readonly template_id: string;
-	readonly targets: readonly string[];
-	readonly title: string;
-	readonly content: string;
-	readonly icon: string;
-	readonly actions: readonly InboxNotificationAction[];
-	readonly read_at: string | null;
-	readonly created_at: string;
-}
-
-// From codersdk/inboxnotification.go
-export interface InboxNotificationAction {
-	readonly label: string;
-	readonly url: string;
-}
-
-// From codersdk/inboxnotification.go
-export const InboxNotificationFallbackIconAccount = "DEFAULT_ICON_ACCOUNT";
-
-// From codersdk/inboxnotification.go
-export const InboxNotificationFallbackIconOther = "DEFAULT_ICON_OTHER";
-
-// From codersdk/inboxnotification.go
-export const InboxNotificationFallbackIconTemplate = "DEFAULT_ICON_TEMPLATE";
-
-// From codersdk/inboxnotification.go
-export const InboxNotificationFallbackIconWorkspace = "DEFAULT_ICON_WORKSPACE";
-
 // From codersdk/insights.go
 export type InsightsReportInterval = "day" | "week";
 
@@ -1181,20 +1134,6 @@ export interface LinkConfig {
 	readonly name: string;
 	readonly target: string;
 	readonly icon: string;
-}
-
-// From codersdk/inboxnotification.go
-export interface ListInboxNotificationsRequest {
-	readonly targets?: string;
-	readonly templates?: string;
-	readonly read_status?: string;
-	readonly starting_before?: string;
-}
-
-// From codersdk/inboxnotification.go
-export interface ListInboxNotificationsResponse {
-	readonly notifications: readonly InboxNotification[];
-	readonly unread_count: number;
 }
 
 // From codersdk/externalauth.go
@@ -1334,7 +1273,6 @@ export interface NotificationsConfig {
 	readonly dispatch_timeout: number;
 	readonly email: NotificationsEmailConfig;
 	readonly webhook: NotificationsWebhookConfig;
-	readonly inbox: NotificationsInboxConfig;
 }
 
 // From codersdk/deployment.go
@@ -1363,11 +1301,6 @@ export interface NotificationsEmailTLSConfig {
 	readonly ca_file: string;
 	readonly cert_file: string;
 	readonly key_file: string;
-}
-
-// From codersdk/deployment.go
-export interface NotificationsInboxConfig {
-	readonly enabled: boolean;
 }
 
 // From codersdk/notifications.go
@@ -1552,18 +1485,6 @@ export interface OrganizationSyncSettings {
 	readonly field: string;
 	readonly mapping: Record<string, string[]>;
 	readonly organization_assign_default: boolean;
-}
-
-// From codersdk/organizations.go
-export interface PaginatedMembersRequest {
-	readonly limit?: number;
-	readonly offset?: number;
-}
-
-// From codersdk/organizations.go
-export interface PaginatedMembersResponse {
-	readonly members: readonly OrganizationMemberWithUserData[];
-	readonly count: number;
 }
 
 // From codersdk/pagination.go
@@ -1977,7 +1898,6 @@ export type RBACResource =
 	| "group"
 	| "group_member"
 	| "idpsync_settings"
-	| "inbox_notification"
 	| "license"
 	| "notification_message"
 	| "notification_preference"
@@ -1994,10 +1914,8 @@ export type RBACResource =
 	| "tailnet_coordinator"
 	| "template"
 	| "user"
-	| "webpush_subscription"
 	| "*"
 	| "workspace"
-	| "workspace_agent_devcontainers"
 	| "workspace_agent_resource_monitor"
 	| "workspace_dormant"
 	| "workspace_proxy";
@@ -2015,7 +1933,6 @@ export const RBACResources: RBACResource[] = [
 	"group",
 	"group_member",
 	"idpsync_settings",
-	"inbox_notification",
 	"license",
 	"notification_message",
 	"notification_preference",
@@ -2032,10 +1949,8 @@ export const RBACResources: RBACResource[] = [
 	"tailnet_coordinator",
 	"template",
 	"user",
-	"webpush_subscription",
 	"*",
 	"workspace",
-	"workspace_agent_devcontainers",
 	"workspace_agent_resource_monitor",
 	"workspace_dormant",
 	"workspace_proxy",
@@ -2056,7 +1971,7 @@ export interface ReducedUser extends MinimalUser {
 	readonly last_seen_at: string;
 	readonly status: UserStatus;
 	readonly login_type: LoginType;
-	readonly theme_preference?: string;
+	readonly theme_preference: string;
 }
 
 // From codersdk/workspaceproxy.go
@@ -2219,7 +2134,6 @@ export interface SSHConfig {
 // From codersdk/deployment.go
 export interface SSHConfigResponse {
 	readonly hostname_prefix: string;
-	readonly hostname_suffix: string;
 	readonly ssh_config_options: Record<string, string>;
 }
 
@@ -2657,15 +2571,6 @@ export interface TemplateVersionsByTemplateRequest extends Pagination {
 	readonly include_archived: boolean;
 }
 
-// From codersdk/users.go
-export type TerminalFontName = "fira-code" | "ibm-plex-mono" | "";
-
-export const TerminalFontNames: TerminalFontName[] = [
-	"fira-code",
-	"ibm-plex-mono",
-	"",
-];
-
 // From codersdk/workspacebuilds.go
 export type TimingStage =
 	| "apply"
@@ -2737,17 +2642,6 @@ export interface UpdateHealthSettings {
 	readonly dismissed_healthchecks: readonly HealthSection[];
 }
 
-// From codersdk/inboxnotification.go
-export interface UpdateInboxNotificationReadStatusRequest {
-	readonly is_read: boolean;
-}
-
-// From codersdk/inboxnotification.go
-export interface UpdateInboxNotificationReadStatusResponse {
-	readonly notification: InboxNotification;
-	readonly unread_count: number;
-}
-
 // From codersdk/notifications.go
 export interface UpdateNotificationTemplateMethod {
 	readonly method?: string;
@@ -2799,7 +2693,6 @@ export interface UpdateTemplateMeta {
 // From codersdk/users.go
 export interface UpdateUserAppearanceSettingsRequest {
 	readonly theme_preference: string;
-	readonly terminal_font: TerminalFontName;
 }
 
 // From codersdk/notifications.go
@@ -2913,12 +2806,6 @@ export interface UserActivityInsightsResponse {
 	readonly report: UserActivityInsightsReport;
 }
 
-// From codersdk/users.go
-export interface UserAppearanceSettings {
-	readonly theme_preference: string;
-	readonly terminal_font: TerminalFontName;
-}
-
 // From codersdk/insights.go
 export interface UserLatency {
 	readonly template_ids: readonly string[];
@@ -3028,27 +2915,6 @@ export interface VariableValue {
 	readonly value: string;
 }
 
-// From codersdk/notifications.go
-export interface WebpushMessage {
-	readonly icon: string;
-	readonly title: string;
-	readonly body: string;
-	readonly actions: readonly WebpushMessageAction[];
-}
-
-// From codersdk/notifications.go
-export interface WebpushMessageAction {
-	readonly label: string;
-	readonly url: string;
-}
-
-// From codersdk/notifications.go
-export interface WebpushSubscription {
-	readonly endpoint: string;
-	readonly auth_key: string;
-	readonly p256dh_key: string;
-}
-
 // From healthsdk/healthsdk.go
 export interface WebsocketReport extends BaseReport {
 	readonly healthy: boolean;
@@ -3074,7 +2940,6 @@ export interface Workspace {
 	readonly template_active_version_id: string;
 	readonly template_require_active_version: boolean;
 	readonly latest_build: WorkspaceBuild;
-	readonly latest_app_status: WorkspaceAppStatus | null;
 	readonly outdated: boolean;
 	readonly name: string;
 	readonly autostart_schedule?: string;
@@ -3126,32 +2991,16 @@ export interface WorkspaceAgent {
 }
 
 // From codersdk/workspaceagents.go
-export interface WorkspaceAgentContainer {
+export interface WorkspaceAgentDevcontainer {
 	readonly created_at: string;
 	readonly id: string;
 	readonly name: string;
 	readonly image: string;
 	readonly labels: Record<string, string>;
 	readonly running: boolean;
-	readonly ports: readonly WorkspaceAgentContainerPort[];
+	readonly ports: readonly WorkspaceAgentListeningPort[];
 	readonly status: string;
 	readonly volumes: Record<string, string>;
-}
-
-// From codersdk/workspaceagents.go
-export interface WorkspaceAgentContainerPort {
-	readonly port: number;
-	readonly network: string;
-	readonly host_ip?: string;
-	readonly host_port?: number;
-}
-
-// From codersdk/workspaceagents.go
-export interface WorkspaceAgentDevcontainer {
-	readonly id: string;
-	readonly name: string;
-	readonly workspace_folder: string;
-	readonly config_path?: string;
 }
 
 // From codersdk/workspaceagents.go
@@ -3186,7 +3035,7 @@ export const WorkspaceAgentLifecycles: WorkspaceAgentLifecycle[] = [
 
 // From codersdk/workspaceagents.go
 export interface WorkspaceAgentListContainersResponse {
-	readonly containers: readonly WorkspaceAgentContainer[];
+	readonly containers: readonly WorkspaceAgentDevcontainer[];
 	readonly warnings?: readonly string[];
 }
 
@@ -3322,7 +3171,6 @@ export interface WorkspaceApp {
 	readonly health: WorkspaceAppHealth;
 	readonly hidden: boolean;
 	readonly open_in: WorkspaceAppOpenIn;
-	readonly statuses: readonly WorkspaceAppStatus[];
 }
 
 // From codersdk/workspaceapps.go
@@ -3351,29 +3199,6 @@ export const WorkspaceAppSharingLevels: WorkspaceAppSharingLevel[] = [
 	"authenticated",
 	"owner",
 	"public",
-];
-
-// From codersdk/workspaceapps.go
-export interface WorkspaceAppStatus {
-	readonly id: string;
-	readonly created_at: string;
-	readonly workspace_id: string;
-	readonly agent_id: string;
-	readonly app_id: string;
-	readonly state: WorkspaceAppStatusState;
-	readonly needs_user_attention: boolean;
-	readonly message: string;
-	readonly uri: string;
-	readonly icon: string;
-}
-
-// From codersdk/workspaceapps.go
-export type WorkspaceAppStatusState = "complete" | "failure" | "working";
-
-export const WorkspaceAppStatusStates: WorkspaceAppStatusState[] = [
-	"complete",
-	"failure",
-	"working",
 ];
 
 // From codersdk/workspacebuilds.go

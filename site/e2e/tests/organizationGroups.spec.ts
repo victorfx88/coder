@@ -34,9 +34,7 @@ test("create group", async ({ page }) => {
 	// Create a new organization
 	const org = await createOrganization();
 	const orgUserAdmin = await createOrganizationMember({
-		orgRoles: {
-			[org.id]: ["organization-user-admin"],
-		},
+		[org.id]: ["organization-user-admin"],
 	});
 
 	await login(page, orgUserAdmin);
@@ -101,17 +99,14 @@ test("change quota settings", async ({ page }) => {
 	const org = await createOrganization();
 	const group = await createGroup(org.id);
 	const orgUserAdmin = await createOrganizationMember({
-		orgRoles: {
-			[org.id]: ["organization-user-admin"],
-		},
+		[org.id]: ["organization-user-admin"],
 	});
 
 	// Go to settings
 	await login(page, orgUserAdmin);
 	await page.goto(`/organizations/${org.name}/groups/${group.name}`);
-
-	await page.getByRole("link", { name: "Settings", exact: true }).click();
-	await expectUrl(page).toHavePathName(
+	await page.getByRole("button", { name: "Settings", exact: true }).click();
+	expectUrl(page).toHavePathName(
 		`/organizations/${org.name}/groups/${group.name}/settings`,
 	);
 
@@ -120,11 +115,11 @@ test("change quota settings", async ({ page }) => {
 	await page.getByRole("button", { name: /save/i }).click();
 
 	// We should get sent back to the group page afterwards
-	await expectUrl(page).toHavePathName(
+	expectUrl(page).toHavePathName(
 		`/organizations/${org.name}/groups/${group.name}`,
 	);
 
 	// ...and that setting should persist if we go back
-	await page.getByRole("link", { name: "Settings", exact: true }).click();
+	await page.getByRole("button", { name: "Settings", exact: true }).click();
 	await expect(page.getByLabel("Quota Allowance")).toHaveValue("100");
 });

@@ -130,13 +130,6 @@ func TestManifest(t *testing.T) {
 				DisplayName:      "bar",
 			},
 		},
-		Devcontainers: []codersdk.WorkspaceAgentDevcontainer{
-			{
-				ID:              uuid.New(),
-				WorkspaceFolder: "/home/coder/coder",
-				ConfigPath:      "/home/coder/coder/.devcontainer/devcontainer.json",
-			},
-		},
 	}
 	p, err := agentsdk.ProtoFromManifest(manifest)
 	require.NoError(t, err)
@@ -159,7 +152,6 @@ func TestManifest(t *testing.T) {
 	require.Equal(t, manifest.DisableDirectConnections, back.DisableDirectConnections)
 	require.Equal(t, manifest.Metadata, back.Metadata)
 	require.Equal(t, manifest.Scripts, back.Scripts)
-	require.Equal(t, manifest.Devcontainers, back.Devcontainers)
 }
 
 func TestSubsystems(t *testing.T) {

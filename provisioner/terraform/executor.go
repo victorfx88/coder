@@ -295,7 +295,7 @@ func (e *executor) plan(ctx, killCtx context.Context, env, vars []string, logr l
 	graphTimings := newTimingAggregator(database.ProvisionerJobTimingStageGraph)
 	graphTimings.ingest(createGraphTimingsEvent(timingGraphStart))
 
-	state, plan, err := e.planResources(ctx, killCtx, planfilePath)
+	state, err := e.planResources(ctx, killCtx, planfilePath)
 	if err != nil {
 		graphTimings.ingest(createGraphTimingsEvent(timingGraphErrored))
 		return nil, err
@@ -309,7 +309,6 @@ func (e *executor) plan(ctx, killCtx context.Context, env, vars []string, logr l
 		ExternalAuthProviders: state.ExternalAuthProviders,
 		Timings:               append(e.timings.aggregate(), graphTimings.aggregate()...),
 		Presets:               state.Presets,
-		Plan:                  plan,
 	}, nil
 }
 
@@ -331,18 +330,18 @@ func onlyDataResources(sm tfjson.StateModule) tfjson.StateModule {
 }
 
 // planResources must only be called while the lock is held.
-func (e *executor) planResources(ctx, killCtx context.Context, planfilePath string) (*State, json.RawMessage, error) {
+func (e *executor) planResources(ctx, killCtx context.Context, planfilePath string) (*State, error) {
 	ctx, span := e.server.startTrace(ctx, tracing.FuncName())
 	defer span.End()
 
 	plan, err := e.showPlan(ctx, killCtx, planfilePath)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("show terraform plan file: %w", err)
+		return nil, xerrors.Errorf("show terraform plan file: %w", err)
 	}
 
 	rawGraph, err := e.graph(ctx, killCtx)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("graph: %w", err)
+		return nil, xerrors.Errorf("graph: %w", err)
 	}
 	modules := []*tfjson.StateModule{}
 	if plan.PriorState != nil {
@@ -360,15 +359,9 @@ func (e *executor) planResources(ctx, killCtx context.Context, planfilePath stri
 
 	state, err := ConvertState(ctx, modules, rawGraph, e.server.logger)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	planJSON, err := json.Marshal(plan)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return state, planJSON, nil
+	return state, nil
 }
 
 // showPlan must only be called while the lock is held.

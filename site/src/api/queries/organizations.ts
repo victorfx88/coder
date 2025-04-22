@@ -1,24 +1,15 @@
-import { API, type GetProvisionerJobsParams } from "api/api";
+import { API } from "api/api";
 import type {
 	CreateOrganizationRequest,
 	GroupSyncSettings,
-	PaginatedMembersRequest,
-	PaginatedMembersResponse,
-	ProvisionerJobStatus,
 	RoleSyncSettings,
 	UpdateOrganizationRequest,
 } from "api/typesGenerated";
-import type { UsePaginatedQueryOptions } from "hooks/usePaginatedQuery";
 import {
 	type OrganizationPermissionName,
 	type OrganizationPermissions,
 	organizationPermissionChecks,
-} from "modules/permissions/organizations";
-import {
-	type WorkspacePermissionName,
-	type WorkspacePermissions,
-	workspacePermissionChecks,
-} from "modules/permissions/workspaces";
+} from "modules/management/organizationPermissions";
 import type { QueryClient } from "react-query";
 import { meKey } from "./users";
 
@@ -68,42 +59,10 @@ export const organizationMembersKey = (id: string) => [
 	"members",
 ];
 
-/**
- * Creates a query configuration to fetch all members of an organization.
- *
- * Unlike the paginated version, this function sets the `limit` parameter to 0,
- * which instructs the API to return all organization members in a single request
- * without pagination.
- *
- * @param id - The unique identifier of the organization
- * @returns A query configuration object for use with React Query
- *
- * @see paginatedOrganizationMembers - For fetching members with pagination support
- */
 export const organizationMembers = (id: string) => {
 	return {
-		queryFn: () => API.getOrganizationPaginatedMembers(id, { limit: 0 }),
+		queryFn: () => API.getOrganizationMembers(id),
 		queryKey: organizationMembersKey(id),
-	};
-};
-
-export const paginatedOrganizationMembers = (
-	id: string,
-	searchParams: URLSearchParams,
-): UsePaginatedQueryOptions<
-	PaginatedMembersResponse,
-	PaginatedMembersRequest
-> => {
-	return {
-		searchParams,
-		queryPayload: ({ limit, offset }) => {
-			return {
-				limit: limit,
-				offset: offset,
-			};
-		},
-		queryKey: ({ payload }) => [...organizationMembersKey(id), payload],
-		queryFn: ({ payload }) => API.getOrganizationPaginatedMembers(id, payload),
 	};
 };
 
@@ -242,18 +201,16 @@ export const patchRoleSyncSettings = (
 	};
 };
 
-export const provisionerJobsQueryKey = (
-	orgId: string,
-	params: GetProvisionerJobsParams = {},
-) => ["organization", orgId, "provisionerjobs", params];
+export const provisionerJobQueryKey = (orgId: string) => [
+	"organization",
+	orgId,
+	"provisionerjobs",
+];
 
-export const provisionerJobs = (
-	orgId: string,
-	params: GetProvisionerJobsParams = {},
-) => {
+export const provisionerJobs = (orgId: string) => {
 	return {
-		queryKey: provisionerJobsQueryKey(orgId, params),
-		queryFn: () => API.getProvisionerJobs(orgId, params),
+		queryKey: provisionerJobQueryKey(orgId),
+		queryFn: () => API.getProvisionerJobs(orgId),
 	};
 };
 
@@ -303,44 +260,6 @@ export const organizationsPermissions = (
 				},
 				{} as Record<string, Partial<OrganizationPermissions>>,
 			) as Record<string, OrganizationPermissions>;
-		},
-	};
-};
-
-export const workspacePermissionsByOrganization = (
-	organizationIds: string[] | undefined,
-	userId: string,
-) => {
-	if (!organizationIds) {
-		return { enabled: false };
-	}
-
-	return {
-		queryKey: ["workspaces", organizationIds.sort(), "permissions"],
-		queryFn: async () => {
-			const prefixedChecks = organizationIds.flatMap((orgId) =>
-				Object.entries(workspacePermissionChecks(orgId, userId)).map(
-					([key, val]) => [`${orgId}.${key}`, val],
-				),
-			);
-
-			const response = await API.checkAuthorization({
-				checks: Object.fromEntries(prefixedChecks),
-			});
-
-			return Object.entries(response).reduce(
-				(acc, [key, value]) => {
-					const index = key.indexOf(".");
-					const orgId = key.substring(0, index);
-					const perm = key.substring(index + 1);
-					if (!acc[orgId]) {
-						acc[orgId] = {};
-					}
-					acc[orgId][perm as WorkspacePermissionName] = value;
-					return acc;
-				},
-				{} as Record<string, Partial<WorkspacePermissions>>,
-			) as Record<string, WorkspacePermissions>;
 		},
 	};
 };

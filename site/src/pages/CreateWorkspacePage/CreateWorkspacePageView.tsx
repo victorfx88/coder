@@ -1,5 +1,4 @@
 import type { Interpolation, Theme } from "@emotion/react";
-import FormControlLabel from "@mui/material/FormControlLabel";
 import FormHelperText from "@mui/material/FormHelperText";
 import TextField from "@mui/material/TextField";
 import type * as TypesGen from "api/typesGenerated";
@@ -7,7 +6,6 @@ import { Alert } from "components/Alert/Alert";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { Avatar } from "components/Avatar/Avatar";
 import { Button } from "components/Button/Button";
-import { FeatureStageBadge } from "components/FeatureStageBadge/FeatureStageBadge";
 import { SelectFilter } from "components/Filter/SelectFilter";
 import {
 	FormFields,
@@ -25,7 +23,6 @@ import { Pill } from "components/Pill/Pill";
 import { RichParameterInput } from "components/RichParameterInput/RichParameterInput";
 import { Spinner } from "components/Spinner/Spinner";
 import { Stack } from "components/Stack/Stack";
-import { Switch } from "components/Switch/Switch";
 import { UserAutocomplete } from "components/UserAutocomplete/UserAutocomplete";
 import { type FormikContextType, useFormik } from "formik";
 import { generateWorkspaceName } from "modules/workspaces/generateWorkspaceName";
@@ -46,7 +43,8 @@ import type {
 	ExternalAuthPollingState,
 } from "./CreateWorkspacePage";
 import { ExternalAuthButton } from "./ExternalAuthButton";
-import type { CreateWorkspacePermissions } from "./permissions";
+import type { CreateWSPermissions } from "./permissions";
+
 export const Language = {
 	duplicationWarning:
 		"Duplicating a workspace only copies its parameters. No state from the old workspace is copied over.",
@@ -68,7 +66,7 @@ export interface CreateWorkspacePageViewProps {
 	parameters: TypesGen.TemplateVersionParameter[];
 	autofillParameters: AutofillBuildParameter[];
 	presets: TypesGen.Preset[];
-	permissions: CreateWorkspacePermissions;
+	permissions: CreateWSPermissions;
 	creatingWorkspace: boolean;
 	onCancel: () => void;
 	onSubmit: (
@@ -102,7 +100,6 @@ export const CreateWorkspacePageView: FC<CreateWorkspacePageViewProps> = ({
 	const [suggestedName, setSuggestedName] = useState(() =>
 		generateWorkspaceName(),
 	);
-	const [showPresetParameters, setShowPresetParameters] = useState(false);
 
 	const rerollSuggestedName = useCallback(() => {
 		setSuggestedName(() => generateWorkspaceName());
@@ -255,7 +252,7 @@ export const CreateWorkspacePageView: FC<CreateWorkspacePageViewProps> = ({
 				<FormSection
 					title="General"
 					description={
-						permissions.createWorkspaceForAny
+						permissions.createWorkspaceForUser
 							? "The name of the workspace and its owner. Only admins can create workspaces for other users."
 							: "The name of your new workspace."
 					}
@@ -275,6 +272,28 @@ export const CreateWorkspacePageView: FC<CreateWorkspacePageViewProps> = ({
 							</Stack>
 						)}
 
+						{presets.length > 0 && (
+							<Stack direction="column" spacing={2}>
+								<span css={styles.description}>
+									Select a preset to get started
+								</span>
+								<Stack direction="row" spacing={2}>
+									<SelectFilter
+										label="Preset"
+										options={presetOptions}
+										onSelect={(option) => {
+											setSelectedPresetIndex(
+												presetOptions.findIndex(
+													(preset) => preset.value === option?.value,
+												),
+											);
+										}}
+										placeholder="Select a preset"
+										selectedOption={presetOptions[selectedPresetIndex]}
+									/>
+								</Stack>
+							</Stack>
+						)}
 						<div>
 							<TextField
 								{...getFieldHelpers("name")}
@@ -300,7 +319,7 @@ export const CreateWorkspacePageView: FC<CreateWorkspacePageViewProps> = ({
 							</FormHelperText>
 						</div>
 
-						{permissions.createWorkspaceForAny && (
+						{permissions.createWorkspaceForUser && (
 							<UserAutocomplete
 								value={owner}
 								onChange={(user) => {
@@ -348,89 +367,30 @@ export const CreateWorkspacePageView: FC<CreateWorkspacePageViewProps> = ({
                 hence they require additional vertical spacing for better readability and
                 user experience. */}
 						<FormFields css={{ gap: 36 }}>
-							{presets.length > 0 && (
-								<Stack direction="column" spacing={2}>
-									<Stack direction="row" spacing={2} alignItems="center">
-										<span css={styles.description}>
-											Select a preset to get started
-										</span>
-										<FeatureStageBadge contentType={"beta"} size="md" />
-									</Stack>
-									<Stack direction="column" spacing={2}>
-										<Stack direction="row" spacing={2}>
-											<SelectFilter
-												label="Preset"
-												options={presetOptions}
-												onSelect={(option) => {
-													const index = presetOptions.findIndex(
-														(preset) => preset.value === option?.value,
-													);
-													if (index === -1) {
-														return;
-													}
-													setSelectedPresetIndex(index);
-												}}
-												placeholder="Select a preset"
-												selectedOption={presetOptions[selectedPresetIndex]}
-											/>
-										</Stack>
-										<div
-											css={{
-												display: "flex",
-												alignItems: "center",
-												gap: "8px",
-											}}
-										>
-											<Switch
-												id="show-preset-parameters"
-												checked={showPresetParameters}
-												onCheckedChange={setShowPresetParameters}
-											/>
-											<label
-												htmlFor="show-preset-parameters"
-												css={styles.description}
-											>
-												Show preset parameters
-											</label>
-										</div>
-									</Stack>
-								</Stack>
-							)}
-
 							{parameters.map((parameter, index) => {
 								const parameterField = `rich_parameter_values.${index}`;
 								const parameterInputName = `${parameterField}.value`;
-								const isPresetParameter = presetParameterNames.includes(
-									parameter.name,
-								);
 								const isDisabled =
 									disabledParams?.includes(
 										parameter.name.toLowerCase().replace(/ /g, "_"),
 									) ||
 									creatingWorkspace ||
-									isPresetParameter;
-
-								// Hide preset parameters if showPresetParameters is false
-								if (!showPresetParameters && isPresetParameter) {
-									return null;
-								}
+									presetParameterNames.includes(parameter.name);
 
 								return (
-									<div key={parameter.name}>
-										<RichParameterInput
-											{...getFieldHelpers(parameterInputName)}
-											onChange={async (value) => {
-												await form.setFieldValue(parameterField, {
-													name: parameter.name,
-													value,
-												});
-											}}
-											parameter={parameter}
-											parameterAutofill={autofillByName[parameter.name]}
-											disabled={isDisabled}
-											isPreset={isPresetParameter}
-										/>
-									</div>
+									<RichParameterInput
+										{...getFieldHelpers(parameterInputName)}
+										onChange={async (value) => {
+											await form.setFieldValue(parameterField, {
+												name: parameter.name,
+												value,
+											});
+										}}
+										key={parameter.name}
+										parameter={parameter}
+										parameterAutofill={autofillByName[parameter.name]}
+										disabled={isDisabled}
+									/>
 								);
 							})}
 						</FormFields>

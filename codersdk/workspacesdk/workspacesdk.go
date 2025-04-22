@@ -12,14 +12,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/google/uuid"
+	"golang.org/x/xerrors"
 	"tailscale.com/tailcfg"
 	"tailscale.com/wgengine/capture"
 
-	"github.com/google/uuid"
-	"golang.org/x/xerrors"
-
 	"cdr.dev/slog"
-
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/tailnet"
 	"github.com/coder/coder/v2/tailnet/proto"
@@ -123,7 +121,6 @@ func init() {
 	// Add a thousand more ports to the ignore list during tests so it's easier
 	// to find an available port.
 	for i := 63000; i < 64000; i++ {
-		// #nosec G115 - Safe conversion as port numbers are within uint16 range (0-65535)
 		AgentIgnoredListeningPorts[uint16(i)] = struct{}{}
 	}
 }
@@ -309,21 +306,6 @@ type WorkspaceAgentReconnectingPTYOpts struct {
 	// issue-reconnecting-pty-signed-token endpoint. If set, the session token
 	// on the client will not be sent.
 	SignedToken string
-
-	// Experimental: Container, if set, will attempt to exec into a running container
-	// visible to the agent. This should be a unique container ID
-	// (implementation-dependent).
-	// ContainerUser is the user as which to exec into the container.
-	// NOTE: This feature is currently experimental and is currently "opt-in".
-	// In order to use this feature, the agent must have the environment variable
-	// CODER_AGENT_DEVCONTAINERS_ENABLE set to "true".
-	Container     string
-	ContainerUser string
-
-	// BackendType is the type of backend to use for the PTY. If not set, the
-	// workspace agent will attempt to determine the preferred backend type.
-	// Supported values are "screen" and "buffered".
-	BackendType string
 }
 
 // AgentReconnectingPTY spawns a PTY that reconnects using the token provided.
@@ -339,15 +321,6 @@ func (c *Client) AgentReconnectingPTY(ctx context.Context, opts WorkspaceAgentRe
 	q.Set("width", strconv.Itoa(int(opts.Width)))
 	q.Set("height", strconv.Itoa(int(opts.Height)))
 	q.Set("command", opts.Command)
-	if opts.Container != "" {
-		q.Set("container", opts.Container)
-	}
-	if opts.ContainerUser != "" {
-		q.Set("container_user", opts.ContainerUser)
-	}
-	if opts.BackendType != "" {
-		q.Set("backend_type", opts.BackendType)
-	}
 	// If we're using a signed token, set the query parameter.
 	if opts.SignedToken != "" {
 		q.Set(codersdk.SignedAppTokenQueryParameter, opts.SignedToken)

@@ -50,6 +50,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		defer cancel()
 		daemonName := testutil.MustRandString(t, 63)
 		srv, err := templateAdminClient.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         daemonName,
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -179,6 +180,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		defer cancel()
 		daemonName := testutil.MustRandString(t, 63)
 		_, err := templateAdminClient.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         daemonName,
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -203,6 +205,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
 		defer cancel()
 		_, err := another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         testutil.MustRandString(t, 63),
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -226,6 +229,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
 		defer cancel()
 		_, err := another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         testutil.MustRandString(t, 63),
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -356,6 +360,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
 		defer cancel()
 		req := codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         testutil.MustRandString(t, 63),
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -420,6 +425,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		another := codersdk.New(client.URL)
 		pd := provisionerd.New(func(ctx context.Context) (proto.DRPCProvisionerDaemonClient, error) {
 			return another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+				ID:           uuid.New(),
 				Name:         testutil.MustRandString(t, 63),
 				Organization: user.OrganizationID,
 				Provisioners: []codersdk.ProvisionerType{
@@ -497,6 +503,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
 		defer cancel()
 		_, err := another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         testutil.MustRandString(t, 32),
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -531,6 +538,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		defer cancel()
 		another := codersdk.New(client.URL)
 		_, err := another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         testutil.MustRandString(t, 63),
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -563,6 +571,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 		defer cancel()
 		another := codersdk.New(client.URL)
 		_, err := another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         testutil.MustRandString(t, 63),
 			Organization: user.OrganizationID,
 			Provisioners: []codersdk.ProvisionerType{
@@ -689,6 +698,7 @@ func TestProvisionerDaemonServe(t *testing.T) {
 
 				another := codersdk.New(client.URL)
 				srv, err := another.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+					ID:           uuid.New(),
 					Name:         testutil.MustRandString(t, 63),
 					Organization: user.OrganizationID,
 					Provisioners: []codersdk.ProvisionerType{
@@ -748,6 +758,7 @@ func TestGetProvisionerDaemons(t *testing.T) {
 		defer cancel()
 		daemonName := testutil.MustRandString(t, 63)
 		srv, err := orgAdmin.ServeProvisionerDaemon(ctx, codersdk.ServeProvisionerDaemonRequest{
+			ID:           uuid.New(),
 			Name:         daemonName,
 			Organization: org.ID,
 			Provisioners: []codersdk.ProvisionerType{

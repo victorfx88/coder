@@ -131,8 +131,11 @@ To set this up, follow these steps:
    }
    ```
 
-   > [!NOTE]
-   > The admin-level access token is used to provision user tokens and is never exposed to developers or stored in workspaces.
+   <blockquote class="info">
+
+   The admin-level access token is used to provision user tokens and is never exposed to developers or stored in workspaces.
+
+   </blockquote>
 
 If you don't want to use the official modules, you can read through the [example template](https://github.com/coder/coder/tree/main/examples/jfrog/docker), which uses Docker as the underlying compute. The
 same concepts apply to all compute types.

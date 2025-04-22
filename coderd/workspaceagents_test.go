@@ -29,9 +29,6 @@ import (
 
 	"cdr.dev/slog"
 	"cdr.dev/slog/sloggers/slogtest"
-	"github.com/coder/quartz"
-	"github.com/coder/websocket"
-
 	"github.com/coder/coder/v2/agent"
 	"github.com/coder/coder/v2/agent/agentcontainers"
 	"github.com/coder/coder/v2/agent/agentcontainers/acmock"
@@ -50,8 +47,6 @@ import (
 	"github.com/coder/coder/v2/coderd/externalauth"
 	"github.com/coder/coder/v2/coderd/jwtutils"
 	"github.com/coder/coder/v2/coderd/rbac"
-	"github.com/coder/coder/v2/coderd/telemetry"
-	"github.com/coder/coder/v2/coderd/util/ptr"
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/codersdk/agentsdk"
 	"github.com/coder/coder/v2/codersdk/workspacesdk"
@@ -61,6 +56,8 @@ import (
 	tailnetproto "github.com/coder/coder/v2/tailnet/proto"
 	"github.com/coder/coder/v2/tailnet/tailnettest"
 	"github.com/coder/coder/v2/testutil"
+	"github.com/coder/quartz"
+	"github.com/coder/websocket"
 )
 
 func TestWorkspaceAgent(t *testing.T) {
@@ -336,46 +333,6 @@ func TestWorkspaceAgentLogs(t *testing.T) {
 				break
 			}
 		}
-	})
-}
-
-func TestWorkspaceAgentAppStatus(t *testing.T) {
-	t.Parallel()
-	t.Run("Success", func(t *testing.T) {
-		t.Parallel()
-		ctx := testutil.Context(t, testutil.WaitMedium)
-		client, db := coderdtest.NewWithDatabase(t, nil)
-		user := coderdtest.CreateFirstUser(t, client)
-		client, user2 := coderdtest.CreateAnotherUser(t, client, user.OrganizationID)
-
-		r := dbfake.WorkspaceBuild(t, db, database.WorkspaceTable{
-			OrganizationID: user.OrganizationID,
-			OwnerID:        user2.ID,
-		}).WithAgent(func(a []*proto.Agent) []*proto.Agent {
-			a[0].Apps = []*proto.App{
-				{
-					Slug: "vscode",
-				},
-			}
-			return a
-		}).Do()
-
-		agentClient := agentsdk.New(client.URL)
-		agentClient.SetSessionToken(r.AgentToken)
-		err := agentClient.PatchAppStatus(ctx, agentsdk.PatchAppStatus{
-			AppSlug: "vscode",
-			Message: "testing",
-			URI:     "https://example.com",
-			Icon:    "https://example.com/icon.png",
-			State:   codersdk.WorkspaceAppStatusStateComplete,
-		})
-		require.NoError(t, err)
-
-		workspace, err := client.Workspace(ctx, r.Workspace.ID)
-		require.NoError(t, err)
-		agent, err := client.WorkspaceAgent(ctx, workspace.LatestBuild.Resources[0].Agents[0].ID)
-		require.NoError(t, err)
-		require.Len(t, agent.Apps[0].Statuses, 1)
 	})
 }
 
@@ -884,7 +841,6 @@ func TestWorkspaceAgentListeningPorts(t *testing.T) {
 			o.PortCacheDuration = time.Millisecond
 		})
 		resources := coderdtest.AwaitWorkspaceAgents(t, client, r.Workspace.ID)
-		// #nosec G115 - Safe conversion as TCP port numbers are within uint16 range (0-65535)
 		return client, uint16(coderdPort), resources[0].Agents[0].ID
 	}
 
@@ -919,7 +875,6 @@ func TestWorkspaceAgentListeningPorts(t *testing.T) {
 				_ = l.Close()
 			})
 
-			// #nosec G115 - Safe conversion as TCP port numbers are within uint16 range (0-65535)
 			port = uint16(tcpAddr.Port)
 			return true
 		}, testutil.WaitShort, testutil.IntervalFast)
@@ -1209,7 +1164,7 @@ func TestWorkspaceAgentContainers(t *testing.T) {
 			"com.coder.test": uuid.New().String(),
 		}
 		testResponse := codersdk.WorkspaceAgentListContainersResponse{
-			Containers: []codersdk.WorkspaceAgentContainer{
+			Containers: []codersdk.WorkspaceAgentDevcontainer{
 				{
 					ID:           uuid.NewString(),
 					CreatedAt:    dbtime.Now(),
@@ -1218,12 +1173,10 @@ func TestWorkspaceAgentContainers(t *testing.T) {
 					Labels:       testLabels,
 					Running:      true,
 					Status:       "running",
-					Ports: []codersdk.WorkspaceAgentContainerPort{
+					Ports: []codersdk.WorkspaceAgentListeningPort{
 						{
-							Network:  "tcp",
-							Port:     80,
-							HostIP:   "0.0.0.0",
-							HostPort: 8000,
+							Network: "tcp",
+							Port:    80,
 						},
 					},
 					Volumes: map[string]string{
@@ -2200,7 +2153,7 @@ func TestOwnedWorkspacesCoordinate(t *testing.T) {
 		},
 	})
 	if err != nil {
-		if resp != nil && resp.StatusCode != http.StatusSwitchingProtocols {
+		if resp.StatusCode != http.StatusSwitchingProtocols {
 			err = codersdk.ReadBodyAsError(resp)
 		}
 		require.NoError(t, err)
@@ -2254,135 +2207,6 @@ func TestOwnedWorkspacesCoordinate(t *testing.T) {
 			NumAgents: 0,
 		},
 	})
-}
-
-func TestUserTailnetTelemetry(t *testing.T) {
-	t.Parallel()
-
-	telemetryData := &codersdk.CoderDesktopTelemetry{
-		DeviceOS:            "Windows",
-		DeviceID:            "device001",
-		CoderDesktopVersion: "0.22.1",
-	}
-	fullHeader, err := json.Marshal(telemetryData)
-	require.NoError(t, err)
-
-	testCases := []struct {
-		name    string
-		headers map[string]string
-		// only used for DeviceID, DeviceOS, CoderDesktopVersion
-		expected telemetry.UserTailnetConnection
-	}{
-		{
-			name:     "no header",
-			headers:  map[string]string{},
-			expected: telemetry.UserTailnetConnection{},
-		},
-		{
-			name: "full header",
-			headers: map[string]string{
-				codersdk.CoderDesktopTelemetryHeader: string(fullHeader),
-			},
-			expected: telemetry.UserTailnetConnection{
-				DeviceOS:            ptr.Ref("Windows"),
-				DeviceID:            ptr.Ref("device001"),
-				CoderDesktopVersion: ptr.Ref("0.22.1"),
-			},
-		},
-		{
-			name: "empty header",
-			headers: map[string]string{
-				codersdk.CoderDesktopTelemetryHeader: "",
-			},
-			expected: telemetry.UserTailnetConnection{},
-		},
-		{
-			name: "invalid header",
-			headers: map[string]string{
-				codersdk.CoderDesktopTelemetryHeader: "{\"device_os",
-			},
-			expected: telemetry.UserTailnetConnection{},
-		},
-	}
-
-	// nolint: paralleltest // no longer need to reinitialize loop vars in go 1.22
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			t.Parallel()
-
-			ctx := testutil.Context(t, testutil.WaitLong)
-			logger := testutil.Logger(t)
-
-			fTelemetry := newFakeTelemetryReporter(ctx, t, 200)
-			fTelemetry.enabled = false
-			firstClient := coderdtest.New(t, &coderdtest.Options{
-				Logger:            &logger,
-				TelemetryReporter: fTelemetry,
-			})
-			firstUser := coderdtest.CreateFirstUser(t, firstClient)
-			member, memberUser := coderdtest.CreateAnotherUser(t, firstClient, firstUser.OrganizationID, rbac.RoleTemplateAdmin())
-
-			headers := http.Header{
-				"Coder-Session-Token": []string{member.SessionToken()},
-			}
-			for k, v := range tc.headers {
-				headers.Add(k, v)
-			}
-
-			// enable telemetry now that user is created.
-			fTelemetry.enabled = true
-
-			u, err := member.URL.Parse("/api/v2/tailnet")
-			require.NoError(t, err)
-			q := u.Query()
-			q.Set("version", "2.0")
-			u.RawQuery = q.Encode()
-
-			predialTime := time.Now()
-
-			//nolint:bodyclose // websocket package closes this for you
-			wsConn, resp, err := websocket.Dial(ctx, u.String(), &websocket.DialOptions{
-				HTTPHeader: headers,
-			})
-			if err != nil {
-				if resp != nil && resp.StatusCode != http.StatusSwitchingProtocols {
-					err = codersdk.ReadBodyAsError(resp)
-				}
-				require.NoError(t, err)
-			}
-			defer wsConn.Close(websocket.StatusNormalClosure, "done")
-
-			// Check telemetry
-			snapshot := testutil.RequireRecvCtx(ctx, t, fTelemetry.snapshots)
-			require.Len(t, snapshot.UserTailnetConnections, 1)
-			telemetryConnection := snapshot.UserTailnetConnections[0]
-			require.Equal(t, memberUser.ID.String(), telemetryConnection.UserID)
-			require.GreaterOrEqual(t, telemetryConnection.ConnectedAt, predialTime)
-			require.LessOrEqual(t, telemetryConnection.ConnectedAt, time.Now())
-			require.NotEmpty(t, telemetryConnection.PeerID)
-			requireEqualOrBothNil(t, telemetryConnection.DeviceID, tc.expected.DeviceID)
-			requireEqualOrBothNil(t, telemetryConnection.DeviceOS, tc.expected.DeviceOS)
-			requireEqualOrBothNil(t, telemetryConnection.CoderDesktopVersion, tc.expected.CoderDesktopVersion)
-
-			beforeDisconnectTime := time.Now()
-			err = wsConn.Close(websocket.StatusNormalClosure, "done")
-			require.NoError(t, err)
-
-			snapshot = testutil.RequireRecvCtx(ctx, t, fTelemetry.snapshots)
-			require.Len(t, snapshot.UserTailnetConnections, 1)
-			telemetryDisconnection := snapshot.UserTailnetConnections[0]
-			require.Equal(t, memberUser.ID.String(), telemetryDisconnection.UserID)
-			require.Equal(t, telemetryConnection.ConnectedAt, telemetryDisconnection.ConnectedAt)
-			require.Equal(t, telemetryConnection.UserID, telemetryDisconnection.UserID)
-			require.Equal(t, telemetryConnection.PeerID, telemetryDisconnection.PeerID)
-			require.NotNil(t, telemetryDisconnection.DisconnectedAt)
-			require.GreaterOrEqual(t, *telemetryDisconnection.DisconnectedAt, beforeDisconnectTime)
-			require.LessOrEqual(t, *telemetryDisconnection.DisconnectedAt, time.Now())
-			requireEqualOrBothNil(t, telemetryConnection.DeviceID, tc.expected.DeviceID)
-			requireEqualOrBothNil(t, telemetryConnection.DeviceOS, tc.expected.DeviceOS)
-			requireEqualOrBothNil(t, telemetryConnection.CoderDesktopVersion, tc.expected.CoderDesktopVersion)
-		})
-	}
 }
 
 func buildWorkspaceWithAgent(
@@ -2507,56 +2331,4 @@ func waitForUpdates(
 	case <-ctx.Done():
 		t.Fatal("Timeout waiting for desired state", currentState)
 	}
-}
-
-// fakeTelemetryReporter is a fake implementation of telemetry.Reporter
-// that sends snapshots on a buffered channel, useful for testing.
-type fakeTelemetryReporter struct {
-	enabled   bool
-	snapshots chan *telemetry.Snapshot
-	t         testing.TB
-	ctx       context.Context
-}
-
-// newFakeTelemetryReporter creates a new fakeTelemetryReporter with a buffered channel.
-// The buffer size determines how many snapshots can be reported before blocking.
-func newFakeTelemetryReporter(ctx context.Context, t testing.TB, bufferSize int) *fakeTelemetryReporter {
-	return &fakeTelemetryReporter{
-		enabled:   true,
-		snapshots: make(chan *telemetry.Snapshot, bufferSize),
-		ctx:       ctx,
-		t:         t,
-	}
-}
-
-// Report implements the telemetry.Reporter interface by sending the snapshot
-// to the snapshots channel.
-func (f *fakeTelemetryReporter) Report(snapshot *telemetry.Snapshot) {
-	if !f.enabled {
-		return
-	}
-
-	select {
-	case f.snapshots <- snapshot:
-		// Successfully sent
-	case <-f.ctx.Done():
-		f.t.Error("context closed while writing snapshot")
-	}
-}
-
-// Enabled implements the telemetry.Reporter interface.
-func (f *fakeTelemetryReporter) Enabled() bool {
-	return f.enabled
-}
-
-// Close implements the telemetry.Reporter interface.
-func (*fakeTelemetryReporter) Close() {}
-
-func requireEqualOrBothNil[T any](t testing.TB, a, b *T) {
-	t.Helper()
-	if a != nil && b != nil {
-		require.Equal(t, *a, *b)
-		return
-	}
-	require.Equal(t, a, b)
 }

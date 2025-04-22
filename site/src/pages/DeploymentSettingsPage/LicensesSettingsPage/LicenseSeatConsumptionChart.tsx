@@ -108,7 +108,7 @@ export const LicenseSeatConsumptionChart: FC<
 								</li>
 								<li>
 									<Link asChild>
-										<RouterLink to="/deployment/overview">
+										<RouterLink to="/deployment/general">
 											Daily user activity
 										</RouterLink>
 									</Link>

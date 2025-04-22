@@ -1,11 +1,12 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, spyOn, userEvent, within } from "@storybook/test";
+import { expect, spyOn, userEvent, waitFor, within } from "@storybook/test";
 import { API } from "api/api";
 import {
 	notificationDispatchMethodsKey,
 	systemNotificationTemplatesKey,
 	userNotificationPreferencesKey,
 } from "api/queries/notifications";
+import { http, HttpResponse } from "msw";
 import { reactRouterParameters } from "storybook-addon-remix-react-router";
 import {
 	MockNotificationMethodsResponse,
@@ -40,7 +41,7 @@ const meta = {
 			},
 		],
 		user: MockUser,
-		permissions: { viewDeploymentConfig: true },
+		permissions: { viewDeploymentValues: true },
 	},
 	decorators: [withGlobalSnackbar, withAuthProvider, withDashboardProvider],
 } satisfies Meta<typeof NotificationsPage>;
@@ -74,7 +75,7 @@ export const ToggleNotification: Story = {
 
 export const NonAdmin: Story = {
 	parameters: {
-		permissions: { viewDeploymentConfig: false },
+		permissions: { viewDeploymentValues: false },
 	},
 };
 
