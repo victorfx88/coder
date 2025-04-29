@@ -35,8 +35,9 @@ func main() {
 		"github.com/coder/serpent": "Serpent",
 		"tailscale.com/derp":       "",
 		// Conflicting name "DERPRegion"
-		"tailscale.com/tailcfg":      "Tail",
-		"tailscale.com/net/netcheck": "Netcheck",
+		"tailscale.com/tailcfg":                       "Tail",
+		"tailscale.com/net/netcheck":                  "Netcheck",
+		"github.com/coder/coder/v2/coderd/aiagentsdk": "AIAgentSDK",
 	}
 	for pkg, prefix := range referencePackages {
 		err = gen.IncludeReference(pkg, prefix)

@@ -45,6 +45,38 @@ const docTemplate = `{
                 }
             }
         },
+        "/aiagent/chats/{aiagentchat}/watch": {
+            "get": {
+                "security": [
+                    {
+                        "CoderSessionToken": []
+                    }
+                ],
+                "tags": [
+                    "AI Agent Chat"
+                ],
+                "summary": "Watch for workspace agent metadata updates",
+                "operationId": "watch-ai-agent-chat",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "format": "uuid",
+                        "description": "AI Agent Chat ID",
+                        "name": "aiagentchat",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Success"
+                    }
+                },
+                "x-apidocgen": {
+                    "skip": true
+                }
+            }
+        },
         "/appearance": {
             "get": {
                 "security": [

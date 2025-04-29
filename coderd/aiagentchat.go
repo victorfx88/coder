@@ -86,7 +86,7 @@ func NewAIAgentClient(ctx context.Context, api *API, agentID uuid.UUID, address 
 }
 
 // @Summary Watch for workspace agent metadata updates
-// @ID watch-for-workspace-agent-metadata-updates
+// @ID watch-ai-agent-chat
 // @Security CoderSessionToken
 // @Tags AI Agent Chat
 // @Success 200 "Success"

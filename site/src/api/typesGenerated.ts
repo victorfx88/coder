@@ -6,6 +6,47 @@ export interface ACLAvailable {
 	readonly groups: readonly Group[];
 }
 
+// From codersdk/aiagentchat.go
+export interface AIAgentChat {
+	readonly id: string;
+	readonly workspace_agent_id: string;
+	readonly address: string;
+}
+
+// From codersdk/aiagentchat.go
+export interface AIAgentChatClientMessage {
+	readonly id: number;
+	readonly body: AIAgentSDKMessageRequestBody;
+}
+
+// From codersdk/aiagentchat.go
+export interface AIAgentChatClientResponse {
+	readonly id: number;
+	readonly ok: boolean;
+	readonly detail: string;
+}
+
+// From codersdk/aiagentchat.go
+export interface AIAgentChatMessage {
+	readonly id: number;
+	readonly created_at: string;
+	readonly role: AIAgentSDKConversationRole;
+	readonly content: string;
+}
+
+// From aiagentsdk/api.gen.go
+export type AIAgentSDKConversationRole = string;
+
+// From aiagentsdk/api.gen.go
+export interface AIAgentSDKMessageRequestBody {
+	readonly $schema?: string;
+	readonly content: string;
+	readonly type: AIAgentSDKMessageType;
+}
+
+// From aiagentsdk/api.gen.go
+export type AIAgentSDKMessageType = string;
+
 // From codersdk/deployment.go
 export interface AIConfig {
 	readonly providers: readonly AIProviderConfig[];
