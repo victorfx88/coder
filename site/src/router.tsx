@@ -425,8 +425,8 @@ export const router = createBrowserRouter(
 
 					<Route path="/chat" element={<ChatLayout />}>
 						<Route index element={<ChatLanding />} />
+						<Route path="ai-agent" element={<ChatLayout />} />
 						<Route path=":chatID" element={<ChatMessages />} />
-						{/* <Route path="/aiagent/:chatID" element={<ChatMessages />} /> */}
 					</Route>
 
 					<Route path="/organizations" element={<OrganizationSettingsLayout />}>
