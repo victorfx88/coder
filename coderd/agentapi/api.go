@@ -196,6 +196,7 @@ func New(opts Options) *API {
 	api.ChildAgentAPI = &ChildAgentAPI{
 		AgentID:  opts.AgentID,
 		Database: opts.Database,
+		Logger:   opts.Log,
 	}
 
 	return api

@@ -3,6 +3,7 @@ package agentapi
 import (
 	"context"
 
+	"cdr.dev/slog"
 	"github.com/coder/coder/v2/agent/proto"
 	"github.com/coder/coder/v2/coderd/database"
 	"github.com/coder/coder/v2/coderd/database/dbauthz"
@@ -16,6 +17,7 @@ type ChildAgentAPI struct {
 	AgentID uuid.UUID
 
 	Database database.Store
+	Logger   slog.Logger
 }
 
 func (a *ChildAgentAPI) CreateChildAgent(ctx context.Context, req *proto.CreateChildAgentRequest) (*proto.CreateChildAgentResponse, error) {
@@ -56,6 +58,8 @@ func (a *ChildAgentAPI) CreateChildAgent(ctx context.Context, req *proto.CreateC
 }
 
 func (a *ChildAgentAPI) DeleteChildAgent(ctx context.Context, req *proto.DeleteChildAgentRequest) (*proto.DeleteChildAgentResponse, error) {
+	a.Logger.Debug(ctx, "delete child agent", slog.F("agent_id", req.Id))
+
 	agentID, err := uuid.ParseBytes(req.Id)
 	if err != nil {
 		return nil, xerrors.Errorf("parse agent ID: %w", err)

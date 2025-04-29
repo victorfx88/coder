@@ -145,6 +145,8 @@ func (i *Injector) runCleanupProc(ctx context.Context) error {
 		}); err != nil {
 			return xerrors.Errorf("delete child agent: %w", err)
 		}
+
+		delete(i.children, containerID)
 	}
 
 	return nil
