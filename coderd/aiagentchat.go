@@ -3,8 +3,12 @@ package coderd
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"sync"
 
 	"github.com/google/uuid"
 	"github.com/tmaxmax/go-sse"
@@ -15,6 +19,7 @@ import (
 	"github.com/coder/coder/v2/coderd/aiagentsdk"
 	"github.com/coder/coder/v2/coderd/httpapi"
 	"github.com/coder/coder/v2/codersdk"
+	"github.com/coder/websocket"
 )
 
 var theChat = codersdk.AIAgentChat{
@@ -65,6 +70,21 @@ func getAIAgentHTTPConn(ctx context.Context, api *API, agentID uuid.UUID, addres
 	return httpConn, cleanup, nil
 }
 
+func NewAIAgentClient(ctx context.Context, api *API, agentID uuid.UUID, address string) (*aiagentsdk.Client, func(), error) {
+	aiAgentConn, cleanup, err := getAIAgentHTTPConn(ctx, api, agentID, address)
+	if err != nil {
+		defer cleanup()
+		return nil, nil, err
+	}
+	// TODO: remove the http:// prefix. not sure if it's needed.
+	aiAgentClient, err := aiagentsdk.NewClient("http://"+address, aiagentsdk.WithHTTPClient(aiAgentConn))
+	if err != nil {
+		defer cleanup()
+		return nil, nil, err
+	}
+	return aiAgentClient, cleanup, nil
+}
+
 // @Summary Watch for workspace agent metadata updates
 // @ID watch-for-workspace-agent-metadata-updates
 // @Security CoderSessionToken
@@ -77,17 +97,7 @@ func (api *API) watchAIAgentChat(rw http.ResponseWriter, r *http.Request) {
 	// Allow us to interrupt watch via cancel.
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
-	aiAgentConn, cleanup, err := getAIAgentHTTPConn(ctx, api, theChat.WorkspaceAgentID, theChat.Address)
-	if err != nil {
-		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-			Message: "Internal error dialing workspace agent.",
-			Detail:  err.Error(),
-		})
-		return
-	}
-	defer cleanup()
-	// TODO: remove the http:// prefix. not sure if it's needed.
-	aiAgentClient, err := aiagentsdk.NewClient("http://"+theChat.Address, aiagentsdk.WithHTTPClient(aiAgentConn))
+	aiAgentClient, cleanup, err := NewAIAgentClient(ctx, api, theChat.WorkspaceAgentID, theChat.Address)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
 			Message: "Internal error creating AI Agent client.",
@@ -95,6 +105,17 @@ func (api *API) watchAIAgentChat(rw http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	defer cleanup()
+	aiAgentChatClientTmp, cleanup2, err := NewAIAgentClient(ctx, api, theChat.WorkspaceAgentID, theChat.Address)
+	if err != nil {
+		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
+			Message: "Internal error creating AI Agent chat client.",
+			Detail:  err.Error(),
+		})
+		return
+	}
+	defer cleanup2()
+	aiAgentChatClient := aiagentsdk.ClientWithResponses{ClientInterface: aiAgentChatClientTmp}
 
 	resp, err := aiAgentClient.SubscribeEvents(ctx)
 	if err != nil {
@@ -106,45 +127,131 @@ func (api *API) watchAIAgentChat(rw http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	sendEvent, senderClosed, err := httpapi.OneWayWebSocketEventSender(rw, r)
+	// Create bidirectional websocket connection
+	conn, err := websocket.Accept(rw, r, nil)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
-			Message: "Internal error setting up server-sent events.",
+			Message: "Failed to accept websocket connection.",
 			Detail:  err.Error(),
 		})
 		return
 	}
-	// If you look at the other uses of OneWayWebSocketEventSender, you'll see
-	// that they always block the function from returning until the sender is
-	// closed. However, as far as I can tell, there's no way for the caller of
-	// OneWayWebSocketEventSender to close the sender. We'd like to do it in case
-	// the AI agent stops responding. OneWayWebSocketEventSender uses the request
-	// context, so I think it should finish when the request is done.
-	// TODO: verify with the author of OneWayWebSocketEventSender before merging.
-	go func() {
-		select {
-		case <-ctx.Done():
-		case <-senderClosed:
-			cancel()
+	defer conn.Close(websocket.StatusNormalClosure, "Connection closed")
+
+	sendMessage := func(event codersdk.ServerSentEvent) error {
+		messageData, err := json.Marshal(event)
+		if err != nil {
+			return err
 		}
-		api.Logger.Info(ctx, "ai agent chat closed by context")
+		return conn.Write(ctx, websocket.MessageText, messageData)
+	}
+
+	reportError := func(err string) {
+		errData, _ := json.Marshal(codersdk.ServerSentEvent{
+			Type: codersdk.ServerSentEventTypeError,
+			Data: err,
+		})
+		_ = conn.Write(ctx, websocket.MessageText, errData)
+	}
+
+	wg := sync.WaitGroup{}
+
+	listenCtx, listenCancel := context.WithCancel(ctx)
+
+	// Start goroutine to listen for client messages
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case <-listenCtx.Done():
+				return
+			default:
+				messageType, message, err := conn.Read(listenCtx)
+				if err != nil {
+					if listenCtx.Err() != nil || errors.Is(err, context.Canceled) {
+						return
+					}
+					api.Logger.Error(listenCtx, "error reading from websocket", slog.Error(err))
+					return
+				}
+
+				var clientMessage codersdk.AIAgentChatClientMessage
+				if messageType != websocket.MessageText {
+					reportError("Invalid message type: expected text")
+					continue
+				}
+
+				err = json.Unmarshal(message, &clientMessage)
+				if err != nil {
+					reportError(fmt.Sprintf("Invalid message format: %s", err.Error()))
+					continue
+				}
+
+				// TODO: handle all the send errors
+				aiAgentRes, err := aiAgentChatClient.PostMessageWithResponse(ctx, clientMessage.Body)
+				if err != nil {
+					_ = sendMessage(codersdk.ServerSentEvent{
+						Type: codersdk.ServerSentEventTypeError,
+						Data: codersdk.AIAgentChatClientResponse{
+							ID:     clientMessage.ID,
+							Ok:     false,
+							Detail: err.Error(),
+						},
+					})
+					continue
+				}
+				if aiAgentRes.StatusCode() != http.StatusOK {
+					// TODO: format the error better
+					errData, _ := json.Marshal(aiAgentRes.ApplicationproblemJSONDefault)
+					_ = sendMessage(codersdk.ServerSentEvent{
+						Type: codersdk.ServerSentEventTypeError,
+						Data: codersdk.AIAgentChatClientResponse{
+							ID:     clientMessage.ID,
+							Ok:     false,
+							Detail: string(errData),
+						},
+					})
+					continue
+				}
+
+				_ = sendMessage(codersdk.ServerSentEvent{
+					Type: codersdk.ServerSentEventTypeData,
+					Data: codersdk.AIAgentChatClientResponse{
+						ID: clientMessage.ID,
+						Ok: true,
+					},
+				})
+			}
+		}
 	}()
 
-	// A message update may be as large as 80,000 bytes if the entire
-	// screen is filled with text.
+	// A message update may be as large as 80,000 bytes if the agent's
+	// response takes up the entire terminal screen.
 	readCfg := &sse.ReadConfig{
 		MaxEventSize: 1024 * 128, // 128KB
 	}
+
+	// Process SSE events and forward them to the client
 	for ev, err := range sse.Read(resp.Body, readCfg) {
 		if err != nil {
-			_ = sendEvent(codersdk.ServerSentEvent{
+			if ctx.Err() != nil || errors.Is(err, context.Canceled) {
+				break
+			}
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			api.Logger.Error(ctx, "error reading AI Agent event", slog.Error(err))
+
+			// Send error as a message to the websocket
+			errData, _ := json.Marshal(codersdk.ServerSentEvent{
 				Type: codersdk.ServerSentEventTypeError,
 				Data: err.Error(),
 			})
-			// TODO: remove this error log before merging
-			api.Logger.Error(ctx, "error reading AI Agent event", slog.Error(err))
-			return
+			_ = conn.Write(ctx, websocket.MessageText, errData)
+			break
 		}
+
 		var eventData any
 		if ev.Type == "message_update" {
 			eventData = aiagentsdk.MessageUpdateBody{}
@@ -154,21 +261,38 @@ func (api *API) watchAIAgentChat(rw http.ResponseWriter, r *http.Request) {
 		err = json.Unmarshal([]byte(ev.Data), &eventData)
 		if err != nil {
 			api.Logger.Error(ctx, "error unmarshalling message update", slog.Error(err))
-			_ = sendEvent(codersdk.ServerSentEvent{
+			errData, _ := json.Marshal(codersdk.ServerSentEvent{
 				Type: codersdk.ServerSentEventTypeError,
 				Data: err.Error(),
 			})
-			return
+			_ = conn.Write(ctx, websocket.MessageText, errData)
+			break
 		}
+
 		var dataWithType struct {
 			Type  string `json:"type"`
 			Event any    `json:"event"`
 		}
 		dataWithType.Type = ev.Type
 		dataWithType.Event = eventData
-		_ = sendEvent(codersdk.ServerSentEvent{
+
+		// Send event to websocket
+		messageData, err := json.Marshal(codersdk.ServerSentEvent{
 			Type: codersdk.ServerSentEventTypeData,
 			Data: dataWithType,
 		})
+		if err != nil {
+			api.Logger.Error(ctx, "error marshaling event", slog.Error(err))
+			break
+		}
+		err = conn.Write(ctx, websocket.MessageText, messageData)
+		if err != nil {
+			api.Logger.Error(ctx, "error writing to websocket", slog.Error(err))
+			break
+		}
 	}
+
+	// Signal the listener goroutine to exit
+	listenCancel()
+	wg.Wait()
 }
