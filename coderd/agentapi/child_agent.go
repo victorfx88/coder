@@ -71,7 +71,7 @@ func (a *ChildAgentAPI) DeleteChildAgent(ctx context.Context, req *proto.DeleteC
 func (a *ChildAgentAPI) ListChildAgents(ctx context.Context, req *proto.ListChildAgentsRequest) (*proto.ListChildAgentsResponse, error) {
 	var response proto.ListChildAgentsResponse
 
-	children, err := a.Database.GetWorkspaceAgentsByParentID(ctx, uuid.NullUUID{Valid: true, UUID: a.AgentID})
+	children, err := a.Database.GetWorkspaceAgentsByParentID(dbauthz.AsSystemRestricted(ctx), uuid.NullUUID{Valid: true, UUID: a.AgentID})
 	if err != nil {
 		return nil, xerrors.Errorf("get agents by parent ID: %w", err)
 	}
