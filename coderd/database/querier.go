@@ -115,6 +115,7 @@ type sqlcQuerier interface {
 	DeleteTailnetTunnel(ctx context.Context, arg DeleteTailnetTunnelParams) (DeleteTailnetTunnelRow, error)
 	DeleteWebpushSubscriptionByUserIDAndEndpoint(ctx context.Context, arg DeleteWebpushSubscriptionByUserIDAndEndpointParams) error
 	DeleteWebpushSubscriptions(ctx context.Context, ids []uuid.UUID) error
+	DeleteWorkspaceAgent(ctx context.Context, id uuid.UUID) error
 	DeleteWorkspaceAgentPortShare(ctx context.Context, arg DeleteWorkspaceAgentPortShareParams) error
 	DeleteWorkspaceAgentPortSharesByTemplate(ctx context.Context, templateID uuid.UUID) error
 	// Disable foreign keys and triggers for all tables.
@@ -395,6 +396,7 @@ type sqlcQuerier interface {
 	// `minute_buckets` could return 0 rows if there are no usage stats since `created_at`.
 	GetWorkspaceAgentUsageStats(ctx context.Context, createdAt time.Time) ([]GetWorkspaceAgentUsageStatsRow, error)
 	GetWorkspaceAgentUsageStatsAndLabels(ctx context.Context, createdAt time.Time) ([]GetWorkspaceAgentUsageStatsAndLabelsRow, error)
+	GetWorkspaceAgentsByParentID(ctx context.Context, parentID uuid.NullUUID) ([]WorkspaceAgent, error)
 	GetWorkspaceAgentsByResourceIDs(ctx context.Context, ids []uuid.UUID) ([]WorkspaceAgent, error)
 	GetWorkspaceAgentsCreatedAfter(ctx context.Context, createdAt time.Time) ([]WorkspaceAgent, error)
 	GetWorkspaceAgentsInLatestBuildByWorkspaceID(ctx context.Context, workspaceID uuid.UUID) ([]WorkspaceAgent, error)

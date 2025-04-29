@@ -1478,6 +1478,14 @@ func (q *querier) DeleteWebpushSubscriptions(ctx context.Context, ids []uuid.UUI
 	return q.db.DeleteWebpushSubscriptions(ctx, ids)
 }
 
+func (q *querier) DeleteWorkspaceAgent(ctx context.Context, id uuid.UUID) error {
+	if err := q.authorizeContext(ctx, policy.ActionDelete, rbac.ResourceSystem); err != nil {
+		return xerrors.Errorf("authorize context: %w", err)
+	}
+
+	return q.db.DeleteWorkspaceAgent(ctx, id)
+}
+
 func (q *querier) DeleteWorkspaceAgentPortShare(ctx context.Context, arg database.DeleteWorkspaceAgentPortShareParams) error {
 	w, err := q.db.GetWorkspaceByID(ctx, arg.WorkspaceID)
 	if err != nil {
@@ -2990,6 +2998,13 @@ func (q *querier) GetWorkspaceAgentUsageStats(ctx context.Context, createdAt tim
 
 func (q *querier) GetWorkspaceAgentUsageStatsAndLabels(ctx context.Context, createdAt time.Time) ([]database.GetWorkspaceAgentUsageStatsAndLabelsRow, error) {
 	return q.db.GetWorkspaceAgentUsageStatsAndLabels(ctx, createdAt)
+}
+
+func (q *querier) GetWorkspaceAgentsByParentID(ctx context.Context, parentID uuid.NullUUID) ([]database.WorkspaceAgent, error) {
+	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
+		return nil, err
+	}
+	return q.db.GetWorkspaceAgentsByParentID(ctx, parentID)
 }
 
 // GetWorkspaceAgentsByResourceIDs

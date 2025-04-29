@@ -445,6 +445,13 @@ func (m queryMetricsStore) DeleteWebpushSubscriptions(ctx context.Context, ids [
 	return r0
 }
 
+func (m queryMetricsStore) DeleteWorkspaceAgent(ctx context.Context, id uuid.UUID) error {
+	start := time.Now()
+	r0 := m.s.DeleteWorkspaceAgent(ctx, id)
+	m.queryLatencies.WithLabelValues("DeleteWorkspaceAgent").Observe(time.Since(start).Seconds())
+	return r0
+}
+
 func (m queryMetricsStore) DeleteWorkspaceAgentPortShare(ctx context.Context, arg database.DeleteWorkspaceAgentPortShareParams) error {
 	start := time.Now()
 	r0 := m.s.DeleteWorkspaceAgentPortShare(ctx, arg)
@@ -1716,6 +1723,13 @@ func (m queryMetricsStore) GetWorkspaceAgentUsageStatsAndLabels(ctx context.Cont
 	start := time.Now()
 	r0, r1 := m.s.GetWorkspaceAgentUsageStatsAndLabels(ctx, createdAt)
 	m.queryLatencies.WithLabelValues("GetWorkspaceAgentUsageStatsAndLabels").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
+func (m queryMetricsStore) GetWorkspaceAgentsByParentID(ctx context.Context, parentID uuid.NullUUID) ([]database.WorkspaceAgent, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetWorkspaceAgentsByParentID(ctx, parentID)
+	m.queryLatencies.WithLabelValues("GetWorkspaceAgentsByParentID").Observe(time.Since(start).Seconds())
 	return r0, r1
 }
 

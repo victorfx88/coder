@@ -27,10 +27,14 @@ WHERE
 -- name: GetWorkspaceAgentsCreatedAfter :many
 SELECT * FROM workspace_agents WHERE created_at > $1;
 
+-- name: GetWorkspaceAgentsByParentID :many
+SELECT * FROM workspace_agents WHERE parent_id = $1;
+
 -- name: InsertWorkspaceAgent :one
 INSERT INTO
 	workspace_agents (
 		id,
+		parent_id,
 		created_at,
 		updated_at,
 		name,
@@ -50,7 +54,10 @@ INSERT INTO
 		display_order
 	)
 VALUES
-	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) RETURNING *;
+	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING *;
+
+-- name: DeleteWorkspaceAgent :exec
+DELETE FROM workspace_agents WHERE id = $1;
 
 -- name: UpdateWorkspaceAgentConnectionByID :exec
 UPDATE

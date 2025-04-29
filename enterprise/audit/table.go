@@ -315,6 +315,7 @@ var auditableResourcesTypes = map[any]map[string]Action{
 		"created_at":                 ActionIgnore,
 		"updated_at":                 ActionIgnore,
 		"name":                       ActionIgnore,
+		"parent_id":                  ActionIgnore,
 		"first_connected_at":         ActionIgnore,
 		"last_connected_at":          ActionIgnore,
 		"disconnected_at":            ActionIgnore,

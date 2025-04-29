@@ -15,6 +15,7 @@ import (
 	"github.com/coder/quartz"
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
+	"golang.org/x/xerrors"
 )
 
 type Injector struct {
@@ -47,8 +48,47 @@ func NewInjector(
 	}
 }
 
+func (i *Injector) populateChildren(ctx context.Context) error {
+	children, err := i.api.ListChildAgents(ctx, &proto.ListChildAgentsRequest{})
+	if err != nil {
+		return xerrors.Errorf("list child agents: %w", err)
+	}
+
+	listing, err := i.cl.List(ctx)
+	if err != nil {
+		return xerrors.Errorf("list containers: %w", err)
+	}
+
+	containerMap := make(map[string]string)
+	for _, container := range listing.Containers {
+		containerMap[container.FriendlyName] = container.ID
+	}
+
+	for _, child := range children.Agents {
+		containerID, ok := containerMap[child.Name]
+		if !ok {
+			continue
+		}
+
+		agentID, err := uuid.ParseBytes(child.Id)
+		if err != nil {
+			return xerrors.Errorf("parse child ID: %w", err)
+		}
+
+		i.logger.Debug(ctx, "found child", slog.F("container_id", containerID), slog.F("agent_id", agentID))
+		i.children[containerID] = agentID
+	}
+
+	return nil
+}
+
 func (i *Injector) Start(ctx context.Context) error {
 	i.logger.Info(ctx, "starting injector routine")
+
+	if err := i.populateChildren(ctx); err != nil {
+		i.logger.Error(ctx, "populate children", slog.Error(err))
+		return err
+	}
 
 	agentScripts := provisionersdk.AgentScriptEnv()
 	agentScript := agentScripts[fmt.Sprintf("CODER_AGENT_SCRIPT_%s_%s", runtime.GOOS, runtime.GOARCH)]
@@ -68,105 +108,136 @@ func (i *Injector) Start(ctx context.Context) error {
 	}
 
 	i.clock.TickerFunc(ctx, 10*time.Second, func() error {
-		listing, err := i.cl.List(ctx)
-		if err != nil {
-			i.logger.Error(ctx, "list containers", slog.Error(err))
-			return nil
+		if err := i.runInjectionProc(ctx, file.Name()); err != nil {
+			i.logger.Error(ctx, "run injection proc", slog.Error(err))
 		}
 
-		for _, container := range listing.Containers {
-			workspaceFolder, exists := container.Labels[DevcontainerLocalFolderLabel]
-			if !exists || workspaceFolder == "" {
-				continue
-			}
-
-			// Child has already been injected with the agent, we can ignore it.
-			if _, childInjected := i.children[container.ID]; childInjected {
-				continue
-			}
-
-			resp, err := i.api.CreateChildAgent(ctx, &proto.CreateChildAgentRequest{
-				Name:      container.FriendlyName,
-				Directory: workspaceFolder,
-			})
-			if err != nil {
-				i.logger.Error(ctx, "create child agent", slog.Error(err))
-				return nil
-			}
-
-			childAgentID, err := uuid.FromBytes(resp.Id)
-			if err != nil {
-				i.logger.Error(ctx, "parse agent id", slog.Error(err))
-				return nil
-			}
-
-			childAuthToken, err := uuid.FromBytes(resp.AuthToken)
-			if err != nil {
-				i.logger.Error(ctx, "parse auth token", slog.Error(err))
-				return nil
-			}
-
-			i.children[container.ID] = childAgentID
-
-			accessURL := os.Getenv("CODER_AGENT_URL")
-			authType := "token"
-
-			stdout, stderr, err := run(ctx, i.execer,
-				"docker", "container", "cp",
-				file.Name(),
-				fmt.Sprintf("%s:/tmp/bootstrap.sh", container.ID),
-			)
-			i.logger.Info(ctx, stdout)
-			i.logger.Error(ctx, stderr)
-			if err != nil {
-				i.logger.Error(ctx, "copy bootstrap script", slog.Error(err))
-				return nil
-			}
-
-			stdout, stderr, err = run(ctx, i.execer, "docker", "container", "exec", container.ID, "chmod", "+x", "/tmp/bootstrap.sh")
-			i.logger.Info(ctx, stdout)
-			i.logger.Error(ctx, stderr)
-			if err != nil {
-				i.logger.Error(ctx, "make bootstrap script executable", slog.Error(err))
-				return nil
-			}
-
-			cmd := i.execer.CommandContext(ctx, "docker", "container", "exec",
-				"--detach",
-				"--env", fmt.Sprintf("ACCESS_URL=%s", accessURL),
-				"--env", fmt.Sprintf("AUTH_TYPE=%s", authType),
-				"--env", fmt.Sprintf("CODER_AGENT_TOKEN=%s", childAuthToken.String()),
-				container.ID,
-				"bash", "-c", "/tmp/bootstrap.sh",
-			)
-
-			var stdoutBuf, stderrBuf strings.Builder
-
-			cmd.Stdout = &stdoutBuf
-			cmd.Stderr = &stderrBuf
-
-			if err := cmd.Start(); err != nil {
-				i.logger.Error(ctx, "starting command", slog.Error(err))
-			}
-
-			go func() {
-				for {
-					i.logger.Info(ctx, stdoutBuf.String())
-					i.logger.Error(ctx, stderrBuf.String())
-
-					time.Sleep(5 * time.Second)
-				}
-			}()
-
-			go func() {
-				if err := cmd.Wait(); err != nil {
-					i.logger.Error(ctx, "running command", slog.Error(err))
-				}
-			}()
+		if err := i.runCleanupProc(ctx); err != nil {
+			i.logger.Error(ctx, "run cleanup proc", slog.Error(err))
 		}
 
 		return nil
 	}, "injector")
+
+	return nil
+}
+
+func (i *Injector) runCleanupProc(ctx context.Context) error {
+	listing, err := i.cl.List(ctx)
+	if err != nil {
+		return xerrors.Errorf("list containers: %w", err)
+	}
+
+	containerMap := make(map[string]struct{})
+	for _, container := range listing.Containers {
+		containerMap[container.ID] = struct{}{}
+	}
+
+	for containerID, agentID := range i.children {
+		if _, ok := containerMap[containerID]; !ok {
+			continue
+		}
+
+		if _, err := i.api.DeleteChildAgent(ctx, &proto.DeleteChildAgentRequest{
+			Id: agentID[:],
+		}); err != nil {
+			return xerrors.Errorf("delete child agent: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string) error {
+	listing, err := i.cl.List(ctx)
+	if err != nil {
+		return xerrors.Errorf("list containers: %w", err)
+	}
+
+	for _, container := range listing.Containers {
+		workspaceFolder, exists := container.Labels[DevcontainerLocalFolderLabel]
+		if !exists || workspaceFolder == "" {
+			continue
+		}
+
+		// Child has already been injected with the agent, we can ignore it.
+		if _, childInjected := i.children[container.ID]; childInjected {
+			continue
+		}
+
+		resp, err := i.api.CreateChildAgent(ctx, &proto.CreateChildAgentRequest{
+			Name:      container.FriendlyName,
+			Directory: workspaceFolder,
+		})
+		if err != nil {
+			return xerrors.Errorf("create child agent: %w", err)
+		}
+
+		childAgentID, err := uuid.FromBytes(resp.Id)
+		if err != nil {
+			return xerrors.Errorf("parse agent id: %w", err)
+		}
+
+		childAuthToken, err := uuid.FromBytes(resp.AuthToken)
+		if err != nil {
+			return xerrors.Errorf("parse auth token: %w", err)
+		}
+
+		i.children[container.ID] = childAgentID
+
+		accessURL := os.Getenv("CODER_AGENT_URL")
+		authType := "token"
+
+		stdout, stderr, err := run(ctx, i.execer,
+			"docker", "container", "cp", bootstrapScript,
+			fmt.Sprintf("%s:/tmp/bootstrap.sh", container.ID),
+		)
+		i.logger.Info(ctx, stdout)
+		i.logger.Error(ctx, stderr)
+		if err != nil {
+			return xerrors.Errorf("copy bootstrap script: %w", err)
+		}
+
+		stdout, stderr, err = run(ctx, i.execer, "docker", "container", "exec", container.ID, "chmod", "+x", "/tmp/bootstrap.sh")
+		i.logger.Info(ctx, stdout)
+		i.logger.Error(ctx, stderr)
+		if err != nil {
+			return xerrors.Errorf("make bootstrap script executable: %w", err)
+		}
+
+		cmd := i.execer.CommandContext(ctx, "docker", "container", "exec",
+			"--detach",
+			"--env", fmt.Sprintf("ACCESS_URL=%s", accessURL),
+			"--env", fmt.Sprintf("AUTH_TYPE=%s", authType),
+			"--env", fmt.Sprintf("CODER_AGENT_TOKEN=%s", childAuthToken.String()),
+			container.ID,
+			"bash", "-c", "/tmp/bootstrap.sh",
+		)
+
+		var stdoutBuf, stderrBuf strings.Builder
+
+		cmd.Stdout = &stdoutBuf
+		cmd.Stderr = &stderrBuf
+
+		if err := cmd.Start(); err != nil {
+			return xerrors.Errorf("start command: %w", err)
+		}
+
+		go func() {
+			for {
+				i.logger.Info(ctx, stdoutBuf.String())
+				i.logger.Error(ctx, stderrBuf.String())
+
+				time.Sleep(5 * time.Second)
+			}
+		}()
+
+		go func() {
+			if err := cmd.Wait(); err != nil {
+				i.logger.Error(ctx, "running command", slog.Error(err))
+			}
+		}()
+	}
 
 	return nil
 }

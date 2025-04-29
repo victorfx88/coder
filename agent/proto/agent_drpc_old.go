@@ -56,4 +56,6 @@ type DRPCAgentClient24 interface {
 type DRPCAgentClient25 interface {
 	DRPCAgentClient24
 	CreateChildAgent(ctx context.Context, in *CreateChildAgentRequest) (*CreateChildAgentResponse, error)
+	DeleteChildAgent(ctx context.Context, in *DeleteChildAgentRequest) (*DeleteChildAgentResponse, error)
+	ListChildAgents(ctx context.Context, in *ListChildAgentsRequest) (*ListChildAgentsResponse, error)
 }

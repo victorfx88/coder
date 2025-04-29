@@ -386,6 +386,27 @@ message CreateChildAgentResponse {
 	bytes auth_token = 2;
 }
 
+message DeleteChildAgentRequest {
+	bytes id = 1;
+}
+
+message DeleteChildAgentResponse {
+
+}
+
+message ListChildAgentsRequest {
+
+}
+
+message ListChildAgentsResponse {
+	message Agent {
+		string name = 1;
+		bytes id = 2;
+	}
+
+	repeated Agent agents = 1;
+}
+
 service Agent {
 	rpc GetManifest(GetManifestRequest) returns (Manifest);
 	rpc GetServiceBanner(GetServiceBannerRequest) returns (ServiceBanner);
@@ -401,4 +422,6 @@ service Agent {
 	rpc PushResourcesMonitoringUsage(PushResourcesMonitoringUsageRequest) returns (PushResourcesMonitoringUsageResponse);
 	rpc ReportConnection(ReportConnectionRequest) returns (google.protobuf.Empty);
 	rpc CreateChildAgent(CreateChildAgentRequest) returns (CreateChildAgentResponse);
+	rpc DeleteChildAgent(DeleteChildAgentRequest) returns (DeleteChildAgentResponse);
+	rpc ListChildAgents(ListChildAgentsRequest) returns (ListChildAgentsResponse);
 }

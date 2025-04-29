@@ -54,3 +54,35 @@ func (a *ChildAgentAPI) CreateChildAgent(ctx context.Context, req *proto.CreateC
 		AuthToken: childAgent.AuthToken[:],
 	}, nil
 }
+
+func (a *ChildAgentAPI) DeleteChildAgent(ctx context.Context, req *proto.DeleteChildAgentRequest) (*proto.DeleteChildAgentResponse, error) {
+	agentID, err := uuid.ParseBytes(req.Id)
+	if err != nil {
+		return nil, xerrors.Errorf("parse agent ID: %w", err)
+	}
+
+	if err := a.Database.DeleteWorkspaceAgent(dbauthz.AsSystemRestricted(ctx), agentID); err != nil {
+		return nil, xerrors.Errorf("delete agent: %w", err)
+	}
+
+	return &proto.DeleteChildAgentResponse{}, nil
+}
+
+func (a *ChildAgentAPI) ListChildAgents(ctx context.Context, req *proto.ListChildAgentsRequest) (*proto.ListChildAgentsResponse, error) {
+	var response proto.ListChildAgentsResponse
+
+	children, err := a.Database.GetWorkspaceAgentsByParentID(ctx, uuid.NullUUID{Valid: true, UUID: a.AgentID})
+	if err != nil {
+		return nil, xerrors.Errorf("get agents by parent ID: %w", err)
+	}
+
+	response.Agents = make([]*proto.ListChildAgentsResponse_Agent, len(children))
+	for i, child := range children {
+		response.Agents[i] = &proto.ListChildAgentsResponse_Agent{
+			Name: child.Name,
+			Id:   child.ID[:],
+		}
+	}
+
+	return &response, nil
+}

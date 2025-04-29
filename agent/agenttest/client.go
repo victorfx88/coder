@@ -368,6 +368,14 @@ func (f *FakeAgentAPI) CreateChildAgent(_ context.Context, req *agentproto.Creat
 	return &agentproto.CreateChildAgentResponse{}, nil
 }
 
+func (f *FakeAgentAPI) DeleteChildAgent(_ context.Context, req *agentproto.DeleteChildAgentRequest) (*agentproto.DeleteChildAgentResponse, error) {
+	return &agentproto.DeleteChildAgentResponse{}, nil
+}
+
+func (f *FakeAgentAPI) ListChildAgents(_ context.Context, req *agentproto.ListChildAgentsRequest) (*agentproto.ListChildAgentsResponse, error) {
+	return &agentproto.ListChildAgentsResponse{}, nil
+}
+
 func NewFakeAgentAPI(t testing.TB, logger slog.Logger, manifest *agentproto.Manifest, statsCh chan *agentproto.Stats) *FakeAgentAPI {
 	return &FakeAgentAPI{
 		t:           t,

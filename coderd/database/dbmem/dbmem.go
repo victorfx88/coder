@@ -2476,6 +2476,10 @@ func (q *FakeQuerier) DeleteWebpushSubscriptions(_ context.Context, ids []uuid.U
 	return sql.ErrNoRows
 }
 
+func (q *FakeQuerier) DeleteWorkspaceAgent(ctx context.Context, id uuid.UUID) error {
+	panic("not implemented")
+}
+
 func (q *FakeQuerier) DeleteWorkspaceAgentPortShare(_ context.Context, arg database.DeleteWorkspaceAgentPortShareParams) error {
 	err := validateDatabaseType(arg)
 	if err != nil {
@@ -7583,6 +7587,10 @@ func (q *FakeQuerier) GetWorkspaceAgentUsageStatsAndLabels(_ context.Context, cr
 		})
 	}
 	return stats, nil
+}
+
+func (q *FakeQuerier) GetWorkspaceAgentsByParentID(ctx context.Context, parentID uuid.NullUUID) ([]database.WorkspaceAgent, error) {
+	panic("not implemented")
 }
 
 func (q *FakeQuerier) GetWorkspaceAgentsByResourceIDs(ctx context.Context, resourceIDs []uuid.UUID) ([]database.WorkspaceAgent, error) {
