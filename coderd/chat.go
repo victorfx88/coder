@@ -6,6 +6,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/kylecarbs/aisdk-go"
+
 	"github.com/coder/coder/v2/coderd/ai"
 	"github.com/coder/coder/v2/coderd/database"
 	"github.com/coder/coder/v2/coderd/database/db2sdk"
@@ -14,8 +17,6 @@ import (
 	"github.com/coder/coder/v2/coderd/httpmw"
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/codersdk/toolsdk"
-	"github.com/google/uuid"
-	"github.com/kylecarbs/aisdk-go"
 )
 
 // postChats creates a new chat.

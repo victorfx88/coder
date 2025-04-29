@@ -493,6 +493,7 @@ require (
 	github.com/moby/sys/user v0.3.0 // indirect
 	github.com/openai/openai-go v0.1.0-beta.6 // indirect
 	github.com/tidwall/sjson v1.2.5 // indirect
+	github.com/tmaxmax/go-sse v0.10.0 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	google.golang.org/genai v0.7.0 // indirect

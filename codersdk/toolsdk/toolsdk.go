@@ -4,16 +4,17 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
-	"errors"
 	"io"
 	"mime"
 	"path/filepath"
 	"strings"
 
-	"github.com/coder/coder/v2/codersdk"
-	"github.com/coder/coder/v2/codersdk/agentsdk"
 	"github.com/google/uuid"
 	"github.com/kylecarbs/aisdk-go"
+	"golang.org/x/xerrors"
+
+	"github.com/coder/coder/v2/codersdk"
+	"github.com/coder/coder/v2/codersdk/agentsdk"
 )
 
 // HandlerFunc is a function that handles a tool call.
@@ -317,7 +318,7 @@ is provisioned correctly and the agent can connect to the control plane.
 			}
 			rawTransition, ok := args["transition"].(string)
 			if !ok {
-				return codersdk.WorkspaceBuild{}, errors.New("transition must be a string")
+				return codersdk.WorkspaceBuild{}, xerrors.New("transition must be a string")
 			}
 			var templateVersionID uuid.UUID
 			if args["template_version_id"] != nil {
@@ -1037,7 +1038,7 @@ Useful for checking whether a workspace builds successfully or not.`,
 
 			files, ok := args["files"].(map[string]any)
 			if !ok {
-				return codersdk.UploadResponse{}, errors.New("files must be a map")
+				return codersdk.UploadResponse{}, xerrors.New("files must be a map")
 			}
 
 			pipeReader, pipeWriter := io.Pipe()
@@ -1099,7 +1100,7 @@ Useful for checking whether a workspace builds successfully or not.`,
 			}
 
 			if contentType != codersdk.ContentTypeTar {
-				return nil, errors.New("content type is not tar")
+				return nil, xerrors.New("content type is not tar")
 			}
 
 			tarReader := tar.NewReader(bytes.NewReader(download))
@@ -1171,7 +1172,7 @@ Useful for checking whether a workspace builds successfully or not.`,
 			}
 			name, ok := args["name"].(string)
 			if !ok {
-				return codersdk.Template{}, errors.New("name must be a string")
+				return codersdk.Template{}, xerrors.New("name must be a string")
 			}
 			template, err := client.CreateTemplate(ctx, me.OrganizationIDs[0], codersdk.CreateTemplateRequest{
 				Name:        name,
@@ -1239,7 +1240,7 @@ type MinimalTemplate struct {
 func clientFromContext(ctx context.Context) (*codersdk.Client, error) {
 	client, ok := ctx.Value(clientContextKey{}).(*codersdk.Client)
 	if !ok {
-		return nil, errors.New("client required in context")
+		return nil, xerrors.New("client required in context")
 	}
 	return client, nil
 }
@@ -1259,7 +1260,7 @@ func WithAgentClient(ctx context.Context, client *agentsdk.Client) context.Conte
 func agentClientFromContext(ctx context.Context) (*agentsdk.Client, error) {
 	client, ok := ctx.Value(agentClientContextKey{}).(*agentsdk.Client)
 	if !ok {
-		return nil, errors.New("agent client required in context")
+		return nil, xerrors.New("agent client required in context")
 	}
 	return client, nil
 }

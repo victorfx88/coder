@@ -2,15 +2,16 @@ package ai
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	anthropicoption "github.com/anthropics/anthropic-sdk-go/option"
-	"github.com/coder/coder/v2/codersdk"
 	"github.com/kylecarbs/aisdk-go"
 	"github.com/openai/openai-go"
 	openaioption "github.com/openai/openai-go/option"
+	"golang.org/x/xerrors"
 	"google.golang.org/genai"
+
+	"github.com/coder/coder/v2/codersdk"
 )
 
 type LanguageModel struct {
@@ -144,7 +145,7 @@ func ModelsFromConfig(ctx context.Context, configs []codersdk.AIProviderConfig) 
 			}
 			break
 		default:
-			return nil, fmt.Errorf("unsupported model type: %s", config.Type)
+			return nil, xerrors.Errorf("unsupported model type: %s", config.Type)
 		}
 
 		for _, model := range config.Models {

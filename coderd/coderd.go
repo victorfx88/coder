@@ -988,6 +988,12 @@ func New(options *Options) *API {
 				r.Post("/messages", api.postChatMessages)
 			})
 		})
+		r.Route("/aiagent/chats", func(r chi.Router) {
+			r.Use(apiKeyMiddleware)
+			r.Route("/{aiagentchat}", func(r chi.Router) {
+				r.Get("/watch", api.watchAIAgentChat)
+			})
+		})
 		r.Route("/external-auth", func(r chi.Router) {
 			r.Use(
 				apiKeyMiddleware,

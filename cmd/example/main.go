@@ -82,8 +82,8 @@ func main() {
 	authToken := os.Getenv("CODER_AUTH_TOKEN")
 	coderClient.SetSessionToken(authToken)
 
-	agentID := uuid.MustParse("e5989d1a-a884-4923-b608-173a6f2bd025")
-	port := uint16(8000)
+	agentID := uuid.MustParse("1b0ca41e-6f38-4b97-bfcc-745d235d294c")
+	port := uint16(3284)
 
 	fmt.Printf("%s: Requesting workspace port...\n", time.Now().Format(time.RFC3339Nano))
 	response, err := requestWorkspacePort(context.Background(), workspaceClient, agentID, port)

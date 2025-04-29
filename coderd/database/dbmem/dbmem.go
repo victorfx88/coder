@@ -4293,7 +4293,7 @@ func (q *FakeQuerier) GetPresetByID(ctx context.Context, presetID uuid.UUID) (da
 		if preset.ID == presetID {
 			tv, ok := versionMap[preset.TemplateVersionID]
 			if !ok {
-				return empty, fmt.Errorf("template version %v does not exist", preset.TemplateVersionID)
+				return empty, xerrors.Errorf("template version %v does not exist", preset.TemplateVersionID)
 			}
 			return database.GetPresetByIDRow{
 				ID:                  preset.ID,
@@ -4308,7 +4308,7 @@ func (q *FakeQuerier) GetPresetByID(ctx context.Context, presetID uuid.UUID) (da
 		}
 	}
 
-	return empty, fmt.Errorf("preset %v does not exist", presetID)
+	return empty, xerrors.Errorf("preset %v does not exist", presetID)
 }
 
 func (q *FakeQuerier) GetPresetByWorkspaceBuildID(_ context.Context, workspaceBuildID uuid.UUID) (database.TemplateVersionPreset, error) {
@@ -8443,13 +8443,7 @@ func (q *FakeQuerier) InsertChat(ctx context.Context, arg database.InsertChatPar
 	q.mutex.Lock()
 	defer q.mutex.Unlock()
 
-	chat := database.Chat{
-		ID:        arg.ID,
-		CreatedAt: arg.CreatedAt,
-		UpdatedAt: arg.UpdatedAt,
-		OwnerID:   arg.OwnerID,
-		Title:     arg.Title,
-	}
+	chat := database.Chat(arg)
 	q.chats = append(q.chats, chat)
 
 	return chat, nil
