@@ -138,6 +138,8 @@ func (i *Injector) runCleanupProc(ctx context.Context) error {
 			continue
 		}
 
+		i.logger.Info(ctx, "deleting child agent", slog.F("child_id", agentID))
+
 		if _, err := i.api.DeleteChildAgent(ctx, &proto.DeleteChildAgentRequest{
 			Id: agentID[:],
 		}); err != nil {
