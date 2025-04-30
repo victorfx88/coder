@@ -85,9 +85,12 @@ func (i *Injector) populateChildren(ctx context.Context) error {
 func (i *Injector) Start(ctx context.Context) error {
 	i.logger.Info(ctx, "starting injector routine")
 
+	// TODO(DanielleMaywood):
+	// If the docker daemon hasn't started yet, this may fail.
+	// We ideally want to ensure we handle that error vs other
+	// errors differently.
 	if err := i.populateChildren(ctx); err != nil {
 		i.logger.Error(ctx, "populate children", slog.Error(err))
-		return err
 	}
 
 	agentScripts := provisionersdk.AgentScriptEnv()
@@ -112,9 +115,13 @@ func (i *Injector) Start(ctx context.Context) error {
 			i.logger.Error(ctx, "run injection proc", slog.Error(err))
 		}
 
-		if err := i.runCleanupProc(ctx); err != nil {
-			i.logger.Error(ctx, "run cleanup proc", slog.Error(err))
-		}
+		// TODO(DanielleMaywood):
+		// Uncomment this block. We need to ensure injection works properly
+		// first before attempting cleanup.
+
+		// if err := i.runCleanupProc(ctx); err != nil {
+		// 	i.logger.Error(ctx, "run cleanup proc", slog.Error(err))
+		// }
 
 		return nil
 	}, "injector")
@@ -192,23 +199,34 @@ func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string)
 		accessURL := os.Getenv("CODER_AGENT_URL")
 		authType := "token"
 
+		i.logger.Info(ctx, "copying bootstrap script")
 		stdout, stderr, err := run(ctx, i.execer,
 			"docker", "container", "cp", bootstrapScript,
 			fmt.Sprintf("%s:/tmp/bootstrap.sh", container.ID),
 		)
-		i.logger.Info(ctx, stdout)
-		i.logger.Error(ctx, stderr)
+		if stdout != "" {
+			i.logger.Info(ctx, stdout)
+		}
+		if stderr != "" {
+			i.logger.Error(ctx, stderr)
+		}
 		if err != nil {
 			return xerrors.Errorf("copy bootstrap script: %w", err)
 		}
 
+		i.logger.Info(ctx, "marking bootstrap script as executable")
 		stdout, stderr, err = run(ctx, i.execer, "docker", "container", "exec", container.ID, "chmod", "+x", "/tmp/bootstrap.sh")
-		i.logger.Info(ctx, stdout)
-		i.logger.Error(ctx, stderr)
+		if stdout != "" {
+			i.logger.Info(ctx, stdout)
+		}
+		if stderr != "" {
+			i.logger.Error(ctx, stderr)
+		}
 		if err != nil {
 			return xerrors.Errorf("make bootstrap script executable: %w", err)
 		}
 
+		i.logger.Info(ctx, "running bootstrap script")
 		cmd := i.execer.CommandContext(ctx, "docker", "container", "exec",
 			"--detach",
 			"--env", fmt.Sprintf("ACCESS_URL=%s", accessURL),
@@ -227,12 +245,27 @@ func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string)
 			return xerrors.Errorf("start command: %w", err)
 		}
 
+		finished := make(chan struct{})
+
 		go func() {
 			for {
-				i.logger.Info(ctx, stdoutBuf.String())
-				i.logger.Error(ctx, stderrBuf.String())
+				select {
+				case <-finished:
+					return
 
-				time.Sleep(5 * time.Second)
+				default:
+					stdout := stdoutBuf.String()
+					stderr := stderrBuf.String()
+
+					if stdout != "" {
+						i.logger.Info(ctx, stdout)
+					}
+					if stderr != "" {
+						i.logger.Error(ctx, stderr)
+					}
+
+					time.Sleep(5 * time.Second)
+				}
 			}
 		}()
 
@@ -240,6 +273,10 @@ func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string)
 			if err := cmd.Wait(); err != nil {
 				i.logger.Error(ctx, "running command", slog.Error(err))
 			}
+
+			i.logger.Info(ctx, "bootstrap script finished")
+
+			finished <- struct{}{}
 		}()
 	}
 
