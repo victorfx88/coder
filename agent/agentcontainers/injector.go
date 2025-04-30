@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"os"
 	"runtime"
-	"strings"
 	"time"
 
 	"cdr.dev/slog"
@@ -231,57 +230,22 @@ func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string)
 		}
 
 		i.logger.Info(ctx, "running agent")
-		cmd := i.execer.CommandContext(ctx, "docker", "container", "exec",
-			"--detach",
+		stdout, stderr, err = run(ctx, i.execer, "docker", "container", "exec",
 			"--env", fmt.Sprintf("CODER_AGENT_URL=%s", accessURL),
 			"--env", fmt.Sprintf("CODER_AGENT_AUTH=%s", authType),
 			"--env", fmt.Sprintf("CODER_AGENT_TOKEN=%s", childAuthToken.String()),
 			container.ID,
 			"/tmp/coder-agent",
 		)
-
-		var stdoutBuf, stderrBuf strings.Builder
-
-		cmd.Stdout = &stdoutBuf
-		cmd.Stderr = &stderrBuf
-
-		if err := cmd.Start(); err != nil {
-			return xerrors.Errorf("start command: %w", err)
+		if stdout != "" {
+			i.logger.Info(ctx, stdout)
 		}
-
-		finished := make(chan struct{})
-
-		go func() {
-			for {
-				select {
-				case <-finished:
-					return
-
-				default:
-					stdout := stdoutBuf.String()
-					stderr := stderrBuf.String()
-
-					if stdout != "" {
-						i.logger.Info(ctx, stdout)
-					}
-					if stderr != "" {
-						i.logger.Error(ctx, stderr)
-					}
-
-					time.Sleep(5 * time.Second)
-				}
-			}
-		}()
-
-		go func() {
-			if err := cmd.Wait(); err != nil {
-				i.logger.Error(ctx, "running command", slog.Error(err))
-			}
-
-			i.logger.Info(ctx, "bootstrap script finished")
-
-			finished <- struct{}{}
-		}()
+		if stderr != "" {
+			i.logger.Error(ctx, stderr)
+		}
+		if err != nil {
+			return xerrors.Errorf("running agent: %w", err)
+		}
 	}
 
 	return nil
