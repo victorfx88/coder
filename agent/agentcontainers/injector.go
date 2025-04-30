@@ -96,12 +96,12 @@ func (i *Injector) Start(ctx context.Context) error {
 	accessURL := os.Getenv("CODER_AGENT_URL")
 	resp, err := http.Get(fmt.Sprintf("%sbin/coder-linux-%s", accessURL, runtime.GOARCH))
 	if err != nil {
-		i.logger.Error(ctx, "download coder agent")
+		i.logger.Error(ctx, "download coder")
 		return err
 	}
 	defer resp.Body.Close()
 
-	file, err := afero.TempFile(i.fs, "/tmp", "coder-agent")
+	file, err := afero.TempFile(i.fs, "/tmp", "coder")
 	if err != nil {
 		i.logger.Error(ctx, "create agent file", slog.Error(err))
 		return err
@@ -109,7 +109,7 @@ func (i *Injector) Start(ctx context.Context) error {
 	defer file.Close()
 
 	if _, err = io.Copy(file, resp.Body); err != nil {
-		i.logger.Error(ctx, "copt agent file", slog.Error(err))
+		i.logger.Error(ctx, "copy agent file", slog.Error(err))
 		return err
 	}
 
@@ -202,7 +202,7 @@ func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string)
 		accessURL := os.Getenv("CODER_AGENT_URL")
 		authType := "token"
 
-		i.logger.Info(ctx, "copying agent")
+		i.logger.Info(ctx, "copying coder")
 		stdout, stderr, err := run(ctx, i.execer,
 			"docker", "container", "cp", bootstrapScript,
 			fmt.Sprintf("%s:/tmp/coder-agent", container.ID),
@@ -214,11 +214,11 @@ func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string)
 			i.logger.Error(ctx, stderr)
 		}
 		if err != nil {
-			return xerrors.Errorf("copy agent executable: %w", err)
+			return xerrors.Errorf("copy coder executable: %w", err)
 		}
 
-		i.logger.Info(ctx, "marking agent as executable")
-		stdout, stderr, err = run(ctx, i.execer, "docker", "container", "exec", container.ID, "chmod", "+x", "/tmp/coder-agent")
+		i.logger.Info(ctx, "marking coder as executable")
+		stdout, stderr, err = run(ctx, i.execer, "docker", "container", "exec", container.ID, "chmod", "+x", "/tmp/coder")
 		if stdout != "" {
 			i.logger.Info(ctx, stdout)
 		}
@@ -226,16 +226,16 @@ func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string)
 			i.logger.Error(ctx, stderr)
 		}
 		if err != nil {
-			return xerrors.Errorf("make agent executable: %w", err)
+			return xerrors.Errorf("make coder executable: %w", err)
 		}
 
-		i.logger.Info(ctx, "running agent")
+		i.logger.Info(ctx, "running coder")
 		stdout, stderr, err = run(ctx, i.execer, "docker", "container", "exec",
 			"--env", fmt.Sprintf("CODER_AGENT_URL=%s", accessURL),
 			"--env", fmt.Sprintf("CODER_AGENT_AUTH=%s", authType),
 			"--env", fmt.Sprintf("CODER_AGENT_TOKEN=%s", childAuthToken.String()),
 			container.ID,
-			"/tmp/coder-agent",
+			"/tmp/coder", "agent",
 		)
 		if stdout != "" {
 			i.logger.Info(ctx, stdout)
@@ -244,7 +244,7 @@ func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string)
 			i.logger.Error(ctx, stderr)
 		}
 		if err != nil {
-			return xerrors.Errorf("running agent: %w", err)
+			return xerrors.Errorf("running coder: %w", err)
 		}
 	}
 
