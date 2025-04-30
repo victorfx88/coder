@@ -205,7 +205,7 @@ func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string)
 		i.logger.Info(ctx, "copying coder")
 		stdout, stderr, err := run(ctx, i.execer,
 			"docker", "container", "cp", bootstrapScript,
-			fmt.Sprintf("%s:/tmp/coder-agent", container.ID),
+			fmt.Sprintf("%s:/tmp/coder", container.ID),
 		)
 		if stdout != "" {
 			i.logger.Info(ctx, stdout)
