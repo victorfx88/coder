@@ -709,7 +709,13 @@ func createWorkspace(
 				api.Logger.Error(ctx, "failed to retrieve running agents of claimed prebuilt workspace",
 					slog.F("workspace_id", claimedWorkspace.ID), slog.Error(err))
 			}
-			if len(agents) > 1 {
+			rootAgentCount := 0
+			for _, agent := range agents {
+				if !agent.ParentID.Valid {
+					rootAgentCount++
+				}
+			}
+			if rootAgentCount > 1 {
 				return xerrors.Errorf("multiple agents are not yet supported in prebuilt workspaces")
 			}
 		}
