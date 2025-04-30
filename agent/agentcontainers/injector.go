@@ -3,6 +3,8 @@ package agentcontainers
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"runtime"
 	"strings"
@@ -11,7 +13,6 @@ import (
 	"cdr.dev/slog"
 	"github.com/coder/coder/v2/agent/agentexec"
 	"github.com/coder/coder/v2/agent/proto"
-	"github.com/coder/coder/v2/provisionersdk"
 	"github.com/coder/quartz"
 	"github.com/google/uuid"
 	"github.com/spf13/afero"
@@ -93,20 +94,23 @@ func (i *Injector) Start(ctx context.Context) error {
 		i.logger.Error(ctx, "populate children", slog.Error(err))
 	}
 
-	agentScripts := provisionersdk.AgentScriptEnv()
-	agentScript := agentScripts[fmt.Sprintf("CODER_AGENT_SCRIPT_%s_%s", runtime.GOOS, runtime.GOARCH)]
-
-	file, err := afero.TempFile(i.fs, "/tmp", "agent-script")
+	accessURL := os.Getenv("CODER_AGENT_URL")
+	resp, err := http.Get(fmt.Sprintf("%sbin/coder-linux-%s", accessURL, runtime.GOARCH))
 	if err != nil {
-		i.logger.Error(ctx, "create agent-script file", slog.Error(err))
+		i.logger.Error(ctx, "download coder agent")
 		return err
 	}
-	if _, err := file.Write([]byte(agentScript)); err != nil {
-		i.logger.Error(ctx, "write agent-script content", slog.Error(err))
+	defer resp.Body.Close()
+
+	file, err := afero.TempFile(i.fs, "/tmp", "coder-agent")
+	if err != nil {
+		i.logger.Error(ctx, "create agent file", slog.Error(err))
 		return err
 	}
-	if err := file.Close(); err != nil {
-		i.logger.Error(ctx, "close agent-script file", slog.Error(err))
+	defer file.Close()
+
+	if _, err = io.Copy(file, resp.Body); err != nil {
+		i.logger.Error(ctx, "copt agent file", slog.Error(err))
 		return err
 	}
 
@@ -199,10 +203,10 @@ func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string)
 		accessURL := os.Getenv("CODER_AGENT_URL")
 		authType := "token"
 
-		i.logger.Info(ctx, "copying bootstrap script")
+		i.logger.Info(ctx, "copying agent")
 		stdout, stderr, err := run(ctx, i.execer,
 			"docker", "container", "cp", bootstrapScript,
-			fmt.Sprintf("%s:/tmp/bootstrap.sh", container.ID),
+			fmt.Sprintf("%s:/tmp/coder-agent", container.ID),
 		)
 		if stdout != "" {
 			i.logger.Info(ctx, stdout)
@@ -211,11 +215,11 @@ func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string)
 			i.logger.Error(ctx, stderr)
 		}
 		if err != nil {
-			return xerrors.Errorf("copy bootstrap script: %w", err)
+			return xerrors.Errorf("copy agent executable: %w", err)
 		}
 
-		i.logger.Info(ctx, "marking bootstrap script as executable")
-		stdout, stderr, err = run(ctx, i.execer, "docker", "container", "exec", container.ID, "chmod", "+x", "/tmp/bootstrap.sh")
+		i.logger.Info(ctx, "marking agent as executable")
+		stdout, stderr, err = run(ctx, i.execer, "docker", "container", "exec", container.ID, "chmod", "+x", "/tmp/coder-agent")
 		if stdout != "" {
 			i.logger.Info(ctx, stdout)
 		}
@@ -223,17 +227,17 @@ func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string)
 			i.logger.Error(ctx, stderr)
 		}
 		if err != nil {
-			return xerrors.Errorf("make bootstrap script executable: %w", err)
+			return xerrors.Errorf("make agent executable: %w", err)
 		}
 
-		i.logger.Info(ctx, "running bootstrap script")
+		i.logger.Info(ctx, "running agent")
 		cmd := i.execer.CommandContext(ctx, "docker", "container", "exec",
 			"--detach",
-			"--env", fmt.Sprintf("ACCESS_URL=%s", accessURL),
-			"--env", fmt.Sprintf("AUTH_TYPE=%s", authType),
+			"--env", fmt.Sprintf("CODER_AGENT_URL=%s", accessURL),
+			"--env", fmt.Sprintf("CODER_AGENT_AUTH=%s", authType),
 			"--env", fmt.Sprintf("CODER_AGENT_TOKEN=%s", childAuthToken.String()),
 			container.ID,
-			"bash", "-c", "/tmp/bootstrap.sh",
+			"/tmp/coder-agent",
 		)
 
 		var stdoutBuf, stderrBuf strings.Builder
