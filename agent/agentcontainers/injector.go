@@ -229,23 +229,25 @@ func (i *Injector) runInjectionProc(ctx context.Context, bootstrapScript string)
 			return xerrors.Errorf("make coder executable: %w", err)
 		}
 
-		i.logger.Info(ctx, "running coder")
-		stdout, stderr, err = run(ctx, i.execer, "docker", "container", "exec",
-			"--env", fmt.Sprintf("CODER_AGENT_URL=%s", accessURL),
-			"--env", fmt.Sprintf("CODER_AGENT_AUTH=%s", authType),
-			"--env", fmt.Sprintf("CODER_AGENT_TOKEN=%s", childAuthToken.String()),
-			container.ID,
-			"/tmp/coder", "agent",
-		)
-		if stdout != "" {
-			i.logger.Info(ctx, stdout)
-		}
-		if stderr != "" {
-			i.logger.Error(ctx, stderr)
-		}
-		if err != nil {
-			return xerrors.Errorf("running coder: %w", err)
-		}
+		go func() {
+			i.logger.Info(ctx, "running coder")
+			stdout, stderr, err = run(ctx, i.execer, "docker", "container", "exec",
+				"--env", fmt.Sprintf("CODER_AGENT_URL=%s", accessURL),
+				"--env", fmt.Sprintf("CODER_AGENT_AUTH=%s", authType),
+				"--env", fmt.Sprintf("CODER_AGENT_TOKEN=%s", childAuthToken.String()),
+				container.ID,
+				"/tmp/coder", "agent",
+			)
+			if stdout != "" {
+				i.logger.Info(ctx, stdout)
+			}
+			if stderr != "" {
+				i.logger.Error(ctx, stderr)
+			}
+			if err != nil {
+				i.logger.Error(ctx, "run coder", slog.Error(err))
+			}
+		}()
 	}
 
 	return nil

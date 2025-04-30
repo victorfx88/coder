@@ -31,6 +31,7 @@ func (a *ChildAgentAPI) CreateChildAgent(ctx context.Context, req *proto.CreateC
 		ID:                       uuid.New(),
 		CreatedAt:                dbtime.Now(),
 		UpdatedAt:                dbtime.Now(),
+		ParentID:                 uuid.NullUUID{Valid: true, UUID: a.AgentID},
 		ResourceID:               agent.ResourceID,
 		Name:                     req.Name,
 		AuthToken:                childAgentAuthToken,
