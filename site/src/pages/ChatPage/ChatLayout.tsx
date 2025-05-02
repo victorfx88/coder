@@ -7,7 +7,13 @@ import {
 	useState,
 } from "react";
 import { useMutation, useQuery, useQueryClient } from "react-query";
-import { Link, Outlet, useNavigate, useParams, useLocation } from "react-router-dom";
+import {
+	Link,
+	Outlet,
+	useNavigate,
+	useParams,
+	useLocation,
+} from "react-router-dom";
 import List from "@mui/material/List";
 import ListItem from "@mui/material/ListItem";
 import ListItemButton from "@mui/material/ListItemButton";
@@ -18,7 +24,7 @@ import Tab from "@mui/material/Tab";
 import { useTheme } from "@emotion/react";
 import { createChat, getChats } from "api/queries/chats";
 import { deploymentLanguageModels } from "api/queries/deployment";
-import { Chat, type LanguageModelConfig } from "api/typesGenerated";
+import type { AIAgent, LanguageModelConfig } from "api/typesGenerated";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { Loader } from "components/Loader/Loader";
 import Button from "@mui/material/Button";
@@ -26,6 +32,7 @@ import AddIcon from "@mui/icons-material/Add";
 import SmartToyIcon from "@mui/icons-material/SmartToy";
 import ChatIcon from "@mui/icons-material/Chat";
 import { AIAgentChatMessages } from "./AIAgentChatMessages";
+import { AIAgentChatSidebar } from "./AIAgentChatSidebar";
 
 export interface ChatContext {
 	selectedModel: string;
@@ -99,15 +106,20 @@ export const ChatLayout: FC = () => {
 	const navigate = useNavigate();
 	const location = useLocation();
 	const { chatID } = useParams<{ chatID?: string }>();
-	
+
 	// Check if we're on the AI Agent Chat route
-	const isAIAgentChat = location.pathname.includes('/chat/ai-agent');
-	
-	const [tabValue, setTabValue] = useState<string>(isAIAgentChat ? "ai-agent" : "chats");
+	const isAIAgentChat = location.pathname.includes("/chat/ai-agent");
+
+	const [tabValue, setTabValue] = useState<string>(
+		isAIAgentChat ? "ai-agent" : "chats",
+	);
+	const [selectedAgent, setSelectedAgent] = useState<AIAgent | undefined>();
 
 	useEffect(() => {
 		// Update tab value when location changes
-		setTabValue(location.pathname.includes('/chat/ai-agent') ? "ai-agent" : "chats");
+		setTabValue(
+			location.pathname.includes("/chat/ai-agent") ? "ai-agent" : "chats",
+		);
 	}, [location.pathname]);
 
 	const handleNewChat = () => {
@@ -157,17 +169,17 @@ export const ChatLayout: FC = () => {
 						borderBottom: `1px solid ${theme.palette.divider}`,
 					}}
 				>
-					<Tab 
-						value="chats" 
-						label="Chats" 
-						icon={<ChatIcon />} 
-						iconPosition="start" 
+					<Tab
+						value="chats"
+						label="Chats"
+						icon={<ChatIcon />}
+						iconPosition="start"
 					/>
-					<Tab 
-						value="ai-agent" 
-						label="AI Agent" 
-						icon={<SmartToyIcon />} 
-						iconPosition="start" 
+					<Tab
+						value="ai-agent"
+						label="AI Agent"
+						icon={<SmartToyIcon />}
+						iconPosition="start"
 					/>
 				</Tabs>
 
@@ -230,7 +242,10 @@ export const ChatLayout: FC = () => {
 													primaryTypographyProps={{
 														noWrap: true,
 														variant: "body2",
-														style: { overflow: "hidden", textOverflow: "ellipsis" },
+														style: {
+															overflow: "hidden",
+															textOverflow: "ellipsis",
+														},
 													}}
 												/>
 											</ListItemButton>
@@ -255,26 +270,10 @@ export const ChatLayout: FC = () => {
 				)}
 
 				{tabValue === "ai-agent" && (
-					<div css={{ 
-						padding: theme.spacing(2),
-						flexGrow: 1,
-						display: "flex",
-						flexDirection: "column",
-						justifyContent: "center",
-						alignItems: "center",
-						color: theme.palette.text.secondary
-					}}>
-						<SmartToyIcon fontSize="large" color="primary" 
-							css={{ marginBottom: theme.spacing(1) }} />
-						<div css={{ textAlign: "center" }}>
-							<div css={{ fontWeight: 600, marginBottom: theme.spacing(1) }}>
-								AI Agent Chat
-							</div>
-							<div css={{ fontSize: "0.875rem" }}>
-								Chat directly with the AI agent using the experimental agent interface.
-							</div>
-						</div>
-					</div>
+					<AIAgentChatSidebar
+						selectedAgent={selectedAgent}
+						onAgentSelect={setSelectedAgent}
+					/>
 				)}
 			</Paper>
 
@@ -293,7 +292,11 @@ export const ChatLayout: FC = () => {
 				<ChatProvider>
 					{/* Conditionally render either the AI Agent Chat or the regular Chat */}
 					{tabValue === "ai-agent" ? (
-						<AIAgentChatMessages />
+						selectedAgent ? (
+							<AIAgentChatMessages selectedAgent={selectedAgent} />
+						) : (
+							<div>Select an AI Agent to start chatting.</div>
+						)
 					) : (
 						<Outlet />
 					)}

@@ -5,6 +5,7 @@ import { ErrorAlert } from "components/Alert/ErrorAlert";
 import TextField from "@mui/material/TextField";
 import IconButton from "@mui/material/IconButton";
 import SendIcon from "@mui/icons-material/Send";
+import SmartToyIcon from "@mui/icons-material/SmartToy";
 import Paper from "@mui/material/Paper";
 import type { Message } from "@ai-sdk/react";
 import ReactMarkdown from "react-markdown";
@@ -13,6 +14,7 @@ import rehypeRaw from "rehype-raw";
 import { keyframes } from "@emotion/react";
 import ButtonGroup from "@mui/material/ButtonGroup";
 import Button from "@mui/material/Button";
+import type { AIAgent } from "api/typesGenerated";
 
 const fadeIn = keyframes`
   from {
@@ -262,7 +264,13 @@ const MessageBubble: FC<MessageBubbleProps> = memo(({ message }) => {
 	);
 });
 
-export const AIAgentChatMessages: FC = () => {
+interface AIAgentChatMessagesProps {
+	selectedAgent: AIAgent;
+}
+
+export const AIAgentChatMessages: FC<AIAgentChatMessagesProps> = ({
+	selectedAgent,
+}) => {
 	const {
 		messages,
 		input,
@@ -275,7 +283,7 @@ export const AIAgentChatMessages: FC = () => {
 		handleKeyDown: handleRawKeyDown,
 		isLoading,
 		error,
-	} = useAIAgentChat();
+	} = useAIAgentChat({ agent: selectedAgent });
 
 	const theme = useTheme();
 	const messagesEndRef = useRef<HTMLDivElement>(null);

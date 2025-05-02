@@ -2496,6 +2496,11 @@ class ApiMethods {
 		const res = await this.axios.get<TypesGen.ChatMessage[]>(`/api/v2/chats/${chatId}/messages`);
 		return res.data;
 	}
+
+	listAIAgentChats = async (signal?: AbortSignal) => {
+		const res = await this.axios.get<TypesGen.AIAgentList>("/api/v2/aiagent/chats", { signal });
+		return res.data;
+	}
 }
 
 // This is a hard coded CSRF token/cookie pair for local development. In prod,

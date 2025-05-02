@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { ServerSentEvent } from "api/typesGenerated";
+import type { ServerSentEvent, AIAgent } from "api/typesGenerated";
 import type {
 	AIAgentChatClientMessage,
 	AIAgentSDKMessageRequestBody,
@@ -24,7 +24,30 @@ type SentChar = {
 	timestamp: number;
 };
 
-export const useAIAgentChat = () => {
+interface UseAIAgentChatOptions {
+	agent: AIAgent;
+}
+
+export interface AIAgentChat {
+	messages: Message[];
+	input: string;
+	inputMode: "text" | "control";
+	sentChars: SentChar[];
+	textareaRef: React.RefObject<HTMLTextAreaElement>;
+	setInputMode: (mode: "text" | "control") => void;
+	handleInputChange: (
+		e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+	) => void;
+	handleSubmit: (e?: React.FormEvent<HTMLFormElement>) => void;
+	handleKeyDown: (
+		e: React.KeyboardEvent<HTMLTextAreaElement | HTMLDivElement>,
+	) => void;
+	isLoading: boolean;
+	error: Error | null;
+	sendMessage: (content: string, type: "user" | "raw") => void;
+}
+
+export const useAIAgentChat = (options: UseAIAgentChatOptions): AIAgentChat => {
 	const [messages, setMessages] = useState<Message[]>([]);
 	const [input, setInput] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
@@ -38,10 +61,27 @@ export const useAIAgentChat = () => {
 
 	// Connect to the websocket endpoint
 	useEffect(() => {
-		// Note: Using the fixed chat ID from the backend
-		const chatID = "a62af7f4-5e48-43a2-a906-bd0763a2926f";
+		// Close any existing connection
+		if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+			socket.current.close();
+		}
+
+		// Reset messages when connecting to a new agent
+		setMessages([]);
+		setError(null);
+
+		// Construct the WebSocket URL based on agent information if provided
 		const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-		const wsURL = `${wsProtocol}//${window.location.host}/api/v2/aiagent/chats/${chatID}/watch`;
+		let wsURL = "";
+
+		if (options?.agent) {
+			// Use the dynamic endpoint with the specific agent ID and port
+			const agentID = options.agent.workspace_agent_id;
+			const port = options.agent.agentapi_port;
+			wsURL = `${wsProtocol}//${window.location.host}/api/v2/aiagent/chats/${agentID}/watch?port=${port}`;
+		} else {
+			return;
+		}
 
 		socket.current = new WebSocket(wsURL);
 
@@ -76,18 +116,18 @@ export const useAIAgentChat = () => {
 								return updatedMessages.filter((m) => !m.id.startsWith("user-"));
 							}
 							return updatedMessages;
-						} else {
-							// Add new message
-							return [
-								...prevMessages,
-								{
-									id: messageUpdate.id.toString(),
-									content: messageUpdate.message || "",
-									role: messageUpdate.role === "agent" ? "assistant" : "user",
-									createdAt: new Date(messageUpdate.time || Date.now()),
-								},
-							];
 						}
+
+						// Add new message
+						return [
+							...prevMessages,
+							{
+								id: messageUpdate.id.toString(),
+								content: messageUpdate.message || "",
+								role: messageUpdate.role === "agent" ? "assistant" : "user",
+								createdAt: new Date(messageUpdate.time || Date.now()),
+							},
+						];
 					});
 
 					setIsLoading(false);
@@ -121,7 +161,7 @@ export const useAIAgentChat = () => {
 				socket.current.close();
 			}
 		};
-	}, []);
+	}, [options?.agent]);
 
 	// Remove sent characters after they expire (2 seconds)
 	useEffect(() => {
@@ -130,7 +170,7 @@ export const useAIAgentChat = () => {
 		const interval = setInterval(() => {
 			const now = Date.now();
 			setSentChars((chars) =>
-				chars.filter((char) => now - char.timestamp < 2000)
+				chars.filter((char) => now - char.timestamp < 2000),
 			);
 		}, 100);
 
@@ -155,10 +195,7 @@ export const useAIAgentChat = () => {
 
 	const sendMessage = useCallback(
 		(content: string, type: "user" | "raw" = "user") => {
-			if (
-				!socket.current ||
-				socket.current.readyState !== WebSocket.OPEN
-			)
+			if (!socket.current || socket.current.readyState !== WebSocket.OPEN)
 				return;
 
 			// For user messages, require non-empty content
@@ -191,7 +228,7 @@ export const useAIAgentChat = () => {
 			};
 
 			socket.current.send(JSON.stringify(message));
-			
+
 			if (type === "user") {
 				setInput("");
 			}
@@ -203,7 +240,7 @@ export const useAIAgentChat = () => {
 		(e?: React.FormEvent<HTMLFormElement>) => {
 			if (e) e.preventDefault();
 			if (!input.trim()) return;
-			
+
 			sendMessage(input, "user");
 		},
 		[input, sendMessage],
