@@ -990,6 +990,7 @@ func New(options *Options) *API {
 		})
 		r.Route("/aiagent/chats", func(r chi.Router) {
 			r.Use(apiKeyMiddleware)
+			r.Get("/", api.listAIAgents)
 			r.Route("/{aiagentchat}", func(r chi.Router) {
 				r.Get("/watch", api.watchAIAgentChat)
 			})

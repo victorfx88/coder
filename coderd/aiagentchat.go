@@ -8,6 +8,8 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"regexp"
+	"strconv"
 	"sync"
 
 	"github.com/google/uuid"
@@ -17,7 +19,11 @@ import (
 	"cdr.dev/slog"
 
 	"github.com/coder/coder/v2/coderd/aiagentsdk"
+	"github.com/coder/coder/v2/coderd/database"
 	"github.com/coder/coder/v2/coderd/httpapi"
+	"github.com/coder/coder/v2/coderd/httpmw"
+	"github.com/coder/coder/v2/coderd/rbac"
+	"github.com/coder/coder/v2/coderd/rbac/policy"
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/websocket"
 )
@@ -83,6 +89,128 @@ func NewAIAgentClient(ctx context.Context, api *API, agentID uuid.UUID, address 
 		return nil, nil, err
 	}
 	return aiAgentClient, cleanup, nil
+}
+
+// parseAgentAPIPort extracts the port number from an app slug ending with "-agentapi-${port}"
+func parseAgentAPIPort(slug string) (int, bool) {
+	// Look for a pattern like "-agentapi-12345" at the end of the slug
+	pattern := regexp.MustCompile(`-agentapi-(\d+)$`)
+	matches := pattern.FindStringSubmatch(slug)
+
+	if len(matches) < 2 {
+		return 0, false
+	}
+
+	port, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return 0, false
+	}
+
+	return port, true
+}
+
+// @Summary List all running AI agents
+// @ID list-ai-agents
+// @Security CoderSessionToken
+// @Tags AI Agent Chat
+// @Success 200 {object} codersdk.AIAgentList
+// @Router /aiagent/chats [get]
+func (api *API) listAIAgents(rw http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	apiKey := httpmw.APIKey(r)
+
+	// Create the filter for authorized workspaces
+	prepared, err := api.HTTPAuth.AuthorizeSQLFilter(r, policy.ActionRead, rbac.ResourceWorkspace.Type)
+	if err != nil {
+		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
+			Message: "Internal error preparing sql filter.",
+			Detail:  err.Error(),
+		})
+		return
+	}
+
+	// Get all workspaces the user has access to
+	workspaces, err := api.Database.GetAuthorizedWorkspaces(ctx, database.GetWorkspacesParams{
+		RequesterID: apiKey.UserID,
+	}, prepared)
+	if err != nil {
+		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
+			Message: "Internal error fetching workspaces.",
+			Detail:  err.Error(),
+		})
+		return
+	}
+
+	var allAgents []database.WorkspaceAgent
+	var agentIDs []uuid.UUID
+
+	var workspacesByAgentID map[uuid.UUID]database.GetWorkspacesRow = make(map[uuid.UUID]database.GetWorkspacesRow)
+	// For each workspace, get agents in the latest build
+	for _, workspace := range workspaces {
+		agents, err := api.Database.GetWorkspaceAgentsInLatestBuildByWorkspaceID(ctx, workspace.ID)
+		if err != nil {
+			// Skip workspaces with errors
+			api.Logger.Debug(ctx, "failed to get workspace agents in latest build",
+				slog.F("workspace_id", workspace.ID),
+				slog.Error(err))
+			continue
+		}
+
+		// Only include connected agents
+		for _, agent := range agents {
+			if agent.Status(api.Options.AgentInactiveDisconnectTimeout).Status == database.WorkspaceAgentStatusConnected {
+				allAgents = append(allAgents, agent)
+				agentIDs = append(agentIDs, agent.ID)
+				workspacesByAgentID[agent.ID] = workspace
+			}
+		}
+	}
+
+	if len(agentIDs) == 0 {
+		// No running agents found, return empty list
+		httpapi.Write(ctx, rw, http.StatusOK, codersdk.AIAgentList{
+			Agents: []codersdk.AIAgent{},
+		})
+		return
+	}
+
+	// Get all workspace apps for the running agents
+	workspaceApps, err := api.Database.GetWorkspaceAppsByAgentIDs(ctx, agentIDs)
+	if err != nil {
+		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
+			Message: "Internal error fetching workspace apps.",
+			Detail:  err.Error(),
+		})
+		return
+	}
+
+	// Create a map to easily look up agent by ID
+	agentsByID := make(map[uuid.UUID]database.WorkspaceAgent, len(allAgents))
+	for _, agent := range allAgents {
+		agentsByID[agent.ID] = agent
+	}
+
+	// Filter apps whose slug ends with "-agentapi-${port}" and extract the port number
+	var aiAgents []codersdk.AIAgent = make([]codersdk.AIAgent, 0)
+	for _, app := range workspaceApps {
+		port, isAgentAPI := parseAgentAPIPort(app.Slug)
+		if !isAgentAPI {
+			continue
+		}
+
+		// Add to result
+		aiAgents = append(aiAgents, codersdk.AIAgent{
+			DisplayName:      app.DisplayName,
+			Icon:             app.Icon,
+			WorkspaceAgentID: app.AgentID,
+			AgentAPIPort:     port,
+			WorkspaceName:    workspacesByAgentID[app.AgentID].Name,
+		})
+	}
+
+	httpapi.Write(ctx, rw, http.StatusOK, codersdk.AIAgentList{
+		Agents: aiAgents,
+	})
 }
 
 // @Summary Watch for workspace agent metadata updates

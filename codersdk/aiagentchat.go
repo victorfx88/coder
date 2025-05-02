@@ -31,3 +31,23 @@ type AIAgentChatMessage struct {
 	Role      aiagentsdk.ConversationRole `json:"role"`
 	Content   string                      `json:"content"`
 }
+
+// AIAgentList represents a list of AI agents.
+type AIAgentList struct {
+	// Agents is a list of AI agents.
+	Agents []AIAgent `json:"agents"`
+}
+
+// AIAgent represents a single AI agent.
+type AIAgent struct {
+	// DisplayName is the display name of the AI agent.
+	DisplayName string `json:"display_name"`
+	// Icon is the icon of the AI agent.
+	Icon string `json:"icon"`
+	// WorkspaceName is the name of the workspace.
+	WorkspaceName string `json:"workspace_name"`
+	// WorkspaceAgentID is the ID of the workspace agent.
+	WorkspaceAgentID uuid.UUID `json:"workspace_agent_id"`
+	// AgentAPIPort is the port number on which the agent API is available.
+	AgentAPIPort int `json:"agentapi_port"`
+}
