@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"sync"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/tmaxmax/go-sse"
 	"golang.org/x/xerrors"
@@ -27,12 +28,6 @@ import (
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/websocket"
 )
-
-var theChat = codersdk.AIAgentChat{
-	ID:               uuid.MustParse("a62af7f4-5e48-43a2-a906-bd0763a2926f"),
-	WorkspaceAgentID: uuid.MustParse("1b0ca41e-6f38-4b97-bfcc-745d235d294c"),
-	Address:          "127.0.0.1:3284",
-}
 
 func getAIAgentHTTPConn(ctx context.Context, api *API, agentID uuid.UUID, address string) (*http.Client, func(), error) {
 	var err error
@@ -79,7 +74,6 @@ func getAIAgentHTTPConn(ctx context.Context, api *API, agentID uuid.UUID, addres
 func NewAIAgentClient(ctx context.Context, api *API, agentID uuid.UUID, address string) (*aiagentsdk.Client, func(), error) {
 	aiAgentConn, cleanup, err := getAIAgentHTTPConn(ctx, api, agentID, address)
 	if err != nil {
-		defer cleanup()
 		return nil, nil, err
 	}
 	// TODO: remove the http:// prefix. not sure if it's needed.
@@ -218,14 +212,47 @@ func (api *API) listAIAgents(rw http.ResponseWriter, r *http.Request) {
 // @Security CoderSessionToken
 // @Tags AI Agent Chat
 // @Success 200 "Success"
-// @Param aiagentchat path string true "AI Agent Chat ID" format(uuid)
-// @Router /aiagent/chats/{aiagentchat}/watch [get]
+// @Param agent_id path string true "Workspace Agent ID" format(uuid)
+// @Param port query integer true "Agent API Port"
+// @Router /aiagent/chats/{agent_id}/watch [get]
 // @x-apidocgen {"skip": true}
 func (api *API) watchAIAgentChat(rw http.ResponseWriter, r *http.Request) {
 	// Allow us to interrupt watch via cancel.
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
-	aiAgentClient, cleanup, err := NewAIAgentClient(ctx, api, theChat.WorkspaceAgentID, theChat.Address)
+
+	// Get the agent ID from the path parameter
+	agentID, err := uuid.Parse(chi.URLParam(r, "agent_id"))
+	if err != nil {
+		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+			Message: "Invalid agent ID format.",
+			Detail:  err.Error(),
+		})
+		return
+	}
+
+	// Get the port from the query parameter
+	portStr := r.URL.Query().Get("port")
+	if portStr == "" {
+		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+			Message: "Missing required 'port' query parameter.",
+		})
+		return
+	}
+
+	port, err := strconv.Atoi(portStr)
+	if err != nil {
+		httpapi.Write(ctx, rw, http.StatusBadRequest, codersdk.Response{
+			Message: "Invalid port value.",
+			Detail:  err.Error(),
+		})
+		return
+	}
+
+	// Format the address using the port
+	address := fmt.Sprintf("127.0.0.1:%d", port)
+
+	aiAgentClient, cleanup, err := NewAIAgentClient(ctx, api, agentID, address)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
 			Message: "Internal error creating AI Agent client.",
@@ -234,7 +261,7 @@ func (api *API) watchAIAgentChat(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer cleanup()
-	aiAgentChatClientTmp, cleanup2, err := NewAIAgentClient(ctx, api, theChat.WorkspaceAgentID, theChat.Address)
+	aiAgentChatClientTmp, cleanup2, err := NewAIAgentClient(ctx, api, agentID, address)
 	if err != nil {
 		httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
 			Message: "Internal error creating AI Agent chat client.",
