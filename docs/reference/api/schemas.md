@@ -545,6 +545,50 @@
 | `groups` | array of [codersdk.Group](#codersdkgroup)             | false    |              |             |
 | `users`  | array of [codersdk.ReducedUser](#codersdkreduceduser) | false    |              |             |
 
+## codersdk.AIAgent
+
+```json
+{
+  "agentapi_port": 0,
+  "display_name": "string",
+  "icon": "string",
+  "workspace_agent_id": "string",
+  "workspace_name": "string"
+}
+```
+
+### Properties
+
+| Name                 | Type    | Required | Restrictions | Description                                                           |
+|----------------------|---------|----------|--------------|-----------------------------------------------------------------------|
+| `agentapi_port`      | integer | false    |              | Agentapi port is the port number on which the agent API is available. |
+| `display_name`       | string  | false    |              | Display name is the display name of the AI agent.                     |
+| `icon`               | string  | false    |              | Icon is the icon of the AI agent.                                     |
+| `workspace_agent_id` | string  | false    |              | Workspace agent ID is the ID of the workspace agent.                  |
+| `workspace_name`     | string  | false    |              | Workspace name is the name of the workspace.                          |
+
+## codersdk.AIAgentList
+
+```json
+{
+  "agents": [
+    {
+      "agentapi_port": 0,
+      "display_name": "string",
+      "icon": "string",
+      "workspace_agent_id": "string",
+      "workspace_name": "string"
+    }
+  ]
+}
+```
+
+### Properties
+
+| Name     | Type                                          | Required | Restrictions | Description                    |
+|----------|-----------------------------------------------|----------|--------------|--------------------------------|
+| `agents` | array of [codersdk.AIAgent](#codersdkaiagent) | false    |              | Agents is a list of AI agents. |
+
 ## codersdk.AIConfig
 
 ```json

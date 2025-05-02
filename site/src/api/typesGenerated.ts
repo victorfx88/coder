@@ -7,6 +7,15 @@ export interface ACLAvailable {
 }
 
 // From codersdk/aiagentchat.go
+export interface AIAgent {
+	readonly display_name: string;
+	readonly icon: string;
+	readonly workspace_name: string;
+	readonly workspace_agent_id: string;
+	readonly agentapi_port: number;
+}
+
+// From codersdk/aiagentchat.go
 export interface AIAgentChat {
 	readonly id: string;
 	readonly workspace_agent_id: string;
@@ -32,6 +41,11 @@ export interface AIAgentChatMessage {
 	readonly created_at: string;
 	readonly role: AIAgentSDKConversationRole;
 	readonly content: string;
+}
+
+// From codersdk/aiagentchat.go
+export interface AIAgentList {
+	readonly agents: readonly AIAgent[];
 }
 
 // From aiagentsdk/api.gen.go

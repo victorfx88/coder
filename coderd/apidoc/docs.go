@@ -45,7 +45,29 @@ const docTemplate = `{
                 }
             }
         },
-        "/aiagent/chats/{aiagentchat}/watch": {
+        "/aiagent/chats": {
+            "get": {
+                "security": [
+                    {
+                        "CoderSessionToken": []
+                    }
+                ],
+                "tags": [
+                    "AI Agent Chat"
+                ],
+                "summary": "List all running AI agents",
+                "operationId": "list-ai-agents",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/codersdk.AIAgentList"
+                        }
+                    }
+                }
+            }
+        },
+        "/aiagent/chats/{agent_id}/watch": {
             "get": {
                 "security": [
                     {
@@ -61,9 +83,16 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "format": "uuid",
-                        "description": "AI Agent Chat ID",
-                        "name": "aiagentchat",
+                        "description": "Workspace Agent ID",
+                        "name": "agent_id",
                         "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Agent API Port",
+                        "name": "port",
+                        "in": "query",
                         "required": true
                     }
                 ],
@@ -10765,6 +10794,43 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/codersdk.ReducedUser"
+                    }
+                }
+            }
+        },
+        "codersdk.AIAgent": {
+            "type": "object",
+            "properties": {
+                "agentapi_port": {
+                    "description": "AgentAPIPort is the port number on which the agent API is available.",
+                    "type": "integer"
+                },
+                "display_name": {
+                    "description": "DisplayName is the display name of the AI agent.",
+                    "type": "string"
+                },
+                "icon": {
+                    "description": "Icon is the icon of the AI agent.",
+                    "type": "string"
+                },
+                "workspace_agent_id": {
+                    "description": "WorkspaceAgentID is the ID of the workspace agent.",
+                    "type": "string"
+                },
+                "workspace_name": {
+                    "description": "WorkspaceName is the name of the workspace.",
+                    "type": "string"
+                }
+            }
+        },
+        "codersdk.AIAgentList": {
+            "type": "object",
+            "properties": {
+                "agents": {
+                    "description": "Agents is a list of AI agents.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/codersdk.AIAgent"
                     }
                 }
             }
