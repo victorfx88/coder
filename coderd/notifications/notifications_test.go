@@ -1237,6 +1237,9 @@ func TestNotificationTemplates_Golden(t *testing.T) {
 				Labels: map[string]string{
 					"workspace":           "my-workspace",
 					"workspace_build_num": "2",
+					"template":            "docker",
+					"template_version":    "angry_torvalds",
+					"preset":              "particle-accelerator",
 					"claimant":            "prebuilds-claimer",
 				},
 				Data: map[string]any{

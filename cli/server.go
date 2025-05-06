@@ -990,6 +990,7 @@ func (r *RootCmd) Server(newAPI func(context.Context, *coderd.Options) (*coderd.
 				return xerrors.Errorf("failed to instantiate notification store enqueuer: %w", err)
 			}
 			options.NotificationsEnqueuer = enqueuer
+			fmt.Printf(">>>notification SET: %T %p\n", enqueuer, enqueuer)
 
 			// The notification manager is responsible for:
 			//   - creating notifiers and managing their lifecycles (notifiers are responsible for dequeueing/sending notifications)

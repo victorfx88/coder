@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"math"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -18,11 +19,13 @@ import (
 	"github.com/coder/coder/v2/coderd/database/dbauthz"
 	"github.com/coder/coder/v2/coderd/database/provisionerjobs"
 	"github.com/coder/coder/v2/coderd/database/pubsub"
+	"github.com/coder/coder/v2/coderd/notifications"
 	"github.com/coder/coder/v2/coderd/prebuilds"
 	"github.com/coder/coder/v2/coderd/rbac"
 	"github.com/coder/coder/v2/coderd/rbac/policy"
 	"github.com/coder/coder/v2/coderd/wsbuilder"
 	"github.com/coder/coder/v2/codersdk"
+	sdkproto "github.com/coder/coder/v2/provisionersdk/proto"
 
 	"cdr.dev/slog"
 
@@ -39,6 +42,7 @@ type StoreReconciler struct {
 	clock      quartz.Clock
 	registerer prometheus.Registerer
 	metrics    *MetricsCollector
+	notifEnq   notifications.Enqueuer
 
 	cancelFn          context.CancelCauseFunc
 	running           atomic.Bool
@@ -55,7 +59,17 @@ func NewStoreReconciler(store database.Store,
 	logger slog.Logger,
 	clock quartz.Clock,
 	registerer prometheus.Registerer,
+	notifEnq notifications.Enqueuer,
 ) *StoreReconciler {
+
+	/**
+
+
+	need to wait for notification enqueuer to be set before setting up prebuilds reconciler
+
+
+	 */
+
 	reconciler := &StoreReconciler{
 		store:             store,
 		pubsub:            ps,
@@ -63,6 +77,7 @@ func NewStoreReconciler(store database.Store,
 		cfg:               cfg,
 		clock:             clock,
 		registerer:        registerer,
+		notifEnq:          notifEnq,
 		done:              make(chan struct{}, 1),
 		provisionNotifyCh: make(chan database.ProvisionerJob, 10),
 	}
@@ -72,6 +87,15 @@ func NewStoreReconciler(store database.Store,
 		// If the registerer fails to register the metrics collector, it's not fatal.
 		logger.Error(context.Background(), "failed to register prometheus metrics", slog.Error(err))
 	}
+
+	go func() {
+		for {
+			select {
+			case <-time.After(time.Second):
+				fmt.Printf(">>>>notifications: %T %p\n", reconciler.notifEnq, reconciler.notifEnq)
+			}
+		}
+	}()
 
 	return reconciler
 }
@@ -618,4 +642,126 @@ func (c *StoreReconciler) provision(
 		slog.F("job_id", provisionerJob.ID))
 
 	return nil
+}
+
+func (c *StoreReconciler) TrackResourceReplacement(ctx context.Context, workspaceID, buildID, claimantID uuid.UUID, replacements []*sdkproto.ResourceReplacement) {
+	if c.notifEnq == nil {
+		c.logger.Warn(ctx, "notification enqueuer not set, cannot send resource replacement notification(s)")
+		return
+	}
+
+	// Set authorization context since this may be called in the background (i.e. with a bare context).
+	ctx = dbauthz.AsSystemRestricted(ctx)
+	// Since this may be called in a fire-and-forget fashion, we need to give up at some point.
+	trackCtx, trackCancel := context.WithTimeout(ctx, time.Minute)
+	defer trackCancel()
+
+	if err := c.trackResourceReplacement(trackCtx, workspaceID, buildID, claimantID, replacements); err != nil {
+		c.logger.Error(ctx, "failed to send resource replacement notification(s)", slog.Error(err))
+	}
+}
+
+func (c *StoreReconciler) trackResourceReplacement(ctx context.Context, workspaceID, buildID, claimantID uuid.UUID, replacements []*sdkproto.ResourceReplacement) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+
+	workspace, err := c.store.GetWorkspaceByID(ctx, workspaceID)
+	if err != nil {
+		return xerrors.Errorf("fetch workspace %q: %w", workspaceID.String(), err)
+	}
+
+	build, err := c.store.GetWorkspaceBuildByID(ctx, buildID)
+	if err != nil {
+		return xerrors.Errorf("fetch workspace build %q: %w", buildID.String(), err)
+	}
+
+	// The first build will always be the prebuild.
+	prebuild, err := c.store.GetWorkspaceBuildByWorkspaceIDAndBuildNumber(ctx, database.GetWorkspaceBuildByWorkspaceIDAndBuildNumberParams{
+		WorkspaceID: workspaceID, BuildNumber: 1,
+	})
+	if err != nil {
+		return xerrors.Errorf("fetch prebuild: %w", err)
+	}
+
+	// This should not be possible, but defend against it.
+	if !prebuild.TemplateVersionPresetID.Valid || prebuild.TemplateVersionPresetID.UUID == uuid.Nil {
+		return xerrors.Errorf("no preset used in prebuild for workspace %q", workspaceID.String())
+	}
+
+	prebuildPreset, err := c.store.GetTemplatePresetsByID(ctx, prebuild.TemplateVersionPresetID.UUID)
+	if err != nil {
+		return xerrors.Errorf("fetch template preset for template version ID %q: %w", prebuild.TemplateVersionID.String(), err)
+	}
+
+	claimant, err := c.store.GetUserByID(ctx, claimantID)
+	if err != nil {
+		return xerrors.Errorf("fetch claimant %q: %w", claimantID.String(), err)
+	}
+
+	// Use the claiming build here (not prebuild) because both should be equivalent, and we might as well spot inconsistencies now.
+	templateVersion, err := c.store.GetTemplateVersionByID(ctx, build.TemplateVersionID)
+	if err != nil {
+		return xerrors.Errorf("fetch template version %q: %w", build.TemplateVersionID.String())
+	}
+
+	org, err := c.store.GetOrganizationByID(ctx, workspace.OrganizationID)
+	if err != nil {
+		return xerrors.Errorf("fetch org %q: %w", workspace.OrganizationID.String())
+	}
+
+	if c.metrics != nil {
+		c.metrics.trackResourceReplacement(org.Name, workspace.TemplateName, prebuildPreset.Name)
+	}
+
+	templateAdmins, err := findTemplateAdmins(ctx, c.store)
+	if err != nil {
+		return xerrors.Errorf("find template admins: %w", err)
+	}
+
+	repls := make(map[string]string, len(replacements))
+	for _, repl := range replacements {
+		repls[repl.GetResource()] = strings.Join(repl.GetPaths(), ", ")
+	}
+
+	var errs multierror.Error
+	for _, templateAdmin := range templateAdmins {
+		if _, err := c.notifEnq.EnqueueWithData(ctx, templateAdmin.ID, notifications.TemplateWorkspaceResourceReplaced,
+			map[string]string{
+				"workspace":           workspace.Name,
+				"template":            workspace.TemplateName,
+				"template_version":    templateVersion.Name,
+				"preset":              prebuildPreset.Name,
+				"workspace_build_num": fmt.Sprintf("%d", build.BuildNumber),
+				"claimant":            claimant.Username,
+			},
+			map[string]any{
+				"replacements": repls,
+			}, "prebuilds_reconciler",
+			// Associate this notification with all the related entities.
+			workspace.ID, workspace.OwnerID, workspace.TemplateID, templateVersion.ID, workspace.OrganizationID,
+		); err != nil {
+			errs.Errors = append(errs.Errors, xerrors.Errorf("send notification to %q: %w", templateAdmin.ID.String(), err))
+			continue
+		}
+	}
+
+	return errs.ErrorOrNil()
+}
+
+// findTemplateAdmins fetches all users with template admin permission, including owners.
+func findTemplateAdmins(ctx context.Context, store database.Store) ([]database.GetUsersRow, error) {
+	owners, err := store.GetUsers(ctx, database.GetUsersParams{
+		RbacRole: []string{codersdk.RoleOwner},
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("get owners: %w", err)
+	}
+	templateAdmins, err := store.GetUsers(ctx, database.GetUsersParams{
+		RbacRole: []string{codersdk.RoleTemplateAdmin},
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("get template admins: %w", err)
+	}
+	return append(owners, templateAdmins...), nil
 }
