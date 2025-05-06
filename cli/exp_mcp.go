@@ -50,6 +50,7 @@ func (r *RootCmd) mcpConfigure() *serpent.Command {
 			r.mcpConfigureClaudeDesktop(),
 			r.mcpConfigureClaudeCode(),
 			r.mcpConfigureCursor(),
+			r.mcpConfigureAider(),
 		},
 	}
 	return cmd
@@ -342,6 +343,270 @@ func (*RootCmd) mcpConfigureCursor() *serpent.Command {
 				return err
 			}
 			return nil
+		},
+	}
+	return cmd
+}
+
+func (*RootCmd) mcpConfigureAider() *serpent.Command {
+	var (
+		aiderConfigPath     string
+		testBinaryName      string
+		appStatusSlug       string
+		systemPrompt        string
+		projectPath         string
+		allowedTools        string
+		createProjectConfig bool
+	)
+	cmd := &serpent.Command{
+		Use:   "aider [project-directory]",
+		Short: "Configure the Aider server to use Coder MCP.",
+		Long: `Configure Aider to use Coder's MCP server for AI pair programming.
+
+This command configures Aider to use Coder's MCP server, which enables features
+like task reporting and integration with Coder's workspaces.
+
+The project directory is optional. If provided, it will be set as the active project
+in Aider's configuration and a project-specific configuration file will be created
+if --create-project-config is enabled.
+
+Example usage:
+  # Configure Aider globally without a specific project
+  coder exp mcp configure aider
+
+  # Configure Aider with a specific project
+  coder exp mcp configure aider /path/to/project
+`,
+		Args: serpent.OptionalArgs(1),
+		Handler: func(inv *serpent.Invocation) error {
+			fs := afero.NewOsFs()
+			binPath, err := os.Executable()
+			if err != nil {
+				return xerrors.Errorf("getting executable path: %w", err)
+			}
+			if testBinaryName != "" {
+				binPath = testBinaryName
+			}
+
+			hasProjectPath := false
+			if len(inv.Args) > 0 {
+				hasProjectPath = true
+				projectPath = inv.Args[0]
+				// Convert to absolute path if needed
+				if !filepath.IsAbs(projectPath) {
+					curDir, err := os.Getwd()
+					if err != nil {
+						return xerrors.Errorf("getting current directory: %w", err)
+					}
+					projectPath = filepath.Join(curDir, projectPath)
+				}
+				// Verify the project directory exists
+				_, err := os.Stat(projectPath)
+				if err != nil {
+					return xerrors.Errorf("verifying project directory: %w", err)
+				}
+				cliui.Infof(inv.Stderr, "Using project directory: %s", projectPath)
+			} else {
+				cliui.Infof(inv.Stderr, "No project directory specified. Configuring Aider globally.")
+			}
+
+			configureAiderEnv := map[string]string{}
+			agentToken, err := getAgentToken(fs)
+			if err != nil {
+				cliui.Warnf(inv.Stderr, "Failed to get agent token: %s", err)
+				cliui.Warnf(inv.Stderr, "Task reporting will not be available without an agent token.")
+			} else {
+				configureAiderEnv["CODER_AGENT_TOKEN"] = agentToken
+			}
+
+			if appStatusSlug != "" {
+				configureAiderEnv["CODER_MCP_APP_STATUS_SLUG"] = appStatusSlug
+			} else {
+				cliui.Warnf(inv.Stderr, "CODER_MCP_APP_STATUS_SLUG is not set, task reporting will not be available.")
+			}
+
+			if systemPrompt != "" {
+				configureAiderEnv["CODER_MCP_AIDER_SYSTEM_PROMPT"] = systemPrompt
+			}
+
+			// Set allowed tools for the MCP server
+			if allowedTools != "" {
+				// Convert comma-separated string to the format expected by the MCP server
+				// The server expects a string array in the environment variable
+				configureAiderEnv["CODER_MCP_ALLOWED_TOOLS"] = allowedTools
+
+				// Display the tools being used
+				tools := strings.Split(allowedTools, ",")
+				for i, tool := range tools {
+					tools[i] = strings.TrimSpace(tool)
+				}
+				cliui.Infof(inv.Stderr, "Allowed tools: %s", strings.Join(tools, ", "))
+			}
+
+			// Pass along any potentially useful environment variables
+			if claudeTaskPrompt, ok := os.LookupEnv("CODER_MCP_CLAUDE_TASK_PROMPT"); ok {
+				configureAiderEnv["CODER_MCP_CLAUDE_TASK_PROMPT"] = claudeTaskPrompt
+			}
+
+			// Create aider config directory if it doesn't exist
+			configDir := filepath.Dir(aiderConfigPath)
+			err = os.MkdirAll(configDir, 0o755)
+			if err != nil {
+				return xerrors.Errorf("creating aider config directory: %w", err)
+			}
+
+			// Read existing config if it exists
+			contents := map[string]any{}
+			_, err = os.Stat(aiderConfigPath)
+			if err == nil {
+				data, err := os.ReadFile(aiderConfigPath)
+				if err != nil {
+					return xerrors.Errorf("reading aider config: %w", err)
+				}
+				if len(data) > 0 {
+					err = json.Unmarshal(data, &contents)
+					if err != nil {
+						return xerrors.Errorf("unmarshaling aider config: %w", err)
+					}
+				}
+			} else if !os.IsNotExist(err) {
+				return xerrors.Errorf("checking aider config existence: %w", err)
+			}
+
+			// Configure the MCP server for aider
+			mcpServers, ok := contents["mcpServers"].(map[string]any)
+			if !ok {
+				mcpServers = map[string]any{}
+			}
+
+			mcpServers["coder"] = map[string]any{
+				"command": binPath,
+				"args":    []string{"exp", "mcp", "server"},
+				"env":     configureAiderEnv,
+			}
+			contents["mcpServers"] = mcpServers
+
+			// Set tool configuration in main aider config
+			contents["mcp_provider"] = "coder"
+
+			// If project path is provided, set it as the active project
+			if hasProjectPath {
+				contents["active_project"] = projectPath
+				cliui.Infof(inv.Stderr, "Set active project to %s", projectPath)
+
+				// If createProjectConfig is true, create a project-specific configuration
+				if createProjectConfig {
+					projectConfigPath := filepath.Join(projectPath, ".aider.conf.yml")
+
+					// Check if the file already exists
+					_, err := os.Stat(projectConfigPath)
+					if os.IsNotExist(err) {
+						// Create the project config file with proper YAML indentation (2 spaces)
+						projectConfig := []byte(`# Aider project configuration
+# This file was created by Coder's MCP configuration tool
+
+# Use Coder as the MCP provider
+mcp_provider: coder
+
+# Configure the editor and other settings as needed
+# edit_format: auto
+# map_tokens: true
+
+# Set allowed tools for this project
+allowed_tools:
+  - coder_report_task
+`)
+						err = os.WriteFile(projectConfigPath, projectConfig, 0o644)
+						if err != nil {
+							return xerrors.Errorf("writing project config: %w", err)
+						}
+						cliui.Infof(inv.Stderr, "Created project configuration at %s", projectConfigPath)
+					} else if err == nil {
+						cliui.Warnf(inv.Stderr, "Project configuration already exists at %s, not overwriting", projectConfigPath)
+					} else {
+						cliui.Warnf(inv.Stderr, "Failed to check project configuration: %s", err)
+					}
+				}
+			} else {
+				cliui.Infof(inv.Stderr, "No project directory was specified, skipping project-specific configuration.")
+				// If a user is just setting up Aider globally, mention how they can set up a project later
+				cliui.Infof(inv.Stderr, "To configure a specific project later, run: coder exp mcp configure aider /path/to/project")
+			}
+
+			// Write the config back to file
+			data, err := json.MarshalIndent(contents, "", "  ")
+			if err != nil {
+				return xerrors.Errorf("marshaling aider config: %w", err)
+			}
+
+			err = os.WriteFile(aiderConfigPath, data, 0o600)
+			if err != nil {
+				return xerrors.Errorf("writing aider config file: %w", err)
+			}
+
+			cliui.Infof(inv.Stderr, "Configured Aider to use Coder MCP at %s", aiderConfigPath)
+
+			// Provide some helpful instructions on how to use Aider with Coder
+			cliui.Infof(inv.Stderr, "\nTo use Aider with Coder:")
+			cliui.Infof(inv.Stderr, "1. Ensure Aider is installed: pip install aider-chat")
+			cliui.Infof(inv.Stderr, "2. Run Aider with: aider --mcp-provider coder")
+			if hasProjectPath {
+				cliui.Infof(inv.Stderr, "3. Your project at %s is set as the active project", projectPath)
+			}
+
+			// Note about persistent sessions if used with the Terraform module
+			cliui.Infof(inv.Stderr, "\nNote: If using with the Aider Terraform module, persistent sessions (tmux/screen)")
+			cliui.Infof(inv.Stderr, "will be configured automatically when using the module's app.")
+
+			return nil
+		},
+		Options: []serpent.Option{
+			{
+				Name:        "aider-config-path",
+				Description: "The path to the Aider config file.",
+				Env:         "CODER_MCP_AIDER_CONFIG_PATH",
+				Flag:        "aider-config-path",
+				Value:       serpent.StringOf(&aiderConfigPath),
+				Default:     filepath.Join(os.Getenv("HOME"), ".aider", "config.json"),
+			},
+			{
+				Name:        "app-status-slug",
+				Description: "When reporting a task, the coder_app slug under which to report the task.",
+				Env:         "CODER_MCP_APP_STATUS_SLUG",
+				Flag:        "app-status-slug",
+				Value:       serpent.StringOf(&appStatusSlug),
+			},
+			{
+				Name:        "system-prompt",
+				Description: "The system prompt to use for Aider.",
+				Env:         "CODER_MCP_AIDER_SYSTEM_PROMPT",
+				Flag:        "system-prompt",
+				Value:       serpent.StringOf(&systemPrompt),
+				Default:     "You are a helpful AI pair programmer. Help the user write and modify code.",
+			},
+			{
+				Name:        "allowed-tools",
+				Description: "Comma-separated list of allowed tools for the MCP server.",
+				Env:         "CODER_MCP_AIDER_ALLOWED_TOOLS",
+				Flag:        "allowed-tools",
+				Value:       serpent.StringOf(&allowedTools),
+				Default:     "coder_report_task",
+			},
+			{
+				Name:        "create-project-config",
+				Description: "Whether to create a project-specific configuration file (.aider.conf.yml) when a project directory is provided.",
+				Flag:        "create-project-config",
+				Value:       serpent.BoolOf(&createProjectConfig),
+				Default:     true,
+			},
+			{
+				Name:        "test-binary-name",
+				Description: "Only used for testing.",
+				Env:         "CODER_MCP_AIDER_TEST_BINARY_NAME",
+				Flag:        "aider-test-binary-name",
+				Value:       serpent.StringOf(&testBinaryName),
+				Hidden:      true,
+			},
 		},
 	}
 	return cmd
