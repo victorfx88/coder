@@ -12,7 +12,7 @@ environments for your developers, check out our
 recommend the [user guides](../user-guides/index.md).
 
 For automation and scripting workflows, see our [CLI](../reference/cli/index.md)
-and [API](../reference/api/index.md) docs.
+and [API](../reference/api/index.md) docs. Common administrative API use cases are documented in the [Admin Use Cases](./use-cases/index.md) section.
 
 For any information not strictly contained in these sections, check out our
 [Tutorials](../tutorials/index.md) and [FAQs](../tutorials/faqs.md).
