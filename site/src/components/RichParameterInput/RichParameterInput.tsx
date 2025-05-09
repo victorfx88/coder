@@ -1,6 +1,7 @@
 import type { Interpolation, Theme } from "@emotion/react";
 import ErrorOutline from "@mui/icons-material/ErrorOutline";
 import SettingsIcon from "@mui/icons-material/Settings";
+import Autocomplete from "@mui/material/Autocomplete";
 import Button from "@mui/material/Button";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import FormHelperText from "@mui/material/FormHelperText";
@@ -9,7 +10,7 @@ import Radio from "@mui/material/Radio";
 import RadioGroup from "@mui/material/RadioGroup";
 import TextField, { type TextFieldProps } from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
-import type { TemplateVersionParameter } from "api/typesGenerated";
+import type { TemplateVersionParameter, TemplateVersionParameterOption } from "api/typesGenerated";
 import { ExternalImage } from "components/ExternalImage/ExternalImage";
 import { MemoizedMarkdown } from "components/Markdown/Markdown";
 import { Pill } from "components/Pill/Pill";
@@ -109,6 +110,11 @@ const styles = {
 			maxHeight: 16,
 			width: 16,
 		},
+	},
+	autocompleteOption: {
+		display: "flex",
+		alignItems: "center",
+		gap: 8,
 	},
 	suggestion: (theme) => ({
 		color: theme.roles.notice.fill.solid,
@@ -296,6 +302,64 @@ const RichParameterField: FC<RichParameterInputProps> = ({
 	}
 
 	if (parameter.options.length > 0) {
+		// If we have more than 5 options, use a searchable dropdown instead of radio buttons
+		if (parameter.options.length > 5) {
+			// Find the selected option
+			const selectedOption = parameter.options.find((option) => option.value === value) || null;
+			
+			return (
+				<Autocomplete
+					id={parameter.name}
+					data-testid="parameter-field-options-autocomplete"
+					options={parameter.options}
+					value={selectedOption}
+					onChange={(_, selectedOption) => {
+						if (selectedOption) {
+							onChange(selectedOption.value);
+						}
+					}}
+					getOptionLabel={(option) => option.name}
+					isOptionEqualToValue={(option, value) => option.value === value.value}
+					disabled={disabled}
+					renderInput={(params) => (
+						<TextField
+							{...params}
+							placeholder="Search options..."
+							size={small ? "small" : "medium"}
+							fullWidth
+						/>
+					)}
+					renderOption={(props, option) => (
+						<li {...props} key={option.value}>
+							<div css={styles.autocompleteOption}>
+								{option.icon && (
+									<ExternalImage
+										css={styles.optionIcon}
+										src={option.icon}
+										alt="Parameter icon"
+									/>
+								)}
+								{option.description ? (
+									<Tooltip
+										title={
+											<MemoizedMarkdown>
+												{option.description}
+											</MemoizedMarkdown>
+										}
+									>
+										<div>{option.name}</div>
+									</Tooltip>
+								) : (
+									option.name
+								)}
+							</div>
+						</li>
+					)}
+				/>
+			);
+		}
+		
+		// Use radio buttons for 5 or fewer options
 		return (
 			<RadioGroup
 				id={parameter.name}
