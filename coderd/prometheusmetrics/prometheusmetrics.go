@@ -644,6 +644,82 @@ func AgentStats(ctx context.Context, logger slog.Logger, registerer prometheus.R
 	}, nil
 }
 
+func Prebuilds(ctx context.Context, logger slog.Logger, registerer prometheus.Registerer, db database.Store, duration time.Duration) (func(), error) {
+	var (
+		labels               = []string{"template_name", "preset_name", "organization_name"}
+		createdPrebuildsDesc = prometheus.NewDesc(
+			"coderd_prebuilt_workspaces_created_total",
+			"Total number of prebuilt workspaces that have been created to meet the desired instance count of each "+
+				"template preset.",
+			labels,
+			nil,
+		)
+		failedPrebuildsDesc = prometheus.NewDesc(
+			"coderd_prebuilt_workspaces_failed_total",
+			"Total number of prebuilt workspaces that failed to build.",
+			labels,
+			nil,
+		)
+		claimedPrebuildsDesc = prometheus.NewDesc(
+			"coderd_prebuilt_workspaces_claimed_total",
+			"Total number of prebuilt workspaces which were claimed by users. Claiming refers to creating a workspace "+
+				"with a preset selected for which eligible prebuilt workspaces are available and one is reassigned to a user.",
+			labels,
+			nil,
+		)
+		desiredPrebuildsDesc = prometheus.NewDesc(
+			"coderd_prebuilt_workspaces_desired",
+			"Target number of prebuilt workspaces that should be available for each template preset.",
+			labels,
+			nil,
+		)
+		runningPrebuildsDesc = prometheus.NewDesc(
+			"coderd_prebuilt_workspaces_running",
+			"Current number of prebuilt workspaces that are in a running state. These workspaces have started "+
+				"successfully but may not yet be claimable by users (see coderd_prebuilt_workspaces_eligible).",
+			labels,
+			nil,
+		)
+		eligiblePrebuildsDesc = prometheus.NewDesc(
+			"coderd_prebuilt_workspaces_eligible",
+			"Current number of prebuilt workspaces that are eligible to be claimed by users. These are workspaces that "+
+				"have completed their build process with their agent reporting 'ready' status.",
+			labels,
+			nil,
+		)
+	)
+	if duration == 0 {
+		duration = defaultRefreshRate
+	}
+	ctx, cancelFunc := context.WithCancel(ctx)
+	done := make(chan struct{})
+	// Use time.Nanosecond to force an initial tick. It will be reset to the
+	// correct duration after executing once.
+	ticker := time.NewTicker(time.Nanosecond)
+	go func() {
+		defer close(done)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				ctx, cancel := context.WithTimeout(dbauthz.AsPrebuildsOrchestrator(ctx), 10*time.Second)
+				defer cancel()
+				prebuildMetrics, err := mc.database.GetPrebuildMetrics(ctx)
+				if err != nil {
+					return nil, err
+				}
+
+			}
+		}
+	}()
+	return func() {
+		cancelFunc()
+		<-done
+	}, nil
+}
+
 // Experiments registers a metric which indicates whether each experiment is enabled or not.
 func Experiments(registerer prometheus.Registerer, active codersdk.Experiments) error {
 	experimentsGauge := prometheus.NewGaugeVec(prometheus.GaugeOpts{
