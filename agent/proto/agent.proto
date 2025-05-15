@@ -273,6 +273,7 @@ message BannerConfig {
 	bool enabled = 1;
 	string message = 2;
 	string background_color = 3;
+	bool dismissible = 4;
 }
 
 message WorkspaceAgentScriptCompletedRequest {
@@ -376,6 +377,14 @@ message ReportConnectionRequest {
 	Connection connection = 1;
 }
 
+message DismissAnnouncementBannerRequest {
+	string message = 1;
+}
+
+message DismissAnnouncementBannerResponse {
+	bool dismissed = 1;
+}
+
 service Agent {
 	rpc GetManifest(GetManifestRequest) returns (Manifest);
 	rpc GetServiceBanner(GetServiceBannerRequest) returns (ServiceBanner);
@@ -386,6 +395,7 @@ service Agent {
 	rpc BatchUpdateMetadata(BatchUpdateMetadataRequest) returns (BatchUpdateMetadataResponse);
 	rpc BatchCreateLogs(BatchCreateLogsRequest) returns (BatchCreateLogsResponse);
 	rpc GetAnnouncementBanners(GetAnnouncementBannersRequest) returns (GetAnnouncementBannersResponse);
+	rpc DismissAnnouncementBanner(DismissAnnouncementBannerRequest) returns (DismissAnnouncementBannerResponse);
 	rpc ScriptCompleted(WorkspaceAgentScriptCompletedRequest) returns (WorkspaceAgentScriptCompletedResponse);
 	rpc GetResourcesMonitoringConfiguration(GetResourcesMonitoringConfigurationRequest) returns (GetResourcesMonitoringConfigurationResponse);
 	rpc PushResourcesMonitoringUsage(PushResourcesMonitoringUsageRequest) returns (PushResourcesMonitoringUsageResponse);

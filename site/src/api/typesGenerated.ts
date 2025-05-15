@@ -254,6 +254,7 @@ export interface BannerConfig {
 	readonly enabled: boolean;
 	readonly message?: string;
 	readonly background_color?: string;
+	readonly dismissible?: boolean;
 }
 
 // From healthsdk/healthsdk.go

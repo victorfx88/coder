@@ -3223,6 +3223,27 @@ type BannerConfig struct {
 	Enabled         bool   `json:"enabled"`
 	Message         string `json:"message,omitempty"`
 	BackgroundColor string `json:"background_color,omitempty"`
+	Dismissible     bool   `json:"dismissible,omitempty"`
+}
+
+type DismissAnnouncementBannerRequest struct {
+	Message string `json:"message"`
+}
+
+// DismissAnnouncementBanner dismisses an announcement banner for the current user.
+func (c *Client) DismissAnnouncementBanner(ctx context.Context, message string) error {
+	req := DismissAnnouncementBannerRequest{
+		Message: message,
+	}
+	res, err := c.Request(ctx, http.MethodPost, "/api/v2/appearance/announcement-banners/dismiss", req)
+	if err != nil {
+		return err
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		return ReadBodyAsError(res)
+	}
+	return nil
 }
 
 // Appearance returns the configuration that modifies the visual

@@ -2588,6 +2588,10 @@ CREATE INDEX idx_tailnet_tunnels_src_id ON tailnet_tunnels USING hash (src_id);
 
 CREATE UNIQUE INDEX idx_unique_preset_name ON template_version_presets USING btree (name, template_version_id);
 
+CREATE INDEX idx_user_configs_dismissed_banners ON user_configs USING btree (user_id, key) WHERE ((key)::text ~~ 'dismissed_announcement_banner_%'::text);
+
+COMMENT ON INDEX idx_user_configs_dismissed_banners IS 'Index to quickly find announcement banners that have been dismissed by users. Keys follow the pattern: dismissed_announcement_banner_<message_hash>';
+
 CREATE INDEX idx_user_deleted_deleted_at ON user_deleted USING btree (deleted_at);
 
 CREATE INDEX idx_user_status_changes_changed_at ON user_status_changes USING btree (changed_at);

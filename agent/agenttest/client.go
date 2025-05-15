@@ -221,6 +221,13 @@ func (f *FakeAgentAPI) GetAnnouncementBanners(context.Context, *agentproto.GetAn
 	return &agentproto.GetAnnouncementBannersResponse{AnnouncementBanners: bannersProto}, nil
 }
 
+func (f *FakeAgentAPI) DismissAnnouncementBanner(context.Context, *agentproto.DismissAnnouncementBannerRequest) (*agentproto.DismissAnnouncementBannerResponse, error) {
+	// Simple implementation that always returns success
+	return &agentproto.DismissAnnouncementBannerResponse{
+		Dismissed: true,
+	}, nil
+}
+
 func (f *FakeAgentAPI) GetResourcesMonitoringConfiguration(_ context.Context, _ *agentproto.GetResourcesMonitoringConfigurationRequest) (*agentproto.GetResourcesMonitoringConfigurationResponse, error) {
 	f.Lock()
 	defer f.Unlock()

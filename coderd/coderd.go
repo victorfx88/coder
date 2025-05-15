@@ -599,6 +599,7 @@ func New(options *Options) *API {
 
 	f := appearance.NewDefaultFetcher(api.DeploymentValues.DocsURL.String())
 	api.AppearanceFetcher.Store(&f)
+	api.BannerDismisser = appearance.NewDatabaseBannerDismisser(api.Database)
 	api.PortSharer.Store(&portsharing.DefaultPortSharer)
 	api.PrebuildsClaimer.Store(&prebuilds.DefaultClaimer)
 	api.PrebuildsReconciler.Store(&prebuilds.DefaultReconciler)
@@ -961,6 +962,12 @@ func New(options *Options) *API {
 			r.Get("/stats", api.deploymentStats)
 			r.Get("/ssh", api.sshConfig)
 			r.Get("/llms", api.deploymentLLMs)
+		})
+		r.Route("/appearance", func(r chi.Router) {
+			r.Use(apiKeyMiddleware)
+			r.Route("/announcement-banners", func(r chi.Router) {
+				api.configureAppearanceBannerRoutes(r)
+			})
 		})
 		r.Route("/experiments", func(r chi.Router) {
 			r.Use(apiKeyMiddleware)
@@ -1580,6 +1587,7 @@ type API struct {
 	WebpushDispatcher webpush.Dispatcher
 	QuotaCommitter    atomic.Pointer[proto.QuotaCommitter]
 	AppearanceFetcher atomic.Pointer[appearance.Fetcher]
+	BannerDismisser   appearance.BannerDismisser
 	// WorkspaceProxyHostsFn returns the hosts of healthy workspace proxies
 	// for header reasons.
 	WorkspaceProxyHostsFn atomic.Pointer[func() []string]

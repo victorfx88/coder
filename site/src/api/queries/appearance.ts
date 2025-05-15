@@ -22,3 +22,13 @@ export const updateAppearance = (queryClient: QueryClient) => {
 		},
 	};
 };
+
+/**
+ * Dismisses an announcement banner for the current user
+ * @param message The message content of the banner to dismiss
+ */
+export const dismissAnnouncementBanner = async (message: string): Promise<void> => {
+	await API.getAxiosInstance().post("/api/v2/appearance/announcement-banners/dismiss", {
+		message,
+	});
+};

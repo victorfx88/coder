@@ -48,6 +48,7 @@ type DRPCAgentClient interface {
 	BatchUpdateMetadata(ctx context.Context, in *BatchUpdateMetadataRequest) (*BatchUpdateMetadataResponse, error)
 	BatchCreateLogs(ctx context.Context, in *BatchCreateLogsRequest) (*BatchCreateLogsResponse, error)
 	GetAnnouncementBanners(ctx context.Context, in *GetAnnouncementBannersRequest) (*GetAnnouncementBannersResponse, error)
+	DismissAnnouncementBanner(ctx context.Context, in *DismissAnnouncementBannerRequest) (*DismissAnnouncementBannerResponse, error)
 	ScriptCompleted(ctx context.Context, in *WorkspaceAgentScriptCompletedRequest) (*WorkspaceAgentScriptCompletedResponse, error)
 	GetResourcesMonitoringConfiguration(ctx context.Context, in *GetResourcesMonitoringConfigurationRequest) (*GetResourcesMonitoringConfigurationResponse, error)
 	PushResourcesMonitoringUsage(ctx context.Context, in *PushResourcesMonitoringUsageRequest) (*PushResourcesMonitoringUsageResponse, error)
@@ -145,6 +146,15 @@ func (c *drpcAgentClient) GetAnnouncementBanners(ctx context.Context, in *GetAnn
 	return out, nil
 }
 
+func (c *drpcAgentClient) DismissAnnouncementBanner(ctx context.Context, in *DismissAnnouncementBannerRequest) (*DismissAnnouncementBannerResponse, error) {
+	out := new(DismissAnnouncementBannerResponse)
+	err := c.cc.Invoke(ctx, "/coder.agent.v2.Agent/DismissAnnouncementBanner", drpcEncoding_File_agent_proto_agent_proto{}, in, out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *drpcAgentClient) ScriptCompleted(ctx context.Context, in *WorkspaceAgentScriptCompletedRequest) (*WorkspaceAgentScriptCompletedResponse, error) {
 	out := new(WorkspaceAgentScriptCompletedResponse)
 	err := c.cc.Invoke(ctx, "/coder.agent.v2.Agent/ScriptCompleted", drpcEncoding_File_agent_proto_agent_proto{}, in, out)
@@ -191,6 +201,7 @@ type DRPCAgentServer interface {
 	BatchUpdateMetadata(context.Context, *BatchUpdateMetadataRequest) (*BatchUpdateMetadataResponse, error)
 	BatchCreateLogs(context.Context, *BatchCreateLogsRequest) (*BatchCreateLogsResponse, error)
 	GetAnnouncementBanners(context.Context, *GetAnnouncementBannersRequest) (*GetAnnouncementBannersResponse, error)
+	DismissAnnouncementBanner(context.Context, *DismissAnnouncementBannerRequest) (*DismissAnnouncementBannerResponse, error)
 	ScriptCompleted(context.Context, *WorkspaceAgentScriptCompletedRequest) (*WorkspaceAgentScriptCompletedResponse, error)
 	GetResourcesMonitoringConfiguration(context.Context, *GetResourcesMonitoringConfigurationRequest) (*GetResourcesMonitoringConfigurationResponse, error)
 	PushResourcesMonitoringUsage(context.Context, *PushResourcesMonitoringUsageRequest) (*PushResourcesMonitoringUsageResponse, error)
@@ -235,6 +246,10 @@ func (s *DRPCAgentUnimplementedServer) GetAnnouncementBanners(context.Context, *
 	return nil, drpcerr.WithCode(errors.New("Unimplemented"), drpcerr.Unimplemented)
 }
 
+func (s *DRPCAgentUnimplementedServer) DismissAnnouncementBanner(context.Context, *DismissAnnouncementBannerRequest) (*DismissAnnouncementBannerResponse, error) {
+	return nil, drpcerr.WithCode(errors.New("Unimplemented"), drpcerr.Unimplemented)
+}
+
 func (s *DRPCAgentUnimplementedServer) ScriptCompleted(context.Context, *WorkspaceAgentScriptCompletedRequest) (*WorkspaceAgentScriptCompletedResponse, error) {
 	return nil, drpcerr.WithCode(errors.New("Unimplemented"), drpcerr.Unimplemented)
 }
@@ -253,7 +268,7 @@ func (s *DRPCAgentUnimplementedServer) ReportConnection(context.Context, *Report
 
 type DRPCAgentDescription struct{}
 
-func (DRPCAgentDescription) NumMethods() int { return 13 }
+func (DRPCAgentDescription) NumMethods() int { return 14 }
 
 func (DRPCAgentDescription) Method(n int) (string, drpc.Encoding, drpc.Receiver, interface{}, bool) {
 	switch n {
@@ -339,6 +354,15 @@ func (DRPCAgentDescription) Method(n int) (string, drpc.Encoding, drpc.Receiver,
 					)
 			}, DRPCAgentServer.GetAnnouncementBanners, true
 	case 9:
+		return "/coder.agent.v2.Agent/DismissAnnouncementBanner", drpcEncoding_File_agent_proto_agent_proto{},
+			func(srv interface{}, ctx context.Context, in1, in2 interface{}) (drpc.Message, error) {
+				return srv.(DRPCAgentServer).
+					DismissAnnouncementBanner(
+						ctx,
+						in1.(*DismissAnnouncementBannerRequest),
+					)
+			}, DRPCAgentServer.DismissAnnouncementBanner, true
+	case 10:
 		return "/coder.agent.v2.Agent/ScriptCompleted", drpcEncoding_File_agent_proto_agent_proto{},
 			func(srv interface{}, ctx context.Context, in1, in2 interface{}) (drpc.Message, error) {
 				return srv.(DRPCAgentServer).
@@ -347,7 +371,7 @@ func (DRPCAgentDescription) Method(n int) (string, drpc.Encoding, drpc.Receiver,
 						in1.(*WorkspaceAgentScriptCompletedRequest),
 					)
 			}, DRPCAgentServer.ScriptCompleted, true
-	case 10:
+	case 11:
 		return "/coder.agent.v2.Agent/GetResourcesMonitoringConfiguration", drpcEncoding_File_agent_proto_agent_proto{},
 			func(srv interface{}, ctx context.Context, in1, in2 interface{}) (drpc.Message, error) {
 				return srv.(DRPCAgentServer).
@@ -356,7 +380,7 @@ func (DRPCAgentDescription) Method(n int) (string, drpc.Encoding, drpc.Receiver,
 						in1.(*GetResourcesMonitoringConfigurationRequest),
 					)
 			}, DRPCAgentServer.GetResourcesMonitoringConfiguration, true
-	case 11:
+	case 12:
 		return "/coder.agent.v2.Agent/PushResourcesMonitoringUsage", drpcEncoding_File_agent_proto_agent_proto{},
 			func(srv interface{}, ctx context.Context, in1, in2 interface{}) (drpc.Message, error) {
 				return srv.(DRPCAgentServer).
@@ -365,7 +389,7 @@ func (DRPCAgentDescription) Method(n int) (string, drpc.Encoding, drpc.Receiver,
 						in1.(*PushResourcesMonitoringUsageRequest),
 					)
 			}, DRPCAgentServer.PushResourcesMonitoringUsage, true
-	case 12:
+	case 13:
 		return "/coder.agent.v2.Agent/ReportConnection", drpcEncoding_File_agent_proto_agent_proto{},
 			func(srv interface{}, ctx context.Context, in1, in2 interface{}) (drpc.Message, error) {
 				return srv.(DRPCAgentServer).
@@ -521,6 +545,22 @@ type drpcAgent_GetAnnouncementBannersStream struct {
 }
 
 func (x *drpcAgent_GetAnnouncementBannersStream) SendAndClose(m *GetAnnouncementBannersResponse) error {
+	if err := x.MsgSend(m, drpcEncoding_File_agent_proto_agent_proto{}); err != nil {
+		return err
+	}
+	return x.CloseSend()
+}
+
+type DRPCAgent_DismissAnnouncementBannerStream interface {
+	drpc.Stream
+	SendAndClose(*DismissAnnouncementBannerResponse) error
+}
+
+type drpcAgent_DismissAnnouncementBannerStream struct {
+	drpc.Stream
+}
+
+func (x *drpcAgent_DismissAnnouncementBannerStream) SendAndClose(m *DismissAnnouncementBannerResponse) error {
 	if err := x.MsgSend(m, drpcEncoding_File_agent_proto_agent_proto{}); err != nil {
 		return err
 	}
