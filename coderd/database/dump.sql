@@ -2243,7 +2243,8 @@ CREATE VIEW workspaces_expanded AS
     templates.name AS template_name,
     templates.display_name AS template_display_name,
     templates.icon AS template_icon,
-    templates.description AS template_description
+    templates.description AS template_description,
+    templates.use_classic_parameter_flow AS template_use_classic_parameter_flow
    FROM (((workspaces
      JOIN visible_users ON ((workspaces.owner_id = visible_users.id)))
      JOIN organizations ON ((workspaces.organization_id = organizations.id)))
