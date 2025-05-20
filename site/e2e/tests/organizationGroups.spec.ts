@@ -79,10 +79,8 @@ test("create group", async ({ page }) => {
 	await expect(page.getByText("No users found")).toBeVisible();
 
 	// Remove someone from the group
-	await addedRow.getByRole("button", { name: "Open menu" }).click();
-	const menu = page.getByRole("menu");
-	await menu.getByText("Remove").click();
-
+	await addedRow.getByLabel("More options").click();
+	await page.getByText("Remove").click();
 	await expect(addedRow).not.toBeVisible();
 
 	// Delete the group

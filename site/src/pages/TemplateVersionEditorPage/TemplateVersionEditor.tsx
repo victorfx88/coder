@@ -1,4 +1,8 @@
 import { type Interpolation, type Theme, useTheme } from "@emotion/react";
+import CreateIcon from "@mui/icons-material/AddOutlined";
+import ArrowBackOutlined from "@mui/icons-material/ArrowBackOutlined";
+import CloseOutlined from "@mui/icons-material/CloseOutlined";
+import WarningOutlined from "@mui/icons-material/WarningOutlined";
 import Button from "@mui/material/Button";
 import IconButton from "@mui/material/IconButton";
 import Tooltip from "@mui/material/Tooltip";
@@ -23,9 +27,7 @@ import {
 } from "components/FullPageLayout/Topbar";
 import { displayError } from "components/GlobalSnackbar/utils";
 import { Loader } from "components/Loader/Loader";
-import { TriangleAlertIcon } from "lucide-react";
-import { ChevronLeftIcon } from "lucide-react";
-import { PlayIcon, PlusIcon, XIcon } from "lucide-react";
+import { PlayIcon } from "lucide-react";
 import { linkToTemplate, useLinks } from "modules/navigation";
 import { ProvisionerAlert } from "modules/provisioners/ProvisionerAlert";
 import { AlertVariant } from "modules/provisioners/ProvisionerAlert";
@@ -217,7 +219,7 @@ export const TemplateVersionEditor: FC<TemplateVersionEditorProps> = ({
 					<div>
 						<Tooltip title="Back to the template">
 							<TopbarIconButton component={RouterLink} to={templateLink}>
-								<ChevronLeftIcon className="size-icon-sm" />
+								<ArrowBackOutlined />
 							</TopbarIconButton>
 						</Tooltip>
 					</div>
@@ -359,7 +361,7 @@ export const TemplateVersionEditor: FC<TemplateVersionEditorProps> = ({
 											event.currentTarget.blur();
 										}}
 									>
-										<PlusIcon className="size-icon-xs" />
+										<CreateIcon css={{ width: 16, height: 16 }} />
 									</IconButton>
 								</Tooltip>
 							</div>
@@ -461,11 +463,11 @@ export const TemplateVersionEditor: FC<TemplateVersionEditorProps> = ({
 												textAlign: "center",
 											}}
 										>
-											<TriangleAlertIcon
+											<WarningOutlined
 												css={{
+													fontSize: 48,
 													color: theme.roles.warning.fill.outline,
 												}}
-												className="size-icon-lg"
 											/>
 											<p
 												css={{
@@ -565,7 +567,7 @@ export const TemplateVersionEditor: FC<TemplateVersionEditorProps> = ({
 											borderRadius: 0,
 										}}
 									>
-										<XIcon className="size-icon-xs" />
+										<CloseOutlined css={{ width: 16, height: 16 }} />
 									</IconButton>
 								)}
 							</div>

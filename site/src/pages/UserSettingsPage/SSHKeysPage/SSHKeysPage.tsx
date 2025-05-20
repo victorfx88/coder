@@ -18,7 +18,7 @@ export const Language = {
 	cancelLabel: "Cancel",
 };
 
-const SSHKeysPage: FC = () => {
+export const SSHKeysPage: FC = () => {
 	const [isConfirmingRegeneration, setIsConfirmingRegeneration] =
 		useState(false);
 

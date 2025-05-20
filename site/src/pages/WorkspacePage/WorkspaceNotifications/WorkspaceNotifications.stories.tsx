@@ -1,7 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor, within } from "@storybook/test";
 import { getWorkspaceResolveAutostartQueryKey } from "api/queries/workspaceQuota";
-import type { WorkspacePermissions } from "modules/workspaces/permissions";
 import {
 	MockOutdatedWorkspace,
 	MockTemplate,
@@ -12,12 +11,11 @@ import {
 import { withDashboardProvider } from "testHelpers/storybook";
 import { WorkspaceNotifications } from "./WorkspaceNotifications";
 
-const defaultPermissions: WorkspacePermissions = {
+const defaultPermissions = {
 	readWorkspace: true,
-	updateWorkspaceVersion: true,
+	updateTemplate: true,
 	updateWorkspace: true,
-	deploymentConfig: true,
-	deleteFailedWorkspace: true,
+	viewDeploymentConfig: true,
 };
 
 const meta: Meta<typeof WorkspaceNotifications> = {

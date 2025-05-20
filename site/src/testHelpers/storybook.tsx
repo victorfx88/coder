@@ -1,6 +1,7 @@
 import type { StoryContext } from "@storybook/react";
 import { withDefaultFeatures } from "api/api";
 import { getAuthorizationKey } from "api/queries/authCheck";
+import { getProvisionerDaemonsKey } from "api/queries/organizations";
 import { hasFirstUserKey, meKey } from "api/queries/users";
 import type { Entitlements } from "api/typesGenerated";
 import { GlobalSnackbar } from "components/GlobalSnackbar/GlobalSnackbar";
@@ -75,8 +76,6 @@ export const withWebSocket = (Story: FC, { parameters }: StoryContext) => {
 	let callEventsDelay: number;
 
 	window.WebSocket = class WebSocket {
-		public readyState = 1;
-
 		addEventListener(type: string, callback: CallbackFn) {
 			listeners.set(type, callback);
 
@@ -94,8 +93,6 @@ export const withWebSocket = (Story: FC, { parameters }: StoryContext) => {
 				}
 			}, 0);
 		}
-
-		removeEventListener(type: string, callback: CallbackFn) {}
 
 		close() {}
 	} as unknown as typeof window.WebSocket;
@@ -126,6 +123,30 @@ export const withAuthProvider = (Story: FC, { parameters }: StoryContext) => {
 			<Story />
 		</AuthProvider>
 	);
+};
+
+export const withProvisioners = (Story: FC, { parameters }: StoryContext) => {
+	if (!parameters.organization_id) {
+		throw new Error(
+			"You forgot to add `parameters.organization_id` to your story",
+		);
+	}
+	if (!parameters.provisioners) {
+		throw new Error(
+			"You forgot to add `parameters.provisioners` to your story",
+		);
+	}
+	if (!parameters.tags) {
+		throw new Error("You forgot to add `parameters.tags` to your story");
+	}
+
+	const queryClient = useQueryClient();
+	queryClient.setQueryData(
+		getProvisionerDaemonsKey(parameters.organization_id, parameters.tags),
+		parameters.provisioners,
+	);
+
+	return <Story />;
 };
 
 export const withGlobalSnackbar = (Story: FC) => (

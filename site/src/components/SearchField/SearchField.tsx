@@ -1,10 +1,11 @@
 import { useTheme } from "@emotion/react";
+import CloseIcon from "@mui/icons-material/CloseOutlined";
+import SearchIcon from "@mui/icons-material/SearchOutlined";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import TextField, { type TextFieldProps } from "@mui/material/TextField";
 import Tooltip from "@mui/material/Tooltip";
 import visuallyHidden from "@mui/utils/visuallyHidden";
-import { SearchIcon, XIcon } from "lucide-react";
 import { type FC, useEffect, useRef } from "react";
 
 export type SearchFieldProps = Omit<TextFieldProps, "onChange"> & {
@@ -40,8 +41,8 @@ export const SearchField: FC<SearchFieldProps> = ({
 				startAdornment: (
 					<InputAdornment position="start">
 						<SearchIcon
-							className="size-icon-xs"
 							css={{
+								fontSize: 16,
 								color: theme.palette.text.secondary,
 							}}
 						/>
@@ -56,7 +57,7 @@ export const SearchField: FC<SearchFieldProps> = ({
 									onChange("");
 								}}
 							>
-								<XIcon className="size-icon-xs" />
+								<CloseIcon css={{ fontSize: 14 }} />
 								<span css={{ ...visuallyHidden }}>Clear search</span>
 							</IconButton>
 						</Tooltip>

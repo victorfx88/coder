@@ -7,7 +7,7 @@ import type { DeploymentValues, SerpentOption } from "api/typesGenerated";
 import {
 	MockNotificationMethodsResponse,
 	MockNotificationTemplates,
-	MockUserOwner,
+	MockUser,
 } from "testHelpers/entities";
 import {
 	withAuthProvider,
@@ -15,10 +15,10 @@ import {
 	withGlobalSnackbar,
 	withOrganizationSettingsProvider,
 } from "testHelpers/storybook";
-import type NotificationsPage from "./NotificationsPage";
+import type { NotificationsPage } from "./NotificationsPage";
 
 // Extracted from a real API response
-const mockNotificationsDeploymentOptions: SerpentOption[] = [
+export const mockNotificationsDeploymentOptions: SerpentOption[] = [
 	{
 		name: "Notifications: Dispatch Timeout",
 		description:
@@ -193,7 +193,7 @@ export const baseMeta = {
 				data: MockNotificationMethodsResponse,
 			},
 		],
-		user: MockUserOwner,
+		user: MockUser,
 		permissions: { viewDeploymentConfig: true },
 		deploymentOptions: mockNotificationsDeploymentOptions,
 		deploymentValues: {

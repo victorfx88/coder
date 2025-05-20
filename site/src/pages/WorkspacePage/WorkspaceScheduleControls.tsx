@@ -1,4 +1,7 @@
 import type { Interpolation, Theme } from "@emotion/react";
+import AddIcon from "@mui/icons-material/AddOutlined";
+import RemoveIcon from "@mui/icons-material/RemoveOutlined";
+import ScheduleOutlined from "@mui/icons-material/ScheduleOutlined";
 import IconButton from "@mui/material/IconButton";
 import Link, { type LinkProps } from "@mui/material/Link";
 import Tooltip from "@mui/material/Tooltip";
@@ -13,7 +16,6 @@ import { TopbarData, TopbarIcon } from "components/FullPageLayout/Topbar";
 import { displayError, displaySuccess } from "components/GlobalSnackbar/utils";
 import dayjs, { type Dayjs } from "dayjs";
 import { useTime } from "hooks/useTime";
-import { ClockIcon, MinusIcon, PlusIcon } from "lucide-react";
 import { getWorkspaceActivityStatus } from "modules/workspaces/activity";
 import { type FC, type ReactNode, forwardRef, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "react-query";
@@ -39,7 +41,7 @@ const WorkspaceScheduleContainer: FC<WorkspaceScheduleContainerProps> = ({
 }) => {
 	const icon = (
 		<TopbarIcon>
-			<ClockIcon aria-label="Schedule" className="size-icon-sm" />
+			<ScheduleOutlined aria-label="Schedule" />
 		</TopbarIcon>
 	);
 
@@ -209,7 +211,7 @@ const AutostopDisplay: FC<AutostopDisplayProps> = ({
 						handleDeadlineChange(deadline.subtract(1, "h"));
 					}}
 				>
-					<MinusIcon className="size-icon-xs" />
+					<RemoveIcon />
 					<span style={visuallyHidden}>Subtract 1 hour</span>
 				</IconButton>
 			</Tooltip>
@@ -222,7 +224,7 @@ const AutostopDisplay: FC<AutostopDisplayProps> = ({
 						handleDeadlineChange(deadline.add(1, "h"));
 					}}
 				>
-					<PlusIcon className="size-icon-xs" />
+					<AddIcon />
 					<span style={visuallyHidden}>Add 1 hour</span>
 				</IconButton>
 			</Tooltip>
@@ -273,11 +275,13 @@ const hasAutoStart = (workspace: Workspace): boolean => {
 	return Boolean(workspace.autostart_schedule);
 };
 
-const canEditDeadline = (workspace: Workspace): boolean => {
+export const canEditDeadline = (workspace: Workspace): boolean => {
 	return isWorkspaceOn(workspace) && hasDeadline(workspace);
 };
 
-const shouldDisplayScheduleControls = (workspace: Workspace): boolean => {
+export const shouldDisplayScheduleControls = (
+	workspace: Workspace,
+): boolean => {
 	const willAutoStop = isWorkspaceOn(workspace) && hasDeadline(workspace);
 	const willAutoStart = !isWorkspaceOn(workspace) && hasAutoStart(workspace);
 	return willAutoStop || willAutoStart;

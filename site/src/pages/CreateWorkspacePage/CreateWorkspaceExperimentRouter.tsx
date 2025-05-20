@@ -30,26 +30,11 @@ const CreateWorkspaceExperimentRouter: FC = () => {
 						templateQuery.data.id,
 						"optOut",
 					],
-					queryFn: () => {
-						const templateId = templateQuery.data.id;
-						const localStorageKey = optOutKey(templateId);
-						const storedOptOutString = localStorage.getItem(localStorageKey);
-
-						let optOutResult: boolean;
-
-						if (storedOptOutString !== null) {
-							optOutResult = storedOptOutString === "true";
-						} else {
-							optOutResult = Boolean(
-								templateQuery.data.use_classic_parameter_flow,
-							);
-						}
-
-						return {
-							templateId: templateId,
-							optedOut: optOutResult,
-						};
-					},
+					queryFn: () => ({
+						templateId: templateQuery.data.id,
+						optedOut:
+							localStorage.getItem(optOutKey(templateQuery.data.id)) === "true",
+					}),
 				}
 			: { enabled: false },
 	);
@@ -64,15 +49,11 @@ const CreateWorkspaceExperimentRouter: FC = () => {
 
 		const toggleOptedOut = () => {
 			const key = optOutKey(optOutQuery.data.templateId);
-			const storedValue = localStorage.getItem(key);
-
-			const current = storedValue
-				? storedValue === "true"
-				: Boolean(templateQuery.data?.use_classic_parameter_flow);
-
+			const current = localStorage.getItem(key) === "true";
 			localStorage.setItem(key, (!current).toString());
 			optOutQuery.refetch();
 		};
+
 		return (
 			<ExperimentalFormContext.Provider value={{ toggleOptedOut }}>
 				{optOutQuery.data.optedOut ? (

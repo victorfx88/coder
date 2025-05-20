@@ -1,10 +1,10 @@
 import { type Interpolation, type Theme, useTheme } from "@emotion/react";
+import LoadingButton from "@mui/lab/LoadingButton";
+import Button from "@mui/material/Button";
 import TextField from "@mui/material/TextField";
 import { requestOneTimePassword } from "api/queries/users";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
-import { Button } from "components/Button/Button";
 import { CustomLogo } from "components/CustomLogo/CustomLogo";
-import { Spinner } from "components/Spinner/Spinner";
 import { Stack } from "components/Stack/Stack";
 import type { FC } from "react";
 import { Helmet } from "react-helmet-async";
@@ -88,17 +88,23 @@ const RequestOTP: FC<RequestOTPProps> = ({
 							/>
 
 							<Stack spacing={1}>
-								<Button
-									disabled={isRequesting}
+								<LoadingButton
+									loading={isRequesting}
 									type="submit"
-									size="lg"
-									className="w-full"
+									size="large"
+									fullWidth
+									variant="contained"
 								>
-									<Spinner loading={isRequesting} />
 									Reset password
-								</Button>
-								<Button asChild size="lg" variant="outline" className="w-full">
-									<RouterLink to="/login">Cancel</RouterLink>
+								</LoadingButton>
+								<Button
+									component={RouterLink}
+									size="large"
+									fullWidth
+									variant="text"
+									to="/login"
+								>
+									Cancel
 								</Button>
 							</Stack>
 						</Stack>
@@ -144,8 +150,8 @@ const RequestOTPSuccess: FC<{ email: string }> = ({ email }) => {
 					Contact your deployment administrator if you encounter issues.
 				</p>
 
-				<Button asChild variant="default">
-					<RouterLink to="/login">Back to login</RouterLink>
+				<Button component={RouterLink} to="/login">
+					Back to login
 				</Button>
 			</div>
 		</div>

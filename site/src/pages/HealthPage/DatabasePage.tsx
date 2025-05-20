@@ -15,7 +15,7 @@ import {
 } from "./Content";
 import { DismissWarningButton } from "./DismissWarningButton";
 
-const DatabasePage = () => {
+export const DatabasePage = () => {
 	const healthStatus = useOutletContext<HealthcheckReport>();
 	const database = healthStatus.database;
 

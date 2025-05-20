@@ -39,9 +39,8 @@ test("add and remove organization member", async ({ page }) => {
 	await expect(addedRow.getByText("+1 more")).toBeVisible();
 
 	// Remove them from the org
-	await addedRow.getByRole("button", { name: "Open menu" }).click();
-	const menu = page.getByRole("menu");
-	await menu.getByText("Remove").click();
+	await addedRow.getByLabel("More options").click();
+	await page.getByText("Remove").click(); // Click the "Remove" option
 	await page.getByRole("button", { name: "Remove" }).click(); // Click "Remove" in the confirmation dialog
 	await expect(addedRow).not.toBeVisible();
 });

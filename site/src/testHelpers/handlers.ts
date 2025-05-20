@@ -135,12 +135,12 @@ export const handlers = [
 	// users
 	http.get("/api/v2/users", () => {
 		return HttpResponse.json({
-			users: [M.MockUserOwner, M.MockUserMember, M.SuspendedMockUser],
+			users: [M.MockUser, M.MockUser2, M.SuspendedMockUser],
 			count: 26,
 		});
 	}),
 	http.post("/api/v2/users", () => {
-		return HttpResponse.json(M.MockUserOwner);
+		return HttpResponse.json(M.MockUser);
 	}),
 	http.get("/api/v2/users/:userid/login-type", () => {
 		return HttpResponse.json({
@@ -160,7 +160,7 @@ export const handlers = [
 		return new HttpResponse(null, { status: 200 });
 	}),
 	http.get("/api/v2/users/me", () => {
-		return HttpResponse.json(M.MockUserOwner);
+		return HttpResponse.json(M.MockUser);
 	}),
 	http.get("/api/v2/users/me/appearance", () => {
 		return HttpResponse.json(M.MockUserAppearanceSettings);
@@ -198,7 +198,7 @@ export const handlers = [
 		return new HttpResponse(null, { status: 200 });
 	}),
 	http.post("/api/v2/users/first", () => {
-		return HttpResponse.json(M.MockUserOwner);
+		return HttpResponse.json(M.MockUser);
 	}),
 
 	// workspaces

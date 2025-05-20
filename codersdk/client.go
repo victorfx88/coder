@@ -359,7 +359,7 @@ func (c *Client) Dial(ctx context.Context, path string, opts *websocket.DialOpti
 	}
 
 	conn, resp, err := websocket.Dial(ctx, u.String(), opts)
-	if resp != nil && resp.Body != nil {
+	if resp.Body != nil {
 		resp.Body.Close()
 	}
 	if err != nil {

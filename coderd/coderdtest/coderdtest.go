@@ -68,7 +68,6 @@ import (
 	"github.com/coder/coder/v2/coderd/externalauth"
 	"github.com/coder/coder/v2/coderd/gitsshkey"
 	"github.com/coder/coder/v2/coderd/httpmw"
-	"github.com/coder/coder/v2/coderd/jobreaper"
 	"github.com/coder/coder/v2/coderd/notifications"
 	"github.com/coder/coder/v2/coderd/notifications/notificationstest"
 	"github.com/coder/coder/v2/coderd/rbac"
@@ -76,6 +75,7 @@ import (
 	"github.com/coder/coder/v2/coderd/runtimeconfig"
 	"github.com/coder/coder/v2/coderd/schedule"
 	"github.com/coder/coder/v2/coderd/telemetry"
+	"github.com/coder/coder/v2/coderd/unhanger"
 	"github.com/coder/coder/v2/coderd/updatecheck"
 	"github.com/coder/coder/v2/coderd/util/ptr"
 	"github.com/coder/coder/v2/coderd/webpush"
@@ -84,7 +84,7 @@ import (
 	"github.com/coder/coder/v2/coderd/workspacestats"
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/codersdk/agentsdk"
-	"github.com/coder/coder/v2/codersdk/drpcsdk"
+	"github.com/coder/coder/v2/codersdk/drpc"
 	"github.com/coder/coder/v2/codersdk/healthsdk"
 	"github.com/coder/coder/v2/cryptorand"
 	"github.com/coder/coder/v2/provisioner/echo"
@@ -95,8 +95,6 @@ import (
 	"github.com/coder/coder/v2/tailnet"
 	"github.com/coder/coder/v2/testutil"
 )
-
-const defaultTestDaemonName = "test-daemon"
 
 type Options struct {
 	// AccessURL denotes a custom access URL. By default we use the httptest
@@ -137,7 +135,6 @@ type Options struct {
 
 	// IncludeProvisionerDaemon when true means to start an in-memory provisionerD
 	IncludeProvisionerDaemon    bool
-	ProvisionerDaemonVersion    string
 	ProvisionerDaemonTags       map[string]string
 	MetricsCacheRefreshInterval time.Duration
 	AgentStatsRefreshInterval   time.Duration
@@ -368,11 +365,11 @@ func NewOptions(t testing.TB, options *Options) (func(http.Handler), context.Can
 	).WithStatsChannel(options.AutobuildStats)
 	lifecycleExecutor.Run()
 
-	jobReaperTicker := time.NewTicker(options.DeploymentValues.JobReaperDetectorInterval.Value())
-	defer jobReaperTicker.Stop()
-	jobReaper := jobreaper.New(ctx, options.Database, options.Pubsub, options.Logger.Named("reaper.detector"), jobReaperTicker.C)
-	jobReaper.Start()
-	t.Cleanup(jobReaper.Close)
+	hangDetectorTicker := time.NewTicker(options.DeploymentValues.JobHangDetectorInterval.Value())
+	defer hangDetectorTicker.Stop()
+	hangDetector := unhanger.New(ctx, options.Database, options.Pubsub, options.Logger.Named("unhanger.detector"), hangDetectorTicker.C)
+	hangDetector.Start()
+	t.Cleanup(hangDetector.Close)
 
 	if options.TelemetryReporter == nil {
 		options.TelemetryReporter = telemetry.NewNoop()
@@ -604,7 +601,7 @@ func NewWithAPI(t testing.TB, options *Options) (*codersdk.Client, io.Closer, *c
 	setHandler(rootHandler)
 	var provisionerCloser io.Closer = nopcloser{}
 	if options.IncludeProvisionerDaemon {
-		provisionerCloser = NewTaggedProvisionerDaemon(t, coderAPI, defaultTestDaemonName, options.ProvisionerDaemonTags, coderd.MemoryProvisionerWithVersionOverride(options.ProvisionerDaemonVersion))
+		provisionerCloser = NewTaggedProvisionerDaemon(t, coderAPI, "test", options.ProvisionerDaemonTags)
 	}
 	client := codersdk.New(serverURL)
 	t.Cleanup(func() {
@@ -648,10 +645,10 @@ func (c *ProvisionerdCloser) Close() error {
 // well with coderd testing. It registers the "echo" provisioner for
 // quick testing.
 func NewProvisionerDaemon(t testing.TB, coderAPI *coderd.API) io.Closer {
-	return NewTaggedProvisionerDaemon(t, coderAPI, defaultTestDaemonName, nil)
+	return NewTaggedProvisionerDaemon(t, coderAPI, "test", nil)
 }
 
-func NewTaggedProvisionerDaemon(t testing.TB, coderAPI *coderd.API, name string, provisionerTags map[string]string, opts ...coderd.MemoryProvisionerDaemonOption) io.Closer {
+func NewTaggedProvisionerDaemon(t testing.TB, coderAPI *coderd.API, name string, provisionerTags map[string]string) io.Closer {
 	t.Helper()
 
 	// t.Cleanup runs in last added, first called order. t.TempDir() will delete
@@ -660,7 +657,7 @@ func NewTaggedProvisionerDaemon(t testing.TB, coderAPI *coderd.API, name string,
 	// seems t.TempDir() is not safe to call from a different goroutine
 	workDir := t.TempDir()
 
-	echoClient, echoServer := drpcsdk.MemTransportPipe()
+	echoClient, echoServer := drpc.MemTransportPipe()
 	ctx, cancelFunc := context.WithCancel(context.Background())
 	t.Cleanup(func() {
 		_ = echoClient.Close()
@@ -679,7 +676,7 @@ func NewTaggedProvisionerDaemon(t testing.TB, coderAPI *coderd.API, name string,
 
 	connectedCh := make(chan struct{})
 	daemon := provisionerd.New(func(dialCtx context.Context) (provisionerdproto.DRPCProvisionerDaemonClient, error) {
-		return coderAPI.CreateInMemoryTaggedProvisionerDaemon(dialCtx, name, []codersdk.ProvisionerType{codersdk.ProvisionerTypeEcho}, provisionerTags, opts...)
+		return coderAPI.CreateInMemoryTaggedProvisionerDaemon(dialCtx, name, []codersdk.ProvisionerType{codersdk.ProvisionerTypeEcho}, provisionerTags)
 	}, &provisionerd.Options{
 		Logger:              coderAPI.Logger.Named("provisionerd").Leveled(slog.LevelDebug),
 		UpdateInterval:      250 * time.Millisecond,

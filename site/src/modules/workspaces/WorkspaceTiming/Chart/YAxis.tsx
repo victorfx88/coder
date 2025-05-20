@@ -35,7 +35,7 @@ const styles = {
 		flexShrink: 0,
 	},
 	section: (theme) => ({
-		"&:not(:first-of-type)": {
+		"&:not(:first-child)": {
 			borderTop: `1px solid ${theme.palette.divider}`,
 		},
 	}),

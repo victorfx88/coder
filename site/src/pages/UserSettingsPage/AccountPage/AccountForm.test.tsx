@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import type { UpdateUserProfileRequest } from "api/typesGenerated";
-import { MockUserMember } from "testHelpers/entities";
+import { MockUser2 } from "testHelpers/entities";
 import { render } from "testHelpers/renderHelpers";
 import { AccountForm } from "./AccountForm";
 
@@ -12,15 +12,15 @@ describe("AccountForm", () => {
 		it("allows updating username", async () => {
 			// Given
 			const mockInitialValues: UpdateUserProfileRequest = {
-				username: MockUserMember.username,
-				name: MockUserMember.name,
+				username: MockUser2.username,
+				name: MockUser2.name,
 			};
 
 			// When
 			render(
 				<AccountForm
 					editable
-					email={MockUserMember.email}
+					email={MockUser2.email}
 					initialValues={mockInitialValues}
 					isLoading={false}
 					onSubmit={() => {
@@ -43,15 +43,15 @@ describe("AccountForm", () => {
 		it("does not allow updating username", async () => {
 			// Given
 			const mockInitialValues: UpdateUserProfileRequest = {
-				username: MockUserMember.username,
-				name: MockUserMember.name,
+				username: MockUser2.username,
+				name: MockUser2.name,
 			};
 
 			// When
 			render(
 				<AccountForm
 					editable={false}
-					email={MockUserMember.email}
+					email={MockUser2.email}
 					initialValues={mockInitialValues}
 					isLoading={false}
 					onSubmit={() => {

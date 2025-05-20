@@ -1,12 +1,10 @@
+import ScheduleIcon from "@mui/icons-material/EditCalendarOutlined";
+import FingerprintOutlinedIcon from "@mui/icons-material/FingerprintOutlined";
+import SecurityIcon from "@mui/icons-material/LockOutlined";
+import AccountIcon from "@mui/icons-material/Person";
+import VpnKeyOutlined from "@mui/icons-material/VpnKeyOutlined";
 import type { Meta, StoryObj } from "@storybook/react";
 import { Avatar } from "components/Avatar/Avatar";
-import {
-	CalendarCogIcon,
-	FingerprintIcon,
-	KeyIcon,
-	LockIcon,
-	UserIcon,
-} from "lucide-react";
 import { Sidebar, SidebarHeader, SidebarNavItem } from "./Sidebar";
 
 const meta: Meta<typeof Sidebar> = {
@@ -26,19 +24,19 @@ export const Default: Story = {
 					title="Jon"
 					subtitle="jon@coder.com"
 				/>
-				<SidebarNavItem href="account" icon={UserIcon}>
+				<SidebarNavItem href="account" icon={AccountIcon}>
 					Account
 				</SidebarNavItem>
-				<SidebarNavItem href="schedule" icon={CalendarCogIcon}>
+				<SidebarNavItem href="schedule" icon={ScheduleIcon}>
 					Schedule
 				</SidebarNavItem>
-				<SidebarNavItem href="security" icon={LockIcon}>
+				<SidebarNavItem href="security" icon={SecurityIcon}>
 					Security
 				</SidebarNavItem>
-				<SidebarNavItem href="ssh-keys" icon={FingerprintIcon}>
+				<SidebarNavItem href="ssh-keys" icon={FingerprintOutlinedIcon}>
 					SSH Keys
 				</SidebarNavItem>
-				<SidebarNavItem href="tokens" icon={KeyIcon}>
+				<SidebarNavItem href="tokens" icon={VpnKeyOutlined}>
 					Tokens
 				</SidebarNavItem>
 			</Sidebar>

@@ -4,7 +4,7 @@ import { userEvent, within } from "@storybook/test";
 import {
 	MockOrganization,
 	MockOrganization2,
-	MockUserOwner,
+	MockUser,
 } from "testHelpers/entities";
 import { OrganizationAutocomplete } from "./OrganizationAutocomplete";
 
@@ -22,7 +22,7 @@ type Story = StoryObj<typeof OrganizationAutocomplete>;
 export const ManyOrgs: Story = {
 	parameters: {
 		showOrganizations: true,
-		user: MockUserOwner,
+		user: MockUser,
 		features: ["multiple_organizations"],
 		permissions: { viewDeploymentConfig: true },
 		queries: [
@@ -42,7 +42,7 @@ export const ManyOrgs: Story = {
 export const OneOrg: Story = {
 	parameters: {
 		showOrganizations: true,
-		user: MockUserOwner,
+		user: MockUser,
 		features: ["multiple_organizations"],
 		permissions: { viewDeploymentConfig: true },
 		queries: [

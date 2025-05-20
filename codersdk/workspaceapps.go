@@ -60,14 +60,14 @@ type WorkspaceApp struct {
 	ID uuid.UUID `json:"id" format:"uuid"`
 	// URL is the address being proxied to inside the workspace.
 	// If external is specified, this will be opened on the client.
-	URL string `json:"url,omitempty"`
+	URL string `json:"url"`
 	// External specifies whether the URL should be opened externally on
 	// the client or not.
 	External bool `json:"external"`
 	// Slug is a unique identifier within the agent.
 	Slug string `json:"slug"`
 	// DisplayName is a friendly name for the app.
-	DisplayName string `json:"display_name,omitempty"`
+	DisplayName string `json:"display_name"`
 	Command     string `json:"command,omitempty"`
 	// Icon is a relative path or external URL that specifies
 	// an icon to be displayed in the dashboard.
@@ -81,7 +81,7 @@ type WorkspaceApp struct {
 	SubdomainName string                   `json:"subdomain_name,omitempty"`
 	SharingLevel  WorkspaceAppSharingLevel `json:"sharing_level" enums:"owner,authenticated,public"`
 	// Healthcheck specifies the configuration for checking app health.
-	Healthcheck Healthcheck        `json:"healthcheck,omitempty"`
+	Healthcheck Healthcheck        `json:"healthcheck"`
 	Health      WorkspaceAppHealth `json:"health"`
 	Hidden      bool               `json:"hidden"`
 	OpenIn      WorkspaceAppOpenIn `json:"open_in"`

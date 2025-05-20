@@ -29,7 +29,6 @@ import (
 	"github.com/coder/coder/v2/coderd/rbac"
 	"github.com/coder/coder/v2/codersdk"
 	"github.com/coder/coder/v2/cryptorand"
-	"github.com/coder/coder/v2/provisionerd/proto"
 	"github.com/coder/coder/v2/testutil"
 )
 
@@ -141,30 +140,6 @@ func APIKey(t testing.TB, db database.Store, seed database.APIKey) (key database
 	})
 	require.NoError(t, err, "insert api key")
 	return key, fmt.Sprintf("%s-%s", key.ID, secret)
-}
-
-func Chat(t testing.TB, db database.Store, seed database.Chat) database.Chat {
-	chat, err := db.InsertChat(genCtx, database.InsertChatParams{
-		OwnerID:   takeFirst(seed.OwnerID, uuid.New()),
-		CreatedAt: takeFirst(seed.CreatedAt, dbtime.Now()),
-		UpdatedAt: takeFirst(seed.UpdatedAt, dbtime.Now()),
-		Title:     takeFirst(seed.Title, "Test Chat"),
-	})
-	require.NoError(t, err, "insert chat")
-	return chat
-}
-
-func ChatMessage(t testing.TB, db database.Store, seed database.ChatMessage) database.ChatMessage {
-	msg, err := db.InsertChatMessages(genCtx, database.InsertChatMessagesParams{
-		CreatedAt: takeFirst(seed.CreatedAt, dbtime.Now()),
-		ChatID:    takeFirst(seed.ChatID, uuid.New()),
-		Model:     takeFirst(seed.Model, "train"),
-		Provider:  takeFirst(seed.Provider, "thomas"),
-		Content:   takeFirstSlice(seed.Content, []byte(`[{"text": "Choo choo!"}]`)),
-	})
-	require.NoError(t, err, "insert chat message")
-	require.Len(t, msg, 1, "insert one chat message did not return exactly one message")
-	return msg[0]
 }
 
 func WorkspaceAgentPortShare(t testing.TB, db database.Store, orig database.WorkspaceAgentPortShare) database.WorkspaceAgentPortShare {
@@ -998,32 +973,17 @@ func TemplateVersionParameter(t testing.TB, db database.Store, orig database.Tem
 	return version
 }
 
-func TemplateVersionTerraformValues(t testing.TB, db database.Store, orig database.TemplateVersionTerraformValue) database.TemplateVersionTerraformValue {
+func TemplateVersionTerraformValues(t testing.TB, db database.Store, orig database.InsertTemplateVersionTerraformValuesByJobIDParams) {
 	t.Helper()
 
-	jobID := uuid.New()
-	if orig.TemplateVersionID != uuid.Nil {
-		v, err := db.GetTemplateVersionByID(genCtx, orig.TemplateVersionID)
-		if err == nil {
-			jobID = v.JobID
-		}
-	}
-
 	params := database.InsertTemplateVersionTerraformValuesByJobIDParams{
-		JobID:               jobID,
-		CachedPlan:          takeFirstSlice(orig.CachedPlan, []byte("{}")),
-		CachedModuleFiles:   orig.CachedModuleFiles,
-		UpdatedAt:           takeFirst(orig.UpdatedAt, dbtime.Now()),
-		ProvisionerdVersion: takeFirst(orig.ProvisionerdVersion, proto.CurrentVersion.String()),
+		JobID:      takeFirst(orig.JobID, uuid.New()),
+		CachedPlan: takeFirstSlice(orig.CachedPlan, []byte("{}")),
+		UpdatedAt:  takeFirst(orig.UpdatedAt, dbtime.Now()),
 	}
 
 	err := db.InsertTemplateVersionTerraformValuesByJobID(genCtx, params)
 	require.NoError(t, err, "insert template version parameter")
-
-	v, err := db.GetTemplateVersionTerraformValues(genCtx, orig.TemplateVersionID)
-	require.NoError(t, err, "get template version values")
-
-	return v
 }
 
 func WorkspaceAgentStat(t testing.TB, db database.Store, orig database.WorkspaceAgentStat) database.WorkspaceAgentStat {

@@ -456,7 +456,7 @@ const OrganizationRow: FC<OrganizationRowProps> = ({
 	);
 };
 
-const AssignDefaultOrgHelpTooltip: FC = () => {
+export const AssignDefaultOrgHelpTooltip: FC = () => {
 	return (
 		<HelpTooltip>
 			<HelpTooltipTrigger />
@@ -469,3 +469,5 @@ const AssignDefaultOrgHelpTooltip: FC = () => {
 		</HelpTooltip>
 	);
 };
+
+export default IdpOrgSyncPageView;

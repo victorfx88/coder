@@ -1,4 +1,6 @@
 import { useTheme } from "@emotion/react";
+import KeyboardArrowDown from "@mui/icons-material/KeyboardArrowDown";
+import OpenInNewOutlined from "@mui/icons-material/OpenInNewOutlined";
 import Button from "@mui/material/Button";
 import Divider from "@mui/material/Divider";
 import Menu from "@mui/material/Menu";
@@ -13,8 +15,6 @@ import {
 import { InputGroup } from "components/InputGroup/InputGroup";
 import { SearchField } from "components/SearchField/SearchField";
 import { useDebouncedFunction } from "hooks/debounce";
-import { ExternalLinkIcon } from "lucide-react";
-import { ChevronDownIcon } from "lucide-react";
 import { type FC, type ReactNode, useEffect, useRef, useState } from "react";
 import type { useSearchParams } from "react-router-dom";
 
@@ -267,7 +267,7 @@ const PresetMenu: FC<PresetMenuProps> = ({
 			<Button
 				onClick={() => setIsOpen(true)}
 				ref={anchorRef}
-				endIcon={<ChevronDownIcon className="size-4" />}
+				endIcon={<KeyboardArrowDown />}
 			>
 				Filters
 			</Button>
@@ -311,7 +311,7 @@ const PresetMenu: FC<PresetMenuProps> = ({
 							setIsOpen(false);
 						}}
 					>
-						<ExternalLinkIcon className="size-icon-xs" />
+						<OpenInNewOutlined css={{ fontSize: "14px !important" }} />
 						View advanced filtering
 					</MenuItem>
 				)}
@@ -325,7 +325,7 @@ const PresetMenu: FC<PresetMenuProps> = ({
 							setIsOpen(false);
 						}}
 					>
-						<ExternalLinkIcon className="size-icon-xs" />
+						<OpenInNewOutlined css={{ fontSize: "14px !important" }} />
 						{learnMoreLabel2}
 					</MenuItem>
 				)}

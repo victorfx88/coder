@@ -10,7 +10,7 @@ import { Timeline } from "components/Timeline/Timeline";
 import type { FC } from "react";
 import { VersionRow } from "./VersionRow";
 
-const Language = {
+export const Language = {
 	emptyMessage: "No versions found",
 	nameLabel: "Version name",
 	createdAtLabel: "Created at",

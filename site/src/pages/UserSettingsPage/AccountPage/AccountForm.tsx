@@ -1,9 +1,8 @@
+import LoadingButton from "@mui/lab/LoadingButton";
 import TextField from "@mui/material/TextField";
 import type { UpdateUserProfileRequest } from "api/typesGenerated";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
-import { Button } from "components/Button/Button";
 import { Form, FormFields } from "components/Form/Form";
-import { Spinner } from "components/Spinner/Spinner";
 import { type FormikTouched, useFormik } from "formik";
 import type { FC } from "react";
 import {
@@ -87,10 +86,9 @@ export const AccountForm: FC<AccountFormProps> = ({
 				/>
 
 				<div>
-					<Button disabled={isLoading} type="submit">
-						<Spinner loading={isLoading} />
+					<LoadingButton loading={isLoading} type="submit" variant="contained">
 						{Language.updateSettings}
-					</Button>
+					</LoadingButton>
 				</div>
 			</FormFields>
 		</Form>

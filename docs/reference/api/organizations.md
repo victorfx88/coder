@@ -426,8 +426,7 @@ curl -X GET http://coder-server:8080/api/v2/organizations/{organization}/provisi
       "property2": "string"
     },
     "type": "template_version_import",
-    "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b",
-    "worker_name": "string"
+    "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
   }
 ]
 ```
@@ -474,7 +473,6 @@ Status Code **200**
 | `»» [any property]`        | string                                                                       | false    |              |             |
 | `» type`                   | [codersdk.ProvisionerJobType](schemas.md#codersdkprovisionerjobtype)         | false    |              |             |
 | `» worker_id`              | string(uuid)                                                                 | false    |              |             |
-| `» worker_name`            | string                                                                       | false    |              |             |
 
 #### Enumerated Values
 
@@ -553,8 +551,7 @@ curl -X GET http://coder-server:8080/api/v2/organizations/{organization}/provisi
     "property2": "string"
   },
   "type": "template_version_import",
-  "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b",
-  "worker_name": "string"
+  "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
 }
 ```
 

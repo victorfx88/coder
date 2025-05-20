@@ -568,8 +568,3 @@ func (m WorkspaceAgentVolumeResourceMonitor) Debounce(
 
 	return m.DebouncedUntil, false
 }
-
-func (c Chat) RBACObject() rbac.Object {
-	return rbac.ResourceChat.WithID(c.ID).
-		WithOwner(c.OwnerID.String())
-}

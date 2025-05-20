@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -103,6 +104,7 @@ type Runner struct {
 	closed          chan struct{}
 	closeMutex      sync.Mutex
 	cron            *cron.Cron
+	initialized     atomic.Bool
 	scripts         []runnerScript
 	dataDir         string
 	scriptCompleted ScriptCompletedFunc
@@ -111,9 +113,6 @@ type Runner struct {
 	// execute startup scripts, and scripts on a cron schedule. Both will increment
 	// this counter.
 	scriptsExecuted *prometheus.CounterVec
-
-	initMutex   sync.Mutex
-	initialized bool
 }
 
 // DataDir returns the directory where scripts data is stored.
@@ -155,12 +154,10 @@ func WithPostStartScripts(scripts ...codersdk.WorkspaceAgentScript) InitOption {
 // It also schedules any scripts that have a schedule.
 // This function must be called before Execute.
 func (r *Runner) Init(scripts []codersdk.WorkspaceAgentScript, scriptCompleted ScriptCompletedFunc, opts ...InitOption) error {
-	r.initMutex.Lock()
-	defer r.initMutex.Unlock()
-	if r.initialized {
+	if r.initialized.Load() {
 		return xerrors.New("init: already initialized")
 	}
-	r.initialized = true
+	r.initialized.Store(true)
 	r.scripts = toRunnerScript(scripts...)
 	r.scriptCompleted = scriptCompleted
 	for _, opt := range opts {
@@ -230,18 +227,6 @@ const (
 
 // Execute runs a set of scripts according to a filter.
 func (r *Runner) Execute(ctx context.Context, option ExecuteOption) error {
-	initErr := func() error {
-		r.initMutex.Lock()
-		defer r.initMutex.Unlock()
-		if !r.initialized {
-			return xerrors.New("execute: not initialized")
-		}
-		return nil
-	}()
-	if initErr != nil {
-		return initErr
-	}
-
 	var eg errgroup.Group
 	for _, script := range r.scripts {
 		runScript := (option == ExecuteStartScripts && script.RunOnStart) ||

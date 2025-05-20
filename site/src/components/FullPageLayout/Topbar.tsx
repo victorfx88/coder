@@ -11,7 +11,6 @@ import {
 	cloneElement,
 	forwardRef,
 } from "react";
-import { cn } from "utils/cn";
 
 export const Topbar: FC<HTMLAttributes<HTMLElement>> = (props) => {
 	const theme = useTheme();
@@ -90,7 +89,7 @@ type TopbarIconProps = HTMLAttributes<HTMLOrSVGElement>;
 
 export const TopbarIcon = forwardRef<HTMLOrSVGElement, TopbarIconProps>(
 	(props: TopbarIconProps, ref) => {
-		const { children, className, ...restProps } = props;
+		const { children, ...restProps } = props;
 		const theme = useTheme();
 
 		return cloneElement(
@@ -102,10 +101,7 @@ export const TopbarIcon = forwardRef<HTMLOrSVGElement, TopbarIconProps>(
 			{
 				...restProps,
 				ref,
-				className: cn([
-					css({ fontSize: 16, color: theme.palette.text.disabled }),
-					"size-icon-sm",
-				]),
+				className: css({ fontSize: 16, color: theme.palette.text.disabled }),
 			},
 		);
 	},

@@ -104,14 +104,6 @@ var RBACPermissions = map[string]PermissionDefinition{
 			ActionRead:   actDef("read and use a workspace proxy"),
 		},
 	},
-	"chat": {
-		Actions: map[Action]ActionDefinition{
-			ActionCreate: actDef("create a chat"),
-			ActionRead:   actDef("read a chat"),
-			ActionDelete: actDef("delete a chat"),
-			ActionUpdate: actDef("update a chat"),
-		},
-	},
 	"license": {
 		Actions: map[Action]ActionDefinition{
 			ActionCreate: actDef("create a license"),
@@ -182,9 +174,7 @@ var RBACPermissions = map[string]PermissionDefinition{
 	},
 	"provisioner_jobs": {
 		Actions: map[Action]ActionDefinition{
-			ActionRead:   actDef("read provisioner jobs"),
-			ActionUpdate: actDef("update provisioner jobs"),
-			ActionCreate: actDef("create provisioner jobs"),
+			ActionRead: actDef("read provisioner jobs"),
 		},
 	},
 	"organization": {

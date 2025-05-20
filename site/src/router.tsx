@@ -1,6 +1,4 @@
 import { GlobalErrorBoundary } from "components/ErrorBoundary/GlobalErrorBoundary";
-import { ChatLayout } from "pages/ChatPage/ChatLayout";
-import { ChatMessages } from "pages/ChatPage/ChatMessages";
 import { TemplateRedirectController } from "pages/TemplatePage/TemplateRedirectController";
 import { Suspense, lazy } from "react";
 import {
@@ -33,7 +31,6 @@ const NotFoundPage = lazy(() => import("./pages/404Page/404Page"));
 const DeploymentSettingsLayout = lazy(
 	() => import("./modules/management/DeploymentSettingsLayout"),
 );
-const ChatLanding = lazy(() => import("./pages/ChatPage/ChatLanding"));
 const DeploymentConfigProvider = lazy(
 	() => import("./modules/management/DeploymentConfigProvider"),
 );
@@ -313,12 +310,6 @@ const ChangePasswordPage = lazy(
 const IdpOrgSyncPage = lazy(
 	() => import("./pages/DeploymentSettingsPage/IdpOrgSyncPage/IdpOrgSyncPage"),
 );
-const ProvisionerKeysPage = lazy(
-	() =>
-		import(
-			"./pages/OrganizationSettingsPage/OrganizationProvisionerKeysPage/OrganizationProvisionerKeysPage"
-		),
-);
 const ProvisionerJobsPage = lazy(
 	() =>
 		import(
@@ -431,11 +422,6 @@ export const router = createBrowserRouter(
 
 					<Route path="/audit" element={<AuditPage />} />
 
-					<Route path="/chat" element={<ChatLayout />}>
-						<Route index element={<ChatLanding />} />
-						<Route path=":chatID" element={<ChatMessages />} />
-					</Route>
-
 					<Route path="/organizations" element={<OrganizationSettingsLayout />}>
 						<Route path="new" element={<CreateOrganizationPage />} />
 
@@ -454,10 +440,6 @@ export const router = createBrowserRouter(
 							<Route
 								path="provisioner-jobs"
 								element={<ProvisionerJobsPage />}
-							/>
-							<Route
-								path="provisioner-keys"
-								element={<ProvisionerKeysPage />}
 							/>
 							<Route path="idp-sync" element={<OrganizationIdPSyncPage />} />
 							<Route path="settings" element={<OrganizationSettingsPage />} />

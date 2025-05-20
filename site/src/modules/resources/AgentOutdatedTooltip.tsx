@@ -1,4 +1,5 @@
 import { useTheme } from "@emotion/react";
+import RefreshIcon from "@mui/icons-material/RefreshOutlined";
 import type { WorkspaceAgent } from "api/typesGenerated";
 import {
 	HelpTooltip,
@@ -10,7 +11,6 @@ import {
 } from "components/HelpTooltip/HelpTooltip";
 import { Stack } from "components/Stack/Stack";
 import { PopoverTrigger } from "components/deprecated/Popover/Popover";
-import { RotateCcwIcon } from "lucide-react";
 import type { FC } from "react";
 import { agentVersionStatus } from "../../utils/workspace";
 
@@ -68,7 +68,7 @@ export const AgentOutdatedTooltip: FC<AgentOutdatedTooltipProps> = ({
 
 					<HelpTooltipLinksGroup>
 						<HelpTooltipAction
-							icon={RotateCcwIcon}
+							icon={RefreshIcon}
 							onClick={onUpdate}
 							ariaLabel="Update workspace"
 						>

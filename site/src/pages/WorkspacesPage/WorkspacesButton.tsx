@@ -1,3 +1,4 @@
+import OpenIcon from "@mui/icons-material/OpenInNewOutlined";
 import Link from "@mui/material/Link";
 import type { Template } from "api/typesGenerated";
 import { Avatar } from "components/Avatar/Avatar";
@@ -11,7 +12,6 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "components/deprecated/Popover/Popover";
-import { ExternalLinkIcon } from "lucide-react";
 import { ChevronDownIcon } from "lucide-react";
 import { linkToTemplate, useLinks } from "modules/navigation";
 import { type FC, type ReactNode, useState } from "react";
@@ -85,7 +85,7 @@ export const WorkspacesButton: FC<WorkspacesButtonProps> = ({
 					}}
 				>
 					{templatesFetchStatus === "loading" ? (
-						<Loader size="sm" />
+						<Loader size={14} />
 					) : (
 						<>
 							{processed.map((template) => (
@@ -112,7 +112,7 @@ export const WorkspacesButton: FC<WorkspacesButtonProps> = ({
 							color: theme.palette.primary.main,
 						})}
 					>
-						<ExternalLinkIcon className="size-icon-xs" />
+						<OpenIcon css={{ width: 14, height: 14 }} />
 						<span>See all templates</span>
 					</PopoverLink>
 				</div>

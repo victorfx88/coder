@@ -1,20 +1,20 @@
 import { type Interpolation, type Theme, useTheme } from "@emotion/react";
-import MuiButton from "@mui/material/Button";
+import AddIcon from "@mui/icons-material/AddOutlined";
+import RefreshIcon from "@mui/icons-material/Refresh";
+import LoadingButton from "@mui/lab/LoadingButton";
+import Button from "@mui/material/Button";
 import MuiLink from "@mui/material/Link";
 import Skeleton from "@mui/material/Skeleton";
 import Tooltip from "@mui/material/Tooltip";
 import type { GetLicensesResponse } from "api/api";
 import type { UserStatusChangeCount } from "api/typesGenerated";
-import { Button } from "components/Button/Button";
 import {
 	SettingsHeader,
 	SettingsHeaderDescription,
 	SettingsHeaderTitle,
 } from "components/SettingsHeader/SettingsHeader";
-import { Spinner } from "components/Spinner/Spinner";
 import { Stack } from "components/Stack/Stack";
 import { useWindowSize } from "hooks/useWindowSize";
-import { PlusIcon, RotateCwIcon } from "lucide-react";
 import type { FC } from "react";
 import Confetti from "react-confetti";
 import { Link } from "react-router-dom";
@@ -72,24 +72,22 @@ const LicensesSettingsPageView: FC<Props> = ({
 				</SettingsHeader>
 
 				<Stack direction="row" spacing={2}>
-					<MuiButton
+					<Button
 						component={Link}
 						to="/deployment/licenses/add"
-						startIcon={<PlusIcon className="size-icon-sm" />}
+						startIcon={<AddIcon />}
 					>
 						Add a license
-					</MuiButton>
+					</Button>
 					<Tooltip title="Refresh license entitlements. This is done automatically every 10 minutes.">
-						<Button
-							disabled={isRefreshing}
+						<LoadingButton
+							loadingPosition="start"
+							loading={isRefreshing}
 							onClick={refreshEntitlements}
-							variant="outline"
+							startIcon={<RefreshIcon />}
 						>
-							<Spinner loading={isRefreshing}>
-								<RotateCwIcon className="size-icon-xs" />
-							</Spinner>
 							Refresh
-						</Button>
+						</LoadingButton>
 					</Tooltip>
 				</Stack>
 			</Stack>

@@ -22,8 +22,7 @@ const (
 
 const devcontainerUpScriptTemplate = `
 if ! which devcontainer > /dev/null 2>&1; then
-  echo "ERROR: Unable to start devcontainer, @devcontainers/cli is not installed or not found in \$PATH." 1>&2
-  echo "Please install @devcontainers/cli by running \"npm install -g @devcontainers/cli\" or by using the \"devcontainers-cli\" Coder module." 1>&2
+  echo "ERROR: Unable to start devcontainer, @devcontainers/cli is not installed."
   exit 1
 fi
 devcontainer up %s
@@ -37,6 +36,8 @@ devcontainer up %s
 // initialize the workspace (e.g. git clone, npm install, etc). This is
 // important if e.g. a Coder module to install @devcontainer/cli is used.
 func ExtractAndInitializeDevcontainerScripts(
+	logger slog.Logger,
+	expandPath func(string) (string, error),
 	devcontainers []codersdk.WorkspaceAgentDevcontainer,
 	scripts []codersdk.WorkspaceAgentScript,
 ) (filteredScripts []codersdk.WorkspaceAgentScript, devcontainerScripts []codersdk.WorkspaceAgentScript) {
@@ -46,6 +47,7 @@ ScriptLoop:
 			// The devcontainer scripts match the devcontainer ID for
 			// identification.
 			if script.ID == dc.ID {
+				dc = expandDevcontainerPaths(logger, expandPath, dc)
 				devcontainerScripts = append(devcontainerScripts, devcontainerStartupScript(dc, script))
 				continue ScriptLoop
 			}
@@ -66,24 +68,11 @@ func devcontainerStartupScript(dc codersdk.WorkspaceAgentDevcontainer, script co
 		args = append(args, fmt.Sprintf("--config %q", dc.ConfigPath))
 	}
 	cmd := fmt.Sprintf(devcontainerUpScriptTemplate, strings.Join(args, " "))
-	// Force the script to run in /bin/sh, since some shells (e.g. fish)
-	// don't support the script.
-	script.Script = fmt.Sprintf("/bin/sh -c '%s'", cmd)
+	script.Script = cmd
 	// Disable RunOnStart, scripts have this set so that when devcontainers
 	// have not been enabled, a warning will be surfaced in the agent logs.
 	script.RunOnStart = false
 	return script
-}
-
-// ExpandAllDevcontainerPaths expands all devcontainer paths in the given
-// devcontainers. This is required by the devcontainer CLI, which requires
-// absolute paths for the workspace folder and config path.
-func ExpandAllDevcontainerPaths(logger slog.Logger, expandPath func(string) (string, error), devcontainers []codersdk.WorkspaceAgentDevcontainer) []codersdk.WorkspaceAgentDevcontainer {
-	expanded := make([]codersdk.WorkspaceAgentDevcontainer, 0, len(devcontainers))
-	for _, dc := range devcontainers {
-		expanded = append(expanded, expandDevcontainerPaths(logger, expandPath, dc))
-	}
-	return expanded
 }
 
 func expandDevcontainerPaths(logger slog.Logger, expandPath func(string) (string, error), dc codersdk.WorkspaceAgentDevcontainer) codersdk.WorkspaceAgentDevcontainer {

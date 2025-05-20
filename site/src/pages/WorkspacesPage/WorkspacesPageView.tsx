@@ -1,24 +1,27 @@
+import CloudQueue from "@mui/icons-material/CloudQueue";
+import DeleteOutlined from "@mui/icons-material/DeleteOutlined";
+import KeyboardArrowDownOutlined from "@mui/icons-material/KeyboardArrowDownOutlined";
+import PlayArrowOutlined from "@mui/icons-material/PlayArrowOutlined";
+import StopOutlined from "@mui/icons-material/StopOutlined";
+import LoadingButton from "@mui/lab/LoadingButton";
+import Divider from "@mui/material/Divider";
 import { hasError, isApiValidationError } from "api/errors";
 import type { Template, Workspace } from "api/typesGenerated";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { Button } from "components/Button/Button";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "components/DropdownMenu/DropdownMenu";
 import { EmptyState } from "components/EmptyState/EmptyState";
 import { Margins } from "components/Margins/Margins";
+import {
+	MoreMenu,
+	MoreMenuContent,
+	MoreMenuItem,
+	MoreMenuTrigger,
+} from "components/MoreMenu/MoreMenu";
 import { PageHeader, PageHeaderTitle } from "components/PageHeader/PageHeader";
 import { PaginationHeader } from "components/PaginationWidget/PaginationHeader";
 import { PaginationWidgetBase } from "components/PaginationWidget/PaginationWidgetBase";
-import { Spinner } from "components/Spinner/Spinner";
 import { Stack } from "components/Stack/Stack";
 import { TableToolbar } from "components/TableToolbar/TableToolbar";
-import { CloudIcon } from "lucide-react";
-import { ChevronDownIcon, PlayIcon, SquareIcon, TrashIcon } from "lucide-react";
 import { WorkspacesTable } from "pages/WorkspacesPage/WorkspacesTable";
 import type { FC } from "react";
 import type { UseQueryResult } from "react-query";
@@ -30,7 +33,7 @@ import {
 	WorkspacesFilter,
 } from "./filter/WorkspacesFilter";
 
-const Language = {
+export const Language = {
 	pageTitle: "Workspaces",
 	yourWorkspacesButton: "Your workspaces",
 	allWorkspacesButton: "All workspaces",
@@ -50,6 +53,7 @@ export interface WorkspacesPageViewProps {
 	page: number;
 	limit: number;
 	onPageChange: (page: number) => void;
+	onUpdateWorkspace: (workspace: Workspace) => void;
 	onCheckChange: (checkedWorkspaces: readonly Workspace[]) => void;
 	isRunningBatchAction: boolean;
 	onDeleteAll: () => void;
@@ -61,8 +65,6 @@ export interface WorkspacesPageViewProps {
 	templates: TemplateQuery["data"];
 	canCreateTemplate: boolean;
 	canChangeVersions: boolean;
-	onActionSuccess: () => Promise<void>;
-	onActionError: (error: unknown) => void;
 }
 
 export const WorkspacesPageView: FC<WorkspacesPageViewProps> = ({
@@ -72,6 +74,7 @@ export const WorkspacesPageView: FC<WorkspacesPageViewProps> = ({
 	count,
 	filterProps,
 	onPageChange,
+	onUpdateWorkspace,
 	page,
 	checkedWorkspaces,
 	onCheckChange,
@@ -85,8 +88,6 @@ export const WorkspacesPageView: FC<WorkspacesPageViewProps> = ({
 	templatesFetchStatus,
 	canCreateTemplate,
 	canChangeVersions,
-	onActionSuccess,
-	onActionError,
 }) => {
 	// Let's say the user has 5 workspaces, but tried to hit page 100, which does
 	// not exist. In this case, the page is not valid and we want to show a better
@@ -133,22 +134,22 @@ export const WorkspacesPageView: FC<WorkspacesPageViewProps> = ({
 							{workspaces?.length === 1 ? "workspace" : "workspaces"}
 						</div>
 
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button
-									disabled={isRunningBatchAction}
-									variant="outline"
-									size="sm"
+						<MoreMenu>
+							<MoreMenuTrigger>
+								<LoadingButton
+									loading={isRunningBatchAction}
+									loadingPosition="end"
+									variant="text"
+									size="small"
 									css={{ borderRadius: 9999, marginLeft: "auto" }}
+									endIcon={<KeyboardArrowDownOutlined />}
 								>
-									Bulk actions
-									<Spinner loading={isRunningBatchAction}>
-										<ChevronDownIcon className="size-4" />
-									</Spinner>
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="end">
-								<DropdownMenuItem
+									Actions
+								</LoadingButton>
+							</MoreMenuTrigger>
+							<MoreMenuContent>
+								<MoreMenuItem
+									onClick={onStartAll}
 									disabled={
 										!checkedWorkspaces?.every(
 											(w) =>
@@ -156,32 +157,28 @@ export const WorkspacesPageView: FC<WorkspacesPageViewProps> = ({
 												!mustUpdateWorkspace(w, canChangeVersions),
 										)
 									}
-									onClick={onStartAll}
 								>
-									<PlayIcon /> Start
-								</DropdownMenuItem>
-								<DropdownMenuItem
+									<PlayArrowOutlined /> Start
+								</MoreMenuItem>
+								<MoreMenuItem
+									onClick={onStopAll}
 									disabled={
 										!checkedWorkspaces?.every(
 											(w) => w.latest_build.status === "running",
 										)
 									}
-									onClick={onStopAll}
 								>
-									<SquareIcon /> Stop
-								</DropdownMenuItem>
-								<DropdownMenuSeparator />
-								<DropdownMenuItem onClick={onUpdateAll}>
-									<CloudIcon className="size-icon-sm" /> Update&hellip;
-								</DropdownMenuItem>
-								<DropdownMenuItem
-									className="text-content-destructive focus:text-content-destructive"
-									onClick={onDeleteAll}
-								>
-									<TrashIcon /> Delete&hellip;
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
+									<StopOutlined /> Stop
+								</MoreMenuItem>
+								<Divider />
+								<MoreMenuItem onClick={onUpdateAll}>
+									<CloudQueue /> Update&hellip;
+								</MoreMenuItem>
+								<MoreMenuItem danger onClick={onDeleteAll}>
+									<DeleteOutlined /> Delete&hellip;
+								</MoreMenuItem>
+							</MoreMenuContent>
+						</MoreMenu>
 					</>
 				) : (
 					!invalidPageNumber && (
@@ -219,12 +216,11 @@ export const WorkspacesPageView: FC<WorkspacesPageViewProps> = ({
 					canCreateTemplate={canCreateTemplate}
 					workspaces={workspaces}
 					isUsingFilter={filterProps.filter.used}
+					onUpdateWorkspace={onUpdateWorkspace}
 					checkedWorkspaces={checkedWorkspaces}
 					onCheckChange={onCheckChange}
 					canCheckWorkspaces={canCheckWorkspaces}
 					templates={templates}
-					onActionSuccess={onActionSuccess}
-					onActionError={onActionError}
 				/>
 			)}
 

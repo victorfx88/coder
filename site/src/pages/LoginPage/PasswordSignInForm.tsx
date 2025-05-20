@@ -1,7 +1,6 @@
+import LoadingButton from "@mui/lab/LoadingButton";
 import Link from "@mui/material/Link";
 import TextField from "@mui/material/TextField";
-import { Button } from "components/Button/Button";
-import { Spinner } from "components/Spinner/Spinner";
 import { Stack } from "components/Stack/Stack";
 import { useFormik } from "formik";
 import type { FC } from "react";
@@ -60,15 +59,14 @@ export const PasswordSignInForm: FC<PasswordSignInFormProps> = ({
 					label={Language.passwordLabel}
 					type="password"
 				/>
-				<Button
-					size="lg"
-					disabled={isSigningIn}
-					className="w-full"
+				<LoadingButton
+					size="xlarge"
+					loading={isSigningIn}
+					fullWidth
 					type="submit"
 				>
-					<Spinner loading={isSigningIn} />
 					{Language.passwordSignIn}
-				</Button>
+				</LoadingButton>
 				<Link
 					component={RouterLink}
 					to="/reset-password"

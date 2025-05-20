@@ -4,6 +4,7 @@ import AppsIcon from "@mui/icons-material/Apps";
 import CheckCircle from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
 import InsertDriveFile from "@mui/icons-material/InsertDriveFile";
+import OpenInNew from "@mui/icons-material/OpenInNew";
 import Warning from "@mui/icons-material/Warning";
 import CircularProgress from "@mui/material/CircularProgress";
 import type {
@@ -12,9 +13,8 @@ import type {
 	WorkspaceAgent,
 	WorkspaceApp,
 } from "api/typesGenerated";
-import { ExternalLinkIcon } from "lucide-react";
-import { useAppLink } from "modules/apps/useAppLink";
-import type { FC } from "react";
+import { useProxy } from "contexts/ProxyContext";
+import { createAppLinkHref } from "utils/apps";
 
 const formatURI = (uri: string) => {
 	try {
@@ -68,7 +68,33 @@ export const WorkspaceAppStatus = ({
 	agent?: WorkspaceAgent;
 }) => {
 	const theme = useTheme();
-	const commonStyles = useCommonStyles();
+	const { proxy } = useProxy();
+	const preferredPathBase = proxy.preferredPathAppURL;
+	const appsHost = proxy.preferredWildcardHostname;
+
+	const commonStyles = {
+		fontSize: "12px",
+		lineHeight: "15px",
+		color: theme.palette.text.disabled,
+		display: "inline-flex",
+		alignItems: "center",
+		gap: 4,
+		padding: "2px 6px",
+		borderRadius: "6px",
+		bgcolor: "transparent",
+		minWidth: 0,
+		maxWidth: "fit-content",
+		overflow: "hidden",
+		textOverflow: "ellipsis",
+		whiteSpace: "nowrap",
+		textDecoration: "none",
+		transition: "all 0.15s ease-in-out",
+		"&:hover": {
+			textDecoration: "none",
+			backgroundColor: theme.palette.action.hover,
+			color: theme.palette.text.secondary,
+		},
+	};
 
 	if (!status) {
 		return (
@@ -95,6 +121,21 @@ export const WorkspaceAppStatus = ({
 		);
 	}
 	const isFileURI = status.uri?.startsWith("file://");
+
+	let appHref: string | undefined;
+	if (app && agent) {
+		const appSlug = app.slug || app.display_name;
+		appHref = createAppLinkHref(
+			window.location.protocol,
+			preferredPathBase,
+			appsHost,
+			appSlug,
+			workspace.owner_name,
+			workspace,
+			agent,
+			app,
+		);
+	}
 
 	return (
 		<div
@@ -147,8 +188,47 @@ export const WorkspaceAppStatus = ({
 						alignItems: "center",
 					}}
 				>
-					{app && agent && (
-						<AppLink app={app} workspace={workspace} agent={agent} />
+					{app && appHref && (
+						<a
+							href={appHref}
+							target="_blank"
+							rel="noopener noreferrer"
+							css={{
+								...commonStyles,
+								marginRight: 8,
+								position: "relative",
+								color: theme.palette.text.secondary,
+								"&:hover": {
+									...commonStyles["&:hover"],
+									color: theme.palette.text.primary,
+									"& img": {
+										opacity: 1,
+									},
+								},
+							}}
+						>
+							{app.icon ? (
+								<img
+									src={app.icon}
+									alt={`${app.display_name} icon`}
+									width={14}
+									height={14}
+									css={{
+										borderRadius: "3px",
+										opacity: 0.8,
+										marginRight: 4,
+									}}
+								/>
+							) : (
+								<AppsIcon
+									sx={{
+										fontSize: 14,
+										opacity: 0.7,
+									}}
+								/>
+							)}
+							<span>{app.display_name}</span>
+						</a>
 					)}
 					{status.uri && (
 						<div
@@ -186,12 +266,13 @@ export const WorkspaceAppStatus = ({
 										},
 									}}
 								>
-									<ExternalLinkIcon
-										className="size-icon-xs"
-										css={{
+									<OpenInNew
+										sx={{
+											fontSize: 11,
 											opacity: 0.7,
+											mt: -0.125,
 											flexShrink: 0,
-											marginRight: 2,
+											mr: 0.5,
 										}}
 									/>
 									<span
@@ -216,88 +297,4 @@ export const WorkspaceAppStatus = ({
 			</div>
 		</div>
 	);
-};
-
-type AppLinkProps = {
-	app: WorkspaceApp;
-	workspace: Workspace;
-	agent: WorkspaceAgent;
-};
-
-const AppLink: FC<AppLinkProps> = ({ app, workspace, agent }) => {
-	const theme = useTheme();
-	const commonStyles = useCommonStyles();
-	const link = useAppLink(app, { agent, workspace });
-
-	return (
-		<a
-			href={link.href}
-			onClick={link.onClick}
-			target="_blank"
-			rel="noopener noreferrer"
-			css={{
-				...commonStyles,
-				marginRight: 8,
-				position: "relative",
-				color: theme.palette.text.secondary,
-				"&:hover": {
-					...commonStyles["&:hover"],
-					color: theme.palette.text.primary,
-					"& img": {
-						opacity: 1,
-					},
-				},
-			}}
-		>
-			{app.icon ? (
-				<img
-					src={app.icon}
-					alt={`${app.display_name} icon`}
-					width={14}
-					height={14}
-					css={{
-						borderRadius: "3px",
-						opacity: 0.8,
-						marginRight: 4,
-					}}
-				/>
-			) : (
-				<AppsIcon
-					sx={{
-						fontSize: 14,
-						opacity: 0.7,
-					}}
-				/>
-			)}
-			<span>{app.display_name}</span>
-		</a>
-	);
-};
-
-const useCommonStyles = () => {
-	const theme = useTheme();
-
-	return {
-		fontSize: "12px",
-		lineHeight: "15px",
-		color: theme.palette.text.disabled,
-		display: "inline-flex",
-		alignItems: "center",
-		gap: 4,
-		padding: "2px 6px",
-		borderRadius: "6px",
-		bgcolor: "transparent",
-		minWidth: 0,
-		maxWidth: "fit-content",
-		overflow: "hidden",
-		textOverflow: "ellipsis",
-		whiteSpace: "nowrap",
-		textDecoration: "none",
-		transition: "all 0.15s ease-in-out",
-		"&:hover": {
-			textDecoration: "none",
-			backgroundColor: theme.palette.action.hover,
-			color: theme.palette.text.secondary,
-		},
-	};
 };

@@ -12,19 +12,21 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/open-policy-agent/opa/topdown"
 	"golang.org/x/xerrors"
 
+	"github.com/open-policy-agent/opa/topdown"
+
 	"cdr.dev/slog"
+
+	"github.com/coder/coder/v2/coderd/prebuilds"
+	"github.com/coder/coder/v2/coderd/rbac/policy"
+	"github.com/coder/coder/v2/coderd/rbac/rolestore"
 
 	"github.com/coder/coder/v2/coderd/database"
 	"github.com/coder/coder/v2/coderd/database/dbtime"
 	"github.com/coder/coder/v2/coderd/httpapi/httpapiconstraints"
 	"github.com/coder/coder/v2/coderd/httpmw/loggermw"
-	"github.com/coder/coder/v2/coderd/prebuilds"
 	"github.com/coder/coder/v2/coderd/rbac"
-	"github.com/coder/coder/v2/coderd/rbac/policy"
-	"github.com/coder/coder/v2/coderd/rbac/rolestore"
 	"github.com/coder/coder/v2/coderd/util/slice"
 	"github.com/coder/coder/v2/provisionersdk"
 )
@@ -170,10 +172,10 @@ var (
 				Identifier:  rbac.RoleIdentifier{Name: "provisionerd"},
 				DisplayName: "Provisioner Daemon",
 				Site: rbac.Permissions(map[string][]policy.Action{
-					rbac.ResourceProvisionerJobs.Type: {policy.ActionRead, policy.ActionUpdate, policy.ActionCreate},
-					rbac.ResourceFile.Type:            {policy.ActionRead},
-					rbac.ResourceSystem.Type:          {policy.WildcardSymbol},
-					rbac.ResourceTemplate.Type:        {policy.ActionRead, policy.ActionUpdate},
+					// TODO: Add ProvisionerJob resource type.
+					rbac.ResourceFile.Type:     {policy.ActionRead},
+					rbac.ResourceSystem.Type:   {policy.WildcardSymbol},
+					rbac.ResourceTemplate.Type: {policy.ActionRead, policy.ActionUpdate},
 					// Unsure why provisionerd needs update and read personal
 					rbac.ResourceUser.Type:             {policy.ActionRead, policy.ActionReadPersonal, policy.ActionUpdatePersonal},
 					rbac.ResourceWorkspaceDormant.Type: {policy.ActionDelete, policy.ActionRead, policy.ActionUpdate, policy.ActionWorkspaceStop},
@@ -219,20 +221,19 @@ var (
 		Scope: rbac.ScopeAll,
 	}.WithCachedASTValue()
 
-	// See reaper package.
-	subjectJobReaper = rbac.Subject{
-		Type:         rbac.SubjectTypeJobReaper,
-		FriendlyName: "Job Reaper",
+	// See unhanger package.
+	subjectHangDetector = rbac.Subject{
+		Type:         rbac.SubjectTypeHangDetector,
+		FriendlyName: "Hang Detector",
 		ID:           uuid.Nil.String(),
 		Roles: rbac.Roles([]rbac.Role{
 			{
-				Identifier:  rbac.RoleIdentifier{Name: "jobreaper"},
-				DisplayName: "Job Reaper Daemon",
+				Identifier:  rbac.RoleIdentifier{Name: "hangdetector"},
+				DisplayName: "Hang Detector Daemon",
 				Site: rbac.Permissions(map[string][]policy.Action{
-					rbac.ResourceSystem.Type:          {policy.WildcardSymbol},
-					rbac.ResourceTemplate.Type:        {policy.ActionRead},
-					rbac.ResourceWorkspace.Type:       {policy.ActionRead, policy.ActionUpdate},
-					rbac.ResourceProvisionerJobs.Type: {policy.ActionRead, policy.ActionUpdate},
+					rbac.ResourceSystem.Type:    {policy.WildcardSymbol},
+					rbac.ResourceTemplate.Type:  {policy.ActionRead},
+					rbac.ResourceWorkspace.Type: {policy.ActionRead, policy.ActionUpdate},
 				}),
 				Org:  map[string][]rbac.Permission{},
 				User: []rbac.Permission{},
@@ -346,8 +347,6 @@ var (
 					rbac.ResourceNotificationPreference.Type: {policy.ActionCreate, policy.ActionUpdate, policy.ActionDelete},
 					rbac.ResourceNotificationTemplate.Type:   {policy.ActionCreate, policy.ActionUpdate, policy.ActionDelete},
 					rbac.ResourceCryptoKey.Type:              {policy.ActionCreate, policy.ActionUpdate, policy.ActionDelete},
-					rbac.ResourceFile.Type:                   {policy.ActionCreate, policy.ActionRead},
-					rbac.ResourceProvisionerJobs.Type:        {policy.ActionRead, policy.ActionUpdate, policy.ActionCreate},
 				}),
 				Org:  map[string][]rbac.Permission{},
 				User: []rbac.Permission{},
@@ -409,10 +408,10 @@ func AsAutostart(ctx context.Context) context.Context {
 	return As(ctx, subjectAutostart)
 }
 
-// AsJobReaper returns a context with an actor that has permissions required
-// for reaper.Detector to function.
-func AsJobReaper(ctx context.Context) context.Context {
-	return As(ctx, subjectJobReaper)
+// AsHangDetector returns a context with an actor that has permissions required
+// for unhanger.Detector to function.
+func AsHangDetector(ctx context.Context) context.Context {
+	return As(ctx, subjectHangDetector)
 }
 
 // AsKeyRotator returns a context with an actor that has permissions required for rotating crypto keys.
@@ -1087,10 +1086,11 @@ func (q *querier) AcquireNotificationMessages(ctx context.Context, arg database.
 	return q.db.AcquireNotificationMessages(ctx, arg)
 }
 
+// TODO: We need to create a ProvisionerJob resource type
 func (q *querier) AcquireProvisionerJob(ctx context.Context, arg database.AcquireProvisionerJobParams) (database.ProvisionerJob, error) {
-	if err := q.authorizeContext(ctx, policy.ActionUpdate, rbac.ResourceProvisionerJobs); err != nil {
-		return database.ProvisionerJob{}, err
-	}
+	// if err := q.authorizeContext(ctx, policy.ActionUpdate, rbac.ResourceSystem); err != nil {
+	// return database.ProvisionerJob{}, err
+	// }
 	return q.db.AcquireProvisionerJob(ctx, arg)
 }
 
@@ -1267,10 +1267,6 @@ func (q *querier) DeleteApplicationConnectAPIKeysByUserID(ctx context.Context, u
 		return err
 	}
 	return q.db.DeleteApplicationConnectAPIKeysByUserID(ctx, userID)
-}
-
-func (q *querier) DeleteChat(ctx context.Context, id uuid.UUID) error {
-	return deleteQ(q.log, q.auth, q.db.GetChatByID, q.db.DeleteChat)(ctx, id)
 }
 
 func (q *querier) DeleteCoordinator(ctx context.Context, id uuid.UUID) error {
@@ -1690,22 +1686,6 @@ func (q *querier) GetAuthorizationUserRoles(ctx context.Context, userID uuid.UUI
 	return q.db.GetAuthorizationUserRoles(ctx, userID)
 }
 
-func (q *querier) GetChatByID(ctx context.Context, id uuid.UUID) (database.Chat, error) {
-	return fetch(q.log, q.auth, q.db.GetChatByID)(ctx, id)
-}
-
-func (q *querier) GetChatMessagesByChatID(ctx context.Context, chatID uuid.UUID) ([]database.ChatMessage, error) {
-	c, err := q.GetChatByID(ctx, chatID)
-	if err != nil {
-		return nil, err
-	}
-	return q.db.GetChatMessagesByChatID(ctx, c.ID)
-}
-
-func (q *querier) GetChatsByOwnerID(ctx context.Context, ownerID uuid.UUID) ([]database.Chat, error) {
-	return fetchWithPostFilter(q.auth, policy.ActionRead, q.db.GetChatsByOwnerID)(ctx, ownerID)
-}
-
 func (q *querier) GetCoordinatorResumeTokenSigningKey(ctx context.Context) (string, error) {
 	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
 		return "", err
@@ -1911,6 +1891,14 @@ func (q *querier) GetGroups(ctx context.Context, arg database.GetGroupsParams) (
 func (q *querier) GetHealthSettings(ctx context.Context) (string, error) {
 	// No authz checks
 	return q.db.GetHealthSettings(ctx)
+}
+
+// TODO: We need to create a ProvisionerJob resource type
+func (q *querier) GetHungProvisionerJobs(ctx context.Context, hungSince time.Time) ([]database.ProvisionerJob, error) {
+	// if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+	// return nil, err
+	// }
+	return q.db.GetHungProvisionerJobs(ctx, hungSince)
 }
 
 func (q *querier) GetInboxNotificationByID(ctx context.Context, id uuid.UUID) (database.InboxNotification, error) {
@@ -2300,13 +2288,6 @@ func (q *querier) GetProvisionerJobByID(ctx context.Context, id uuid.UUID) (data
 	return job, nil
 }
 
-func (q *querier) GetProvisionerJobByIDForUpdate(ctx context.Context, id uuid.UUID) (database.ProvisionerJob, error) {
-	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceProvisionerJobs); err != nil {
-		return database.ProvisionerJob{}, err
-	}
-	return q.db.GetProvisionerJobByIDForUpdate(ctx, id)
-}
-
 func (q *querier) GetProvisionerJobTimingsByJobID(ctx context.Context, jobID uuid.UUID) ([]database.ProvisionerJobTiming, error) {
 	_, err := q.GetProvisionerJobByID(ctx, jobID)
 	if err != nil {
@@ -2315,47 +2296,29 @@ func (q *querier) GetProvisionerJobTimingsByJobID(ctx context.Context, jobID uui
 	return q.db.GetProvisionerJobTimingsByJobID(ctx, jobID)
 }
 
+// TODO: We have a ProvisionerJobs resource, but it hasn't been checked for this use-case.
 func (q *querier) GetProvisionerJobsByIDs(ctx context.Context, ids []uuid.UUID) ([]database.ProvisionerJob, error) {
-	provisionerJobs, err := q.db.GetProvisionerJobsByIDs(ctx, ids)
-	if err != nil {
-		return nil, err
-	}
-	orgIDs := make(map[uuid.UUID]struct{})
-	for _, job := range provisionerJobs {
-		orgIDs[job.OrganizationID] = struct{}{}
-	}
-	for orgID := range orgIDs {
-		if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceProvisionerJobs.InOrg(orgID)); err != nil {
-			return nil, err
-		}
-	}
-	return provisionerJobs, nil
+	// if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
+	// 	return nil, err
+	// }
+	return q.db.GetProvisionerJobsByIDs(ctx, ids)
 }
 
+// TODO: We have a ProvisionerJobs resource, but it hasn't been checked for this use-case.
 func (q *querier) GetProvisionerJobsByIDsWithQueuePosition(ctx context.Context, ids []uuid.UUID) ([]database.GetProvisionerJobsByIDsWithQueuePositionRow, error) {
-	// TODO: Remove this once we have a proper rbac check for provisioner jobs.
-	// Details in https://github.com/coder/coder/issues/16160
 	return q.db.GetProvisionerJobsByIDsWithQueuePosition(ctx, ids)
 }
 
 func (q *querier) GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisioner(ctx context.Context, arg database.GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerParams) ([]database.GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerRow, error) {
-	// TODO: Remove this once we have a proper rbac check for provisioner jobs.
-	// Details in https://github.com/coder/coder/issues/16160
 	return fetchWithPostFilter(q.auth, policy.ActionRead, q.db.GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisioner)(ctx, arg)
 }
 
+// TODO: We have a ProvisionerJobs resource, but it hasn't been checked for this use-case.
 func (q *querier) GetProvisionerJobsCreatedAfter(ctx context.Context, createdAt time.Time) ([]database.ProvisionerJob, error) {
-	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceProvisionerJobs); err != nil {
-		return nil, err
-	}
+	// if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceSystem); err != nil {
+	// return nil, err
+	// }
 	return q.db.GetProvisionerJobsCreatedAfter(ctx, createdAt)
-}
-
-func (q *querier) GetProvisionerJobsToBeReaped(ctx context.Context, arg database.GetProvisionerJobsToBeReapedParams) ([]database.ProvisionerJob, error) {
-	if err := q.authorizeContext(ctx, policy.ActionRead, rbac.ResourceProvisionerJobs); err != nil {
-		return nil, err
-	}
-	return q.db.GetProvisionerJobsToBeReaped(ctx, arg)
 }
 
 func (q *querier) GetProvisionerKeyByHashedSecret(ctx context.Context, hashedSecret []byte) (database.ProvisionerKey, error) {
@@ -3361,21 +3324,6 @@ func (q *querier) InsertAuditLog(ctx context.Context, arg database.InsertAuditLo
 	return insert(q.log, q.auth, rbac.ResourceAuditLog, q.db.InsertAuditLog)(ctx, arg)
 }
 
-func (q *querier) InsertChat(ctx context.Context, arg database.InsertChatParams) (database.Chat, error) {
-	return insert(q.log, q.auth, rbac.ResourceChat.WithOwner(arg.OwnerID.String()), q.db.InsertChat)(ctx, arg)
-}
-
-func (q *querier) InsertChatMessages(ctx context.Context, arg database.InsertChatMessagesParams) ([]database.ChatMessage, error) {
-	c, err := q.db.GetChatByID(ctx, arg.ChatID)
-	if err != nil {
-		return nil, err
-	}
-	if err := q.authorizeContext(ctx, policy.ActionUpdate, c); err != nil {
-		return nil, err
-	}
-	return q.db.InsertChatMessages(ctx, arg)
-}
-
 func (q *querier) InsertCryptoKey(ctx context.Context, arg database.InsertCryptoKeyParams) (database.CryptoKey, error) {
 	if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceCryptoKey); err != nil {
 		return database.CryptoKey{}, err
@@ -3551,22 +3499,27 @@ func (q *querier) InsertPresetParameters(ctx context.Context, arg database.Inser
 	return q.db.InsertPresetParameters(ctx, arg)
 }
 
+// TODO: We need to create a ProvisionerJob resource type
 func (q *querier) InsertProvisionerJob(ctx context.Context, arg database.InsertProvisionerJobParams) (database.ProvisionerJob, error) {
-	// TODO: Remove this once we have a proper rbac check for provisioner jobs.
-	// Details in https://github.com/coder/coder/issues/16160
+	// if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+	// return database.ProvisionerJob{}, err
+	// }
 	return q.db.InsertProvisionerJob(ctx, arg)
 }
 
+// TODO: We need to create a ProvisionerJob resource type
 func (q *querier) InsertProvisionerJobLogs(ctx context.Context, arg database.InsertProvisionerJobLogsParams) ([]database.ProvisionerJobLog, error) {
-	// TODO: Remove this once we have a proper rbac check for provisioner jobs.
-	// Details in https://github.com/coder/coder/issues/16160
+	// if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+	// return nil, err
+	// }
 	return q.db.InsertProvisionerJobLogs(ctx, arg)
 }
 
+// TODO: We need to create a ProvisionerJob resource type
 func (q *querier) InsertProvisionerJobTimings(ctx context.Context, arg database.InsertProvisionerJobTimingsParams) ([]database.ProvisionerJobTiming, error) {
-	if err := q.authorizeContext(ctx, policy.ActionUpdate, rbac.ResourceProvisionerJobs); err != nil {
-		return nil, err
-	}
+	// if err := q.authorizeContext(ctx, policy.ActionCreate, rbac.ResourceSystem); err != nil {
+	// return nil, err
+	// }
 	return q.db.InsertProvisionerJobTimings(ctx, arg)
 }
 
@@ -4019,13 +3972,6 @@ func (q *querier) UpdateAPIKeyByID(ctx context.Context, arg database.UpdateAPIKe
 	return update(q.log, q.auth, fetch, q.db.UpdateAPIKeyByID)(ctx, arg)
 }
 
-func (q *querier) UpdateChatByID(ctx context.Context, arg database.UpdateChatByIDParams) error {
-	fetch := func(ctx context.Context, arg database.UpdateChatByIDParams) (database.Chat, error) {
-		return q.db.GetChatByID(ctx, arg.ID)
-	}
-	return update(q.log, q.auth, fetch, q.db.UpdateChatByID)(ctx, arg)
-}
-
 func (q *querier) UpdateCryptoKeyDeletesAt(ctx context.Context, arg database.UpdateCryptoKeyDeletesAtParams) (database.CryptoKey, error) {
 	if err := q.authorizeContext(ctx, policy.ActionUpdate, rbac.ResourceCryptoKey); err != nil {
 		return database.CryptoKey{}, err
@@ -4189,17 +4135,15 @@ func (q *querier) UpdateProvisionerDaemonLastSeenAt(ctx context.Context, arg dat
 	return q.db.UpdateProvisionerDaemonLastSeenAt(ctx, arg)
 }
 
+// TODO: We need to create a ProvisionerJob resource type
 func (q *querier) UpdateProvisionerJobByID(ctx context.Context, arg database.UpdateProvisionerJobByIDParams) error {
-	if err := q.authorizeContext(ctx, policy.ActionUpdate, rbac.ResourceProvisionerJobs); err != nil {
-		return err
-	}
+	// if err := q.authorizeContext(ctx, policy.ActionUpdate, rbac.ResourceSystem); err != nil {
+	// return err
+	// }
 	return q.db.UpdateProvisionerJobByID(ctx, arg)
 }
 
 func (q *querier) UpdateProvisionerJobWithCancelByID(ctx context.Context, arg database.UpdateProvisionerJobWithCancelByIDParams) error {
-	// TODO: Remove this once we have a proper rbac check for provisioner jobs.
-	// Details in https://github.com/coder/coder/issues/16160
-
 	job, err := q.db.GetProvisionerJobByID(ctx, arg.ID)
 	if err != nil {
 		return err
@@ -4266,18 +4210,12 @@ func (q *querier) UpdateProvisionerJobWithCancelByID(ctx context.Context, arg da
 	return q.db.UpdateProvisionerJobWithCancelByID(ctx, arg)
 }
 
+// TODO: We need to create a ProvisionerJob resource type
 func (q *querier) UpdateProvisionerJobWithCompleteByID(ctx context.Context, arg database.UpdateProvisionerJobWithCompleteByIDParams) error {
-	if err := q.authorizeContext(ctx, policy.ActionUpdate, rbac.ResourceProvisionerJobs); err != nil {
-		return err
-	}
+	// if err := q.authorizeContext(ctx, policy.ActionUpdate, rbac.ResourceSystem); err != nil {
+	// return err
+	// }
 	return q.db.UpdateProvisionerJobWithCompleteByID(ctx, arg)
-}
-
-func (q *querier) UpdateProvisionerJobWithCompleteWithStartedAtByID(ctx context.Context, arg database.UpdateProvisionerJobWithCompleteWithStartedAtByIDParams) error {
-	if err := q.authorizeContext(ctx, policy.ActionUpdate, rbac.ResourceProvisionerJobs); err != nil {
-		return err
-	}
-	return q.db.UpdateProvisionerJobWithCompleteWithStartedAtByID(ctx, arg)
 }
 
 func (q *querier) UpdateReplica(ctx context.Context, arg database.UpdateReplicaParams) (database.Replica, error) {

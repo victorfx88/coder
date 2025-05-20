@@ -338,7 +338,6 @@ var ListWorkspaces = Tool[ListWorkspacesArgs, []MinimalWorkspace]{
 					"description": "The owner of the workspaces to list. Use \"me\" to list workspaces for the authenticated user. If you do not specify an owner, \"me\" will be assumed by default.",
 				},
 			},
-			Required: []string{},
 		},
 	},
 	Handler: func(ctx context.Context, deps Deps, args ListWorkspacesArgs) ([]MinimalWorkspace, error) {
@@ -602,7 +601,7 @@ This resource provides the following fields:
 - init_script: The script to run on provisioned infrastructure to fetch and start the agent.
 - token: Set the environment variable CODER_AGENT_TOKEN to this value to authenticate the agent.
 
-The agent MUST be installed and started using the init_script. A utility like curl or wget to fetch the agent binary must exist in the provisioned infrastructure.
+The agent MUST be installed and started using the init_script.
 
 Expose terminal or HTTP applications running in a workspace with:
 
@@ -722,20 +721,13 @@ resource "google_compute_instance" "dev" {
     auto_delete = false
     source      = google_compute_disk.root.name
   }
-  // In order to use google-instance-identity, a service account *must* be provided.
   service_account {
     email  = data.google_compute_default_service_account.default.email
     scopes = ["cloud-platform"]
   }
-  # ONLY FOR WINDOWS:
-  # metadata = {
-  #   windows-startup-script-ps1 = coder_agent.main.init_script
-  # }
   # The startup script runs as root with no $HOME environment set up, so instead of directly
   # running the agent init script, create a user (with a homedir, default shell and sudo
   # permissions) and execute the init script as that user.
-  #
-  # The agent MUST be started in here.
   metadata_startup_script = <<EOMETA
 #!/usr/bin/env sh
 set -eux
@@ -1275,7 +1267,6 @@ var DeleteTemplate = Tool[DeleteTemplateArgs, codersdk.Response]{
 					"type": "string",
 				},
 			},
-			Required: []string{"template_id"},
 		},
 	},
 	Handler: func(ctx context.Context, deps Deps, args DeleteTemplateArgs) (codersdk.Response, error) {

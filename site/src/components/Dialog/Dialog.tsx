@@ -16,11 +16,11 @@ export const Dialog = DialogPrimitive.Root;
 
 export const DialogTrigger = DialogPrimitive.Trigger;
 
-const DialogPortal = DialogPrimitive.Portal;
+export const DialogPortal = DialogPrimitive.Portal;
 
-const DialogClose = DialogPrimitive.Close;
+export const DialogClose = DialogPrimitive.Close;
 
-const DialogOverlay = forwardRef<
+export const DialogOverlay = forwardRef<
 	ElementRef<typeof DialogPrimitive.Overlay>,
 	ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
 >(({ className, ...props }, ref) => (

@@ -1,10 +1,9 @@
+import LoadingButton from "@mui/lab/LoadingButton";
 import TextField from "@mui/material/TextField";
 import { Alert } from "components/Alert/Alert";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
-import { Button } from "components/Button/Button";
 import { Form, FormFields } from "components/Form/Form";
 import { PasswordField } from "components/PasswordField/PasswordField";
-import { Spinner } from "components/Spinner/Spinner";
 import { type FormikContextType, useFormik } from "formik";
 import type { FC } from "react";
 import { getFormHelpers } from "utils/formUtils";
@@ -99,10 +98,13 @@ export const SecurityForm: FC<SecurityFormProps> = ({
 					/>
 
 					<div>
-						<Button disabled={isLoading} type="submit">
-							<Spinner loading={isLoading} />
+						<LoadingButton
+							loading={isLoading}
+							type="submit"
+							variant="contained"
+						>
 							{Language.updatePassword}
-						</Button>
+						</LoadingButton>
 					</div>
 				</FormFields>
 			</Form>

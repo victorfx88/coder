@@ -13,10 +13,6 @@ curl -X GET http://coder-server:8080/api/v2/organizations/{organization}/templat
 
 `GET /organizations/{organization}/templates`
 
-Returns a list of templates for the specified organization.
-By default, only non-deprecated templates are returned.
-To include deprecated templates, specify `deprecated:true` in the search query.
-
 ### Parameters
 
 | Name           | In   | Type         | Required | Description     |
@@ -78,8 +74,7 @@ To include deprecated templates, specify `deprecated:true` in the search query.
     "require_active_version": true,
     "time_til_dormant_autodelete_ms": 0,
     "time_til_dormant_ms": 0,
-    "updated_at": "2019-08-24T14:15:22Z",
-    "use_classic_parameter_flow": true
+    "updated_at": "2019-08-24T14:15:22Z"
   }
 ]
 ```
@@ -135,7 +130,6 @@ Restarts will only happen on weekdays in this list on weeks which line up with W
 |`» time_til_dormant_autodelete_ms`|integer|false|||
 |`» time_til_dormant_ms`|integer|false|||
 |`» updated_at`|string(date-time)|false|||
-|`» use_classic_parameter_flow`|boolean|false|||
 
 #### Enumerated Values
 
@@ -257,8 +251,7 @@ curl -X POST http://coder-server:8080/api/v2/organizations/{organization}/templa
   "require_active_version": true,
   "time_til_dormant_autodelete_ms": 0,
   "time_til_dormant_ms": 0,
-  "updated_at": "2019-08-24T14:15:22Z",
-  "use_classic_parameter_flow": true
+  "updated_at": "2019-08-24T14:15:22Z"
 }
 ```
 
@@ -406,8 +399,7 @@ curl -X GET http://coder-server:8080/api/v2/organizations/{organization}/templat
   "require_active_version": true,
   "time_til_dormant_autodelete_ms": 0,
   "time_til_dormant_ms": 0,
-  "updated_at": "2019-08-24T14:15:22Z",
-  "use_classic_parameter_flow": true
+  "updated_at": "2019-08-24T14:15:22Z"
 }
 ```
 
@@ -489,8 +481,7 @@ curl -X GET http://coder-server:8080/api/v2/organizations/{organization}/templat
       "property2": "string"
     },
     "type": "template_version_import",
-    "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b",
-    "worker_name": "string"
+    "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
   },
   "matched_provisioners": {
     "available": 0,
@@ -587,8 +578,7 @@ curl -X GET http://coder-server:8080/api/v2/organizations/{organization}/templat
       "property2": "string"
     },
     "type": "template_version_import",
-    "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b",
-    "worker_name": "string"
+    "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
   },
   "matched_provisioners": {
     "available": 0,
@@ -709,8 +699,7 @@ curl -X POST http://coder-server:8080/api/v2/organizations/{organization}/templa
       "property2": "string"
     },
     "type": "template_version_import",
-    "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b",
-    "worker_name": "string"
+    "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
   },
   "matched_provisioners": {
     "available": 0,
@@ -749,10 +738,6 @@ curl -X GET http://coder-server:8080/api/v2/templates \
 ```
 
 `GET /templates`
-
-Returns a list of templates.
-By default, only non-deprecated templates are returned.
-To include deprecated templates, specify `deprecated:true` in the search query.
 
 ### Example responses
 
@@ -809,8 +794,7 @@ To include deprecated templates, specify `deprecated:true` in the search query.
     "require_active_version": true,
     "time_til_dormant_autodelete_ms": 0,
     "time_til_dormant_ms": 0,
-    "updated_at": "2019-08-24T14:15:22Z",
-    "use_classic_parameter_flow": true
+    "updated_at": "2019-08-24T14:15:22Z"
   }
 ]
 ```
@@ -866,7 +850,6 @@ Restarts will only happen on weekdays in this list on weeks which line up with W
 |`» time_til_dormant_autodelete_ms`|integer|false|||
 |`» time_til_dormant_ms`|integer|false|||
 |`» updated_at`|string(date-time)|false|||
-|`» use_classic_parameter_flow`|boolean|false|||
 
 #### Enumerated Values
 
@@ -1008,8 +991,7 @@ curl -X GET http://coder-server:8080/api/v2/templates/{template} \
   "require_active_version": true,
   "time_til_dormant_autodelete_ms": 0,
   "time_til_dormant_ms": 0,
-  "updated_at": "2019-08-24T14:15:22Z",
-  "use_classic_parameter_flow": true
+  "updated_at": "2019-08-24T14:15:22Z"
 }
 ```
 
@@ -1138,8 +1120,7 @@ curl -X PATCH http://coder-server:8080/api/v2/templates/{template} \
   "require_active_version": true,
   "time_til_dormant_autodelete_ms": 0,
   "time_til_dormant_ms": 0,
-  "updated_at": "2019-08-24T14:15:22Z",
-  "use_classic_parameter_flow": true
+  "updated_at": "2019-08-24T14:15:22Z"
 }
 ```
 
@@ -1267,8 +1248,7 @@ curl -X GET http://coder-server:8080/api/v2/templates/{template}/versions \
         "property2": "string"
       },
       "type": "template_version_import",
-      "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b",
-      "worker_name": "string"
+      "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
     },
     "matched_provisioners": {
       "available": 0,
@@ -1338,7 +1318,6 @@ Status Code **200**
 | `»»» [any property]`        | string                                                                       | false    |              |                                                                                                                                                                     |
 | `»» type`                   | [codersdk.ProvisionerJobType](schemas.md#codersdkprovisionerjobtype)         | false    |              |                                                                                                                                                                     |
 | `»» worker_id`              | string(uuid)                                                                 | false    |              |                                                                                                                                                                     |
-| `»» worker_name`            | string                                                                       | false    |              |                                                                                                                                                                     |
 | `» matched_provisioners`    | [codersdk.MatchedProvisioners](schemas.md#codersdkmatchedprovisioners)       | false    |              |                                                                                                                                                                     |
 | `»» available`              | integer                                                                      | false    |              | Available is the number of provisioner daemons that are available to take jobs. This may be less than the count if some provisioners are busy or have been stopped. |
 | `»» count`                  | integer                                                                      | false    |              | Count is the number of provisioner daemons that matched the given tags. If the count is 0, it means no provisioner daemons matched the requested tags.              |
@@ -1546,8 +1525,7 @@ curl -X GET http://coder-server:8080/api/v2/templates/{template}/versions/{templ
         "property2": "string"
       },
       "type": "template_version_import",
-      "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b",
-      "worker_name": "string"
+      "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
     },
     "matched_provisioners": {
       "available": 0,
@@ -1617,7 +1595,6 @@ Status Code **200**
 | `»»» [any property]`        | string                                                                       | false    |              |                                                                                                                                                                     |
 | `»» type`                   | [codersdk.ProvisionerJobType](schemas.md#codersdkprovisionerjobtype)         | false    |              |                                                                                                                                                                     |
 | `»» worker_id`              | string(uuid)                                                                 | false    |              |                                                                                                                                                                     |
-| `»» worker_name`            | string                                                                       | false    |              |                                                                                                                                                                     |
 | `» matched_provisioners`    | [codersdk.MatchedProvisioners](schemas.md#codersdkmatchedprovisioners)       | false    |              |                                                                                                                                                                     |
 | `»» available`              | integer                                                                      | false    |              | Available is the number of provisioner daemons that are available to take jobs. This may be less than the count if some provisioners are busy or have been stopped. |
 | `»» count`                  | integer                                                                      | false    |              | Count is the number of provisioner daemons that matched the given tags. If the count is 0, it means no provisioner daemons matched the requested tags.              |
@@ -1715,8 +1692,7 @@ curl -X GET http://coder-server:8080/api/v2/templateversions/{templateversion} \
       "property2": "string"
     },
     "type": "template_version_import",
-    "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b",
-    "worker_name": "string"
+    "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
   },
   "matched_provisioners": {
     "available": 0,
@@ -1822,8 +1798,7 @@ curl -X PATCH http://coder-server:8080/api/v2/templateversions/{templateversion}
       "property2": "string"
     },
     "type": "template_version_import",
-    "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b",
-    "worker_name": "string"
+    "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
   },
   "matched_provisioners": {
     "available": 0,
@@ -2019,8 +1994,7 @@ curl -X POST http://coder-server:8080/api/v2/templateversions/{templateversion}/
     "property2": "string"
   },
   "type": "template_version_import",
-  "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b",
-  "worker_name": "string"
+  "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
 }
 ```
 
@@ -2092,8 +2066,7 @@ curl -X GET http://coder-server:8080/api/v2/templateversions/{templateversion}/d
     "property2": "string"
   },
   "type": "template_version_import",
-  "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b",
-  "worker_name": "string"
+  "worker_id": "ae5fa6f7-c55b-40c1-b40a-b36ac467652b"
 }
 ```
 

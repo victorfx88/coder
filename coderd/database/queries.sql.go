@@ -766,207 +766,6 @@ func (q *sqlQuerier) InsertAuditLog(ctx context.Context, arg InsertAuditLogParam
 	return i, err
 }
 
-const deleteChat = `-- name: DeleteChat :exec
-DELETE FROM chats WHERE id = $1
-`
-
-func (q *sqlQuerier) DeleteChat(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, deleteChat, id)
-	return err
-}
-
-const getChatByID = `-- name: GetChatByID :one
-SELECT id, owner_id, created_at, updated_at, title FROM chats
-WHERE id = $1
-`
-
-func (q *sqlQuerier) GetChatByID(ctx context.Context, id uuid.UUID) (Chat, error) {
-	row := q.db.QueryRowContext(ctx, getChatByID, id)
-	var i Chat
-	err := row.Scan(
-		&i.ID,
-		&i.OwnerID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Title,
-	)
-	return i, err
-}
-
-const getChatMessagesByChatID = `-- name: GetChatMessagesByChatID :many
-SELECT id, chat_id, created_at, model, provider, content FROM chat_messages
-WHERE chat_id = $1
-ORDER BY created_at ASC
-`
-
-func (q *sqlQuerier) GetChatMessagesByChatID(ctx context.Context, chatID uuid.UUID) ([]ChatMessage, error) {
-	rows, err := q.db.QueryContext(ctx, getChatMessagesByChatID, chatID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ChatMessage
-	for rows.Next() {
-		var i ChatMessage
-		if err := rows.Scan(
-			&i.ID,
-			&i.ChatID,
-			&i.CreatedAt,
-			&i.Model,
-			&i.Provider,
-			&i.Content,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getChatsByOwnerID = `-- name: GetChatsByOwnerID :many
-SELECT id, owner_id, created_at, updated_at, title FROM chats
-WHERE owner_id = $1
-ORDER BY created_at DESC
-`
-
-func (q *sqlQuerier) GetChatsByOwnerID(ctx context.Context, ownerID uuid.UUID) ([]Chat, error) {
-	rows, err := q.db.QueryContext(ctx, getChatsByOwnerID, ownerID)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []Chat
-	for rows.Next() {
-		var i Chat
-		if err := rows.Scan(
-			&i.ID,
-			&i.OwnerID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.Title,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const insertChat = `-- name: InsertChat :one
-INSERT INTO chats (owner_id, created_at, updated_at, title)
-VALUES ($1, $2, $3, $4)
-RETURNING id, owner_id, created_at, updated_at, title
-`
-
-type InsertChatParams struct {
-	OwnerID   uuid.UUID `db:"owner_id" json:"owner_id"`
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
-	Title     string    `db:"title" json:"title"`
-}
-
-func (q *sqlQuerier) InsertChat(ctx context.Context, arg InsertChatParams) (Chat, error) {
-	row := q.db.QueryRowContext(ctx, insertChat,
-		arg.OwnerID,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-		arg.Title,
-	)
-	var i Chat
-	err := row.Scan(
-		&i.ID,
-		&i.OwnerID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.Title,
-	)
-	return i, err
-}
-
-const insertChatMessages = `-- name: InsertChatMessages :many
-INSERT INTO chat_messages (chat_id, created_at, model, provider, content)
-SELECT
-    $1 :: uuid AS chat_id,
-    $2 :: timestamptz AS created_at,
-    $3 :: VARCHAR(127) AS model,
-    $4 :: VARCHAR(127) AS provider,
-    jsonb_array_elements($5 :: jsonb) AS content
-RETURNING chat_messages.id, chat_messages.chat_id, chat_messages.created_at, chat_messages.model, chat_messages.provider, chat_messages.content
-`
-
-type InsertChatMessagesParams struct {
-	ChatID    uuid.UUID       `db:"chat_id" json:"chat_id"`
-	CreatedAt time.Time       `db:"created_at" json:"created_at"`
-	Model     string          `db:"model" json:"model"`
-	Provider  string          `db:"provider" json:"provider"`
-	Content   json.RawMessage `db:"content" json:"content"`
-}
-
-func (q *sqlQuerier) InsertChatMessages(ctx context.Context, arg InsertChatMessagesParams) ([]ChatMessage, error) {
-	rows, err := q.db.QueryContext(ctx, insertChatMessages,
-		arg.ChatID,
-		arg.CreatedAt,
-		arg.Model,
-		arg.Provider,
-		arg.Content,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ChatMessage
-	for rows.Next() {
-		var i ChatMessage
-		if err := rows.Scan(
-			&i.ID,
-			&i.ChatID,
-			&i.CreatedAt,
-			&i.Model,
-			&i.Provider,
-			&i.Content,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const updateChatByID = `-- name: UpdateChatByID :exec
-UPDATE chats
-SET title = $2, updated_at = $3
-WHERE id = $1
-`
-
-type UpdateChatByIDParams struct {
-	ID        uuid.UUID `db:"id" json:"id"`
-	Title     string    `db:"title" json:"title"`
-	UpdatedAt time.Time `db:"updated_at" json:"updated_at"`
-}
-
-func (q *sqlQuerier) UpdateChatByID(ctx context.Context, arg UpdateChatByIDParams) error {
-	_, err := q.db.ExecContext(ctx, updateChatByID, arg.ID, arg.Title, arg.UpdatedAt)
-	return err
-}
-
 const deleteCryptoKey = `-- name: DeleteCryptoKey :one
 UPDATE crypto_keys
 SET secret = NULL, secret_key_id = NULL
@@ -7384,6 +7183,60 @@ func (q *sqlQuerier) AcquireProvisionerJob(ctx context.Context, arg AcquireProvi
 	return i, err
 }
 
+const getHungProvisionerJobs = `-- name: GetHungProvisionerJobs :many
+SELECT
+	id, created_at, updated_at, started_at, canceled_at, completed_at, error, organization_id, initiator_id, provisioner, storage_method, type, input, worker_id, file_id, tags, error_code, trace_metadata, job_status
+FROM
+	provisioner_jobs
+WHERE
+	updated_at < $1
+	AND started_at IS NOT NULL
+	AND completed_at IS NULL
+`
+
+func (q *sqlQuerier) GetHungProvisionerJobs(ctx context.Context, updatedAt time.Time) ([]ProvisionerJob, error) {
+	rows, err := q.db.QueryContext(ctx, getHungProvisionerJobs, updatedAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ProvisionerJob
+	for rows.Next() {
+		var i ProvisionerJob
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.StartedAt,
+			&i.CanceledAt,
+			&i.CompletedAt,
+			&i.Error,
+			&i.OrganizationID,
+			&i.InitiatorID,
+			&i.Provisioner,
+			&i.StorageMethod,
+			&i.Type,
+			&i.Input,
+			&i.WorkerID,
+			&i.FileID,
+			&i.Tags,
+			&i.ErrorCode,
+			&i.TraceMetadata,
+			&i.JobStatus,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getProvisionerJobByID = `-- name: GetProvisionerJobByID :one
 SELECT
 	id, created_at, updated_at, started_at, canceled_at, completed_at, error, organization_id, initiator_id, provisioner, storage_method, type, input, worker_id, file_id, tags, error_code, trace_metadata, job_status
@@ -7395,46 +7248,6 @@ WHERE
 
 func (q *sqlQuerier) GetProvisionerJobByID(ctx context.Context, id uuid.UUID) (ProvisionerJob, error) {
 	row := q.db.QueryRowContext(ctx, getProvisionerJobByID, id)
-	var i ProvisionerJob
-	err := row.Scan(
-		&i.ID,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.StartedAt,
-		&i.CanceledAt,
-		&i.CompletedAt,
-		&i.Error,
-		&i.OrganizationID,
-		&i.InitiatorID,
-		&i.Provisioner,
-		&i.StorageMethod,
-		&i.Type,
-		&i.Input,
-		&i.WorkerID,
-		&i.FileID,
-		&i.Tags,
-		&i.ErrorCode,
-		&i.TraceMetadata,
-		&i.JobStatus,
-	)
-	return i, err
-}
-
-const getProvisionerJobByIDForUpdate = `-- name: GetProvisionerJobByIDForUpdate :one
-SELECT
-	id, created_at, updated_at, started_at, canceled_at, completed_at, error, organization_id, initiator_id, provisioner, storage_method, type, input, worker_id, file_id, tags, error_code, trace_metadata, job_status
-FROM
-	provisioner_jobs
-WHERE
-	id = $1
-FOR UPDATE
-SKIP LOCKED
-`
-
-// Gets a single provisioner job by ID for update.
-// This is used to securely reap jobs that have been hung/pending for a long time.
-func (q *sqlQuerier) GetProvisionerJobByIDForUpdate(ctx context.Context, id uuid.UUID) (ProvisionerJob, error) {
-	row := q.db.QueryRowContext(ctx, getProvisionerJobByIDForUpdate, id)
 	var i ProvisionerJob
 	err := row.Scan(
 		&i.ID,
@@ -7716,9 +7529,7 @@ SELECT
 	COALESCE(t.display_name, '') AS template_display_name,
 	COALESCE(t.icon, '') AS template_icon,
 	w.id AS workspace_id,
-	COALESCE(w.name, '') AS workspace_name,
-	-- Include the name of the provisioner_daemon associated to the job
-	COALESCE(pd.name, '') AS worker_name
+	COALESCE(w.name, '') AS workspace_name
 FROM
 	provisioner_jobs pj
 LEFT JOIN
@@ -7743,9 +7554,6 @@ LEFT JOIN
 		t.id = tv.template_id
 		AND t.organization_id = pj.organization_id
 	)
-LEFT JOIN
-	-- Join to get the daemon name corresponding to the job's worker_id
-	provisioner_daemons pd ON pd.id = pj.worker_id
 WHERE
 	pj.organization_id = $1::uuid
 	AND (COALESCE(array_length($2::uuid[], 1), 0) = 0 OR pj.id = ANY($2::uuid[]))
@@ -7761,8 +7569,7 @@ GROUP BY
 	t.display_name,
 	t.icon,
 	w.id,
-	w.name,
-	pd.name
+	w.name
 ORDER BY
 	pj.created_at DESC
 LIMIT
@@ -7789,7 +7596,6 @@ type GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerRow
 	TemplateIcon        string         `db:"template_icon" json:"template_icon"`
 	WorkspaceID         uuid.NullUUID  `db:"workspace_id" json:"workspace_id"`
 	WorkspaceName       string         `db:"workspace_name" json:"workspace_name"`
-	WorkerName          string         `db:"worker_name" json:"worker_name"`
 }
 
 func (q *sqlQuerier) GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisioner(ctx context.Context, arg GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerParams) ([]GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerRow, error) {
@@ -7837,7 +7643,6 @@ func (q *sqlQuerier) GetProvisionerJobsByOrganizationAndStatusWithQueuePositionA
 			&i.TemplateIcon,
 			&i.WorkspaceID,
 			&i.WorkspaceName,
-			&i.WorkerName,
 		); err != nil {
 			return nil, err
 		}
@@ -7858,79 +7663,6 @@ SELECT id, created_at, updated_at, started_at, canceled_at, completed_at, error,
 
 func (q *sqlQuerier) GetProvisionerJobsCreatedAfter(ctx context.Context, createdAt time.Time) ([]ProvisionerJob, error) {
 	rows, err := q.db.QueryContext(ctx, getProvisionerJobsCreatedAfter, createdAt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []ProvisionerJob
-	for rows.Next() {
-		var i ProvisionerJob
-		if err := rows.Scan(
-			&i.ID,
-			&i.CreatedAt,
-			&i.UpdatedAt,
-			&i.StartedAt,
-			&i.CanceledAt,
-			&i.CompletedAt,
-			&i.Error,
-			&i.OrganizationID,
-			&i.InitiatorID,
-			&i.Provisioner,
-			&i.StorageMethod,
-			&i.Type,
-			&i.Input,
-			&i.WorkerID,
-			&i.FileID,
-			&i.Tags,
-			&i.ErrorCode,
-			&i.TraceMetadata,
-			&i.JobStatus,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getProvisionerJobsToBeReaped = `-- name: GetProvisionerJobsToBeReaped :many
-SELECT
-	id, created_at, updated_at, started_at, canceled_at, completed_at, error, organization_id, initiator_id, provisioner, storage_method, type, input, worker_id, file_id, tags, error_code, trace_metadata, job_status
-FROM
-	provisioner_jobs
-WHERE
-	(
-		-- If the job has not been started before @pending_since, reap it.
-		updated_at < $1
-		AND started_at IS NULL
-		AND completed_at IS NULL
-	)
-	OR
-	(
-		-- If the job has been started but not completed before @hung_since, reap it.
-		updated_at < $2
-		AND started_at IS NOT NULL
-		AND completed_at IS NULL
-	)
-ORDER BY random()
-LIMIT $3
-`
-
-type GetProvisionerJobsToBeReapedParams struct {
-	PendingSince time.Time `db:"pending_since" json:"pending_since"`
-	HungSince    time.Time `db:"hung_since" json:"hung_since"`
-	MaxJobs      int32     `db:"max_jobs" json:"max_jobs"`
-}
-
-// To avoid repeatedly attempting to reap the same jobs, we randomly order and limit to @max_jobs.
-func (q *sqlQuerier) GetProvisionerJobsToBeReaped(ctx context.Context, arg GetProvisionerJobsToBeReapedParams) ([]ProvisionerJob, error) {
-	rows, err := q.db.QueryContext(ctx, getProvisionerJobsToBeReaped, arg.PendingSince, arg.HungSince, arg.MaxJobs)
 	if err != nil {
 		return nil, err
 	}
@@ -8176,40 +7908,6 @@ func (q *sqlQuerier) UpdateProvisionerJobWithCompleteByID(ctx context.Context, a
 		arg.CompletedAt,
 		arg.Error,
 		arg.ErrorCode,
-	)
-	return err
-}
-
-const updateProvisionerJobWithCompleteWithStartedAtByID = `-- name: UpdateProvisionerJobWithCompleteWithStartedAtByID :exec
-UPDATE
-	provisioner_jobs
-SET
-	updated_at = $2,
-	completed_at = $3,
-	error = $4,
-	error_code = $5,
-	started_at = $6
-WHERE
-	id = $1
-`
-
-type UpdateProvisionerJobWithCompleteWithStartedAtByIDParams struct {
-	ID          uuid.UUID      `db:"id" json:"id"`
-	UpdatedAt   time.Time      `db:"updated_at" json:"updated_at"`
-	CompletedAt sql.NullTime   `db:"completed_at" json:"completed_at"`
-	Error       sql.NullString `db:"error" json:"error"`
-	ErrorCode   sql.NullString `db:"error_code" json:"error_code"`
-	StartedAt   sql.NullTime   `db:"started_at" json:"started_at"`
-}
-
-func (q *sqlQuerier) UpdateProvisionerJobWithCompleteWithStartedAtByID(ctx context.Context, arg UpdateProvisionerJobWithCompleteWithStartedAtByIDParams) error {
-	_, err := q.db.ExecContext(ctx, updateProvisionerJobWithCompleteWithStartedAtByID,
-		arg.ID,
-		arg.UpdatedAt,
-		arg.CompletedAt,
-		arg.Error,
-		arg.ErrorCode,
-		arg.StartedAt,
 	)
 	return err
 }
@@ -10528,7 +10226,7 @@ func (q *sqlQuerier) GetTemplateAverageBuildTime(ctx context.Context, arg GetTem
 
 const getTemplateByID = `-- name: GetTemplateByID :one
 SELECT
-	id, created_at, updated_at, organization_id, deleted, name, provisioner, active_version_id, description, default_ttl, created_by, icon, user_acl, group_acl, display_name, allow_user_cancel_workspace_jobs, allow_user_autostart, allow_user_autostop, failure_ttl, time_til_dormant, time_til_dormant_autodelete, autostop_requirement_days_of_week, autostop_requirement_weeks, autostart_block_days_of_week, require_active_version, deprecated, activity_bump, max_port_sharing_level, use_classic_parameter_flow, created_by_avatar_url, created_by_username, organization_name, organization_display_name, organization_icon
+	id, created_at, updated_at, organization_id, deleted, name, provisioner, active_version_id, description, default_ttl, created_by, icon, user_acl, group_acl, display_name, allow_user_cancel_workspace_jobs, allow_user_autostart, allow_user_autostop, failure_ttl, time_til_dormant, time_til_dormant_autodelete, autostop_requirement_days_of_week, autostop_requirement_weeks, autostart_block_days_of_week, require_active_version, deprecated, activity_bump, max_port_sharing_level, created_by_avatar_url, created_by_username, organization_name, organization_display_name, organization_icon
 FROM
 	template_with_names
 WHERE
@@ -10569,7 +10267,6 @@ func (q *sqlQuerier) GetTemplateByID(ctx context.Context, id uuid.UUID) (Templat
 		&i.Deprecated,
 		&i.ActivityBump,
 		&i.MaxPortSharingLevel,
-		&i.UseClassicParameterFlow,
 		&i.CreatedByAvatarURL,
 		&i.CreatedByUsername,
 		&i.OrganizationName,
@@ -10581,7 +10278,7 @@ func (q *sqlQuerier) GetTemplateByID(ctx context.Context, id uuid.UUID) (Templat
 
 const getTemplateByOrganizationAndName = `-- name: GetTemplateByOrganizationAndName :one
 SELECT
-	id, created_at, updated_at, organization_id, deleted, name, provisioner, active_version_id, description, default_ttl, created_by, icon, user_acl, group_acl, display_name, allow_user_cancel_workspace_jobs, allow_user_autostart, allow_user_autostop, failure_ttl, time_til_dormant, time_til_dormant_autodelete, autostop_requirement_days_of_week, autostop_requirement_weeks, autostart_block_days_of_week, require_active_version, deprecated, activity_bump, max_port_sharing_level, use_classic_parameter_flow, created_by_avatar_url, created_by_username, organization_name, organization_display_name, organization_icon
+	id, created_at, updated_at, organization_id, deleted, name, provisioner, active_version_id, description, default_ttl, created_by, icon, user_acl, group_acl, display_name, allow_user_cancel_workspace_jobs, allow_user_autostart, allow_user_autostop, failure_ttl, time_til_dormant, time_til_dormant_autodelete, autostop_requirement_days_of_week, autostop_requirement_weeks, autostart_block_days_of_week, require_active_version, deprecated, activity_bump, max_port_sharing_level, created_by_avatar_url, created_by_username, organization_name, organization_display_name, organization_icon
 FROM
 	template_with_names AS templates
 WHERE
@@ -10630,7 +10327,6 @@ func (q *sqlQuerier) GetTemplateByOrganizationAndName(ctx context.Context, arg G
 		&i.Deprecated,
 		&i.ActivityBump,
 		&i.MaxPortSharingLevel,
-		&i.UseClassicParameterFlow,
 		&i.CreatedByAvatarURL,
 		&i.CreatedByUsername,
 		&i.OrganizationName,
@@ -10641,7 +10337,7 @@ func (q *sqlQuerier) GetTemplateByOrganizationAndName(ctx context.Context, arg G
 }
 
 const getTemplates = `-- name: GetTemplates :many
-SELECT id, created_at, updated_at, organization_id, deleted, name, provisioner, active_version_id, description, default_ttl, created_by, icon, user_acl, group_acl, display_name, allow_user_cancel_workspace_jobs, allow_user_autostart, allow_user_autostop, failure_ttl, time_til_dormant, time_til_dormant_autodelete, autostop_requirement_days_of_week, autostop_requirement_weeks, autostart_block_days_of_week, require_active_version, deprecated, activity_bump, max_port_sharing_level, use_classic_parameter_flow, created_by_avatar_url, created_by_username, organization_name, organization_display_name, organization_icon FROM template_with_names AS templates
+SELECT id, created_at, updated_at, organization_id, deleted, name, provisioner, active_version_id, description, default_ttl, created_by, icon, user_acl, group_acl, display_name, allow_user_cancel_workspace_jobs, allow_user_autostart, allow_user_autostop, failure_ttl, time_til_dormant, time_til_dormant_autodelete, autostop_requirement_days_of_week, autostop_requirement_weeks, autostart_block_days_of_week, require_active_version, deprecated, activity_bump, max_port_sharing_level, created_by_avatar_url, created_by_username, organization_name, organization_display_name, organization_icon FROM template_with_names AS templates
 ORDER BY (name, id) ASC
 `
 
@@ -10683,7 +10379,6 @@ func (q *sqlQuerier) GetTemplates(ctx context.Context) ([]Template, error) {
 			&i.Deprecated,
 			&i.ActivityBump,
 			&i.MaxPortSharingLevel,
-			&i.UseClassicParameterFlow,
 			&i.CreatedByAvatarURL,
 			&i.CreatedByUsername,
 			&i.OrganizationName,
@@ -10705,7 +10400,7 @@ func (q *sqlQuerier) GetTemplates(ctx context.Context) ([]Template, error) {
 
 const getTemplatesWithFilter = `-- name: GetTemplatesWithFilter :many
 SELECT
-	id, created_at, updated_at, organization_id, deleted, name, provisioner, active_version_id, description, default_ttl, created_by, icon, user_acl, group_acl, display_name, allow_user_cancel_workspace_jobs, allow_user_autostart, allow_user_autostop, failure_ttl, time_til_dormant, time_til_dormant_autodelete, autostop_requirement_days_of_week, autostop_requirement_weeks, autostart_block_days_of_week, require_active_version, deprecated, activity_bump, max_port_sharing_level, use_classic_parameter_flow, created_by_avatar_url, created_by_username, organization_name, organization_display_name, organization_icon
+	id, created_at, updated_at, organization_id, deleted, name, provisioner, active_version_id, description, default_ttl, created_by, icon, user_acl, group_acl, display_name, allow_user_cancel_workspace_jobs, allow_user_autostart, allow_user_autostop, failure_ttl, time_til_dormant, time_til_dormant_autodelete, autostop_requirement_days_of_week, autostop_requirement_weeks, autostart_block_days_of_week, require_active_version, deprecated, activity_bump, max_port_sharing_level, created_by_avatar_url, created_by_username, organization_name, organization_display_name, organization_icon
 FROM
 	template_with_names AS templates
 WHERE
@@ -10805,7 +10500,6 @@ func (q *sqlQuerier) GetTemplatesWithFilter(ctx context.Context, arg GetTemplate
 			&i.Deprecated,
 			&i.ActivityBump,
 			&i.MaxPortSharingLevel,
-			&i.UseClassicParameterFlow,
 			&i.CreatedByAvatarURL,
 			&i.CreatedByUsername,
 			&i.OrganizationName,
@@ -10982,8 +10676,7 @@ SET
 	display_name = $6,
 	allow_user_cancel_workspace_jobs = $7,
 	group_acl = $8,
-	max_port_sharing_level = $9,
-	use_classic_parameter_flow = $10
+	max_port_sharing_level = $9
 WHERE
 	id = $1
 `
@@ -10998,7 +10691,6 @@ type UpdateTemplateMetaByIDParams struct {
 	AllowUserCancelWorkspaceJobs bool            `db:"allow_user_cancel_workspace_jobs" json:"allow_user_cancel_workspace_jobs"`
 	GroupACL                     TemplateACL     `db:"group_acl" json:"group_acl"`
 	MaxPortSharingLevel          AppSharingLevel `db:"max_port_sharing_level" json:"max_port_sharing_level"`
-	UseClassicParameterFlow      bool            `db:"use_classic_parameter_flow" json:"use_classic_parameter_flow"`
 }
 
 func (q *sqlQuerier) UpdateTemplateMetaByID(ctx context.Context, arg UpdateTemplateMetaByIDParams) error {
@@ -11012,7 +10704,6 @@ func (q *sqlQuerier) UpdateTemplateMetaByID(ctx context.Context, arg UpdateTempl
 		arg.AllowUserCancelWorkspaceJobs,
 		arg.GroupACL,
 		arg.MaxPortSharingLevel,
-		arg.UseClassicParameterFlow,
 	)
 	return err
 }
@@ -11839,36 +11530,24 @@ INSERT INTO
 	template_version_terraform_values (
 		template_version_id,
 		cached_plan,
-		cached_module_files,
-		updated_at,
-	    provisionerd_version
+		updated_at
 	)
 VALUES
 	(
 		(select id from template_versions where job_id = $1),
 		$2,
-		$3,
-		$4,
-		$5
+		$3
 	)
 `
 
 type InsertTemplateVersionTerraformValuesByJobIDParams struct {
-	JobID               uuid.UUID       `db:"job_id" json:"job_id"`
-	CachedPlan          json.RawMessage `db:"cached_plan" json:"cached_plan"`
-	CachedModuleFiles   uuid.NullUUID   `db:"cached_module_files" json:"cached_module_files"`
-	UpdatedAt           time.Time       `db:"updated_at" json:"updated_at"`
-	ProvisionerdVersion string          `db:"provisionerd_version" json:"provisionerd_version"`
+	JobID      uuid.UUID       `db:"job_id" json:"job_id"`
+	CachedPlan json.RawMessage `db:"cached_plan" json:"cached_plan"`
+	UpdatedAt  time.Time       `db:"updated_at" json:"updated_at"`
 }
 
 func (q *sqlQuerier) InsertTemplateVersionTerraformValuesByJobID(ctx context.Context, arg InsertTemplateVersionTerraformValuesByJobIDParams) error {
-	_, err := q.db.ExecContext(ctx, insertTemplateVersionTerraformValuesByJobID,
-		arg.JobID,
-		arg.CachedPlan,
-		arg.CachedModuleFiles,
-		arg.UpdatedAt,
-		arg.ProvisionerdVersion,
-	)
+	_, err := q.db.ExecContext(ctx, insertTemplateVersionTerraformValuesByJobID, arg.JobID, arg.CachedPlan, arg.UpdatedAt)
 	return err
 }
 
@@ -18305,7 +17984,7 @@ LEFT JOIN LATERAL (
 ) latest_build ON TRUE
 LEFT JOIN LATERAL (
 	SELECT
-		id, created_at, updated_at, organization_id, deleted, name, provisioner, active_version_id, description, default_ttl, created_by, icon, user_acl, group_acl, display_name, allow_user_cancel_workspace_jobs, allow_user_autostart, allow_user_autostop, failure_ttl, time_til_dormant, time_til_dormant_autodelete, autostop_requirement_days_of_week, autostop_requirement_weeks, autostart_block_days_of_week, require_active_version, deprecated, activity_bump, max_port_sharing_level, use_classic_parameter_flow
+		id, created_at, updated_at, organization_id, deleted, name, provisioner, active_version_id, description, default_ttl, created_by, icon, user_acl, group_acl, display_name, allow_user_cancel_workspace_jobs, allow_user_autostart, allow_user_autostop, failure_ttl, time_til_dormant, time_til_dormant_autodelete, autostop_requirement_days_of_week, autostop_requirement_weeks, autostart_block_days_of_week, require_active_version, deprecated, activity_bump, max_port_sharing_level
 	FROM
 		templates
 	WHERE

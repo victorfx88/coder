@@ -43,9 +43,6 @@ import (
 	"github.com/coder/quartz"
 	"github.com/coder/serpent"
 
-	"github.com/coder/coder/v2/codersdk/drpcsdk"
-
-	"github.com/coder/coder/v2/coderd/ai"
 	"github.com/coder/coder/v2/coderd/cryptokeys"
 	"github.com/coder/coder/v2/coderd/entitlements"
 	"github.com/coder/coder/v2/coderd/files"
@@ -87,6 +84,7 @@ import (
 	"github.com/coder/coder/v2/coderd/workspaceapps"
 	"github.com/coder/coder/v2/coderd/workspacestats"
 	"github.com/coder/coder/v2/codersdk"
+	"github.com/coder/coder/v2/codersdk/drpc"
 	"github.com/coder/coder/v2/codersdk/healthsdk"
 	"github.com/coder/coder/v2/provisionerd/proto"
 	"github.com/coder/coder/v2/provisionersdk"
@@ -158,7 +156,6 @@ type Options struct {
 	Authorizer                     rbac.Authorizer
 	AzureCertificates              x509.VerifyOptions
 	GoogleTokenValidator           *idtoken.Validator
-	LanguageModels                 ai.LanguageModels
 	GithubOAuth2Config             *GithubOAuth2Config
 	OIDCConfig                     *OIDCConfig
 	PrometheusRegistry             *prometheus.Registry
@@ -860,7 +857,7 @@ func New(options *Options) *API {
 				next.ServeHTTP(w, r)
 			})
 		},
-		// httpmw.CSRF(options.DeploymentValues.HTTPCookies),
+		httpmw.CSRF(options.DeploymentValues.HTTPCookies),
 	)
 
 	// This incurs a performance hit from the middleware, but is required to make sure
@@ -965,7 +962,6 @@ func New(options *Options) *API {
 			r.Get("/config", api.deploymentValues)
 			r.Get("/stats", api.deploymentStats)
 			r.Get("/ssh", api.sshConfig)
-			r.Get("/llms", api.deploymentLLMs)
 		})
 		r.Route("/experiments", func(r chi.Router) {
 			r.Use(apiKeyMiddleware)
@@ -1007,21 +1003,6 @@ func New(options *Options) *API {
 			)
 			r.Get("/{fileID}", api.fileByID)
 			r.Post("/", api.postFile)
-		})
-		// Chats are an experimental feature
-		r.Route("/chats", func(r chi.Router) {
-			r.Use(
-				apiKeyMiddleware,
-				httpmw.RequireExperiment(api.Experiments, codersdk.ExperimentAgenticChat),
-			)
-			r.Get("/", api.listChats)
-			r.Post("/", api.postChats)
-			r.Route("/{chat}", func(r chi.Router) {
-				r.Use(httpmw.ExtractChatParam(options.Database))
-				r.Get("/", api.chat)
-				r.Get("/messages", api.chatMessages)
-				r.Post("/messages", api.postChatMessages)
-			})
 		})
 		r.Route("/external-auth", func(r chi.Router) {
 			r.Use(
@@ -1196,25 +1177,15 @@ func New(options *Options) *API {
 				})
 				r.Route("/{user}", func(r chi.Router) {
 					r.Group(func(r chi.Router) {
-						r.Use(httpmw.ExtractOrganizationMembersParam(options.Database, api.HTTPAuth.Authorize))
+						r.Use(httpmw.ExtractUserParamOptional(options.Database))
 						// Creating workspaces does not require permissions on the user, only the
 						// organization member. This endpoint should match the authz story of
 						// postWorkspacesByOrganization
 						r.Post("/workspaces", api.postUserWorkspaces)
-						r.Route("/workspace/{workspacename}", func(r chi.Router) {
-							r.Get("/", api.workspaceByOwnerAndName)
-							r.Get("/builds/{buildnumber}", api.workspaceBuildByBuildNumber)
-						})
-					})
-
-					r.Group(func(r chi.Router) {
-						r.Use(httpmw.ExtractUserParam(options.Database))
 
 						// Similarly to creating a workspace, evaluating parameters for a
 						// new workspace should also match the authz story of
 						// postWorkspacesByOrganization
-						// TODO: Do not require site wide read user permission. Make this work
-						//   with org member permissions.
 						r.Route("/templateversions/{templateversion}", func(r chi.Router) {
 							r.Use(
 								httpmw.ExtractTemplateVersionParam(options.Database),
@@ -1222,6 +1193,10 @@ func New(options *Options) *API {
 							)
 							r.Get("/parameters", api.templateVersionDynamicParameters)
 						})
+					})
+
+					r.Group(func(r chi.Router) {
+						r.Use(httpmw.ExtractUserParam(options.Database))
 
 						r.Post("/convert-login", api.postConvertLoginType)
 						r.Delete("/", api.deleteUser)
@@ -1263,7 +1238,10 @@ func New(options *Options) *API {
 							r.Get("/", api.organizationsByUser)
 							r.Get("/{organizationname}", api.organizationByUserAndName)
 						})
-
+						r.Route("/workspace/{workspacename}", func(r chi.Router) {
+							r.Get("/", api.workspaceByOwnerAndName)
+							r.Get("/builds/{buildnumber}", api.workspaceBuildByBuildNumber)
+						})
 						r.Get("/gitsshkey", api.gitSSHKey)
 						r.Put("/gitsshkey", api.regenerateGitSSHKey)
 						r.Route("/notifications", func(r chi.Router) {
@@ -1326,7 +1304,6 @@ func New(options *Options) *API {
 				r.Get("/listening-ports", api.workspaceAgentListeningPorts)
 				r.Get("/connection", api.workspaceAgentConnection)
 				r.Get("/containers", api.workspaceAgentListContainers)
-				r.Post("/containers/devcontainers/container/{container}/recreate", api.workspaceAgentRecreateDevcontainer)
 				r.Get("/coordinate", api.workspaceAgentClientCoordinate)
 
 				// PTY is part of workspaceAppServer.
@@ -1598,7 +1575,7 @@ type API struct {
 	// passed to dbauthz.
 	AccessControlStore  *atomic.Pointer[dbauthz.AccessControlStore]
 	PortSharer          atomic.Pointer[portsharing.PortSharer]
-	FileCache           *files.Cache
+	FileCache           files.Cache
 	PrebuildsClaimer    atomic.Pointer[prebuilds.Claimer]
 	PrebuildsReconciler atomic.Pointer[prebuilds.ReconciliationOrchestrator]
 
@@ -1723,32 +1700,15 @@ func compressHandler(h http.Handler) http.Handler {
 	return cmp.Handler(h)
 }
 
-type MemoryProvisionerDaemonOption func(*memoryProvisionerDaemonOptions)
-
-func MemoryProvisionerWithVersionOverride(version string) MemoryProvisionerDaemonOption {
-	return func(opts *memoryProvisionerDaemonOptions) {
-		opts.versionOverride = version
-	}
-}
-
-type memoryProvisionerDaemonOptions struct {
-	versionOverride string
-}
-
 // CreateInMemoryProvisionerDaemon is an in-memory connection to a provisionerd.
 // Useful when starting coderd and provisionerd in the same process.
 func (api *API) CreateInMemoryProvisionerDaemon(dialCtx context.Context, name string, provisionerTypes []codersdk.ProvisionerType) (client proto.DRPCProvisionerDaemonClient, err error) {
 	return api.CreateInMemoryTaggedProvisionerDaemon(dialCtx, name, provisionerTypes, nil)
 }
 
-func (api *API) CreateInMemoryTaggedProvisionerDaemon(dialCtx context.Context, name string, provisionerTypes []codersdk.ProvisionerType, provisionerTags map[string]string, opts ...MemoryProvisionerDaemonOption) (client proto.DRPCProvisionerDaemonClient, err error) {
-	options := &memoryProvisionerDaemonOptions{}
-	for _, opt := range opts {
-		opt(options)
-	}
-
+func (api *API) CreateInMemoryTaggedProvisionerDaemon(dialCtx context.Context, name string, provisionerTypes []codersdk.ProvisionerType, provisionerTags map[string]string) (client proto.DRPCProvisionerDaemonClient, err error) {
 	tracer := api.TracerProvider.Tracer(tracing.TracerName)
-	clientSession, serverSession := drpcsdk.MemTransportPipe()
+	clientSession, serverSession := drpc.MemTransportPipe()
 	defer func() {
 		if err != nil {
 			_ = clientSession.Close()
@@ -1773,12 +1733,6 @@ func (api *API) CreateInMemoryTaggedProvisionerDaemon(dialCtx context.Context, n
 		return nil, xerrors.Errorf("failed to parse built-in provisioner key ID: %w", err)
 	}
 
-	apiVersion := proto.CurrentVersion.String()
-	if options.versionOverride != "" && flag.Lookup("test.v") != nil {
-		// This should only be usable for unit testing. To fake a different provisioner version
-		apiVersion = options.versionOverride
-	}
-
 	//nolint:gocritic // in-memory provisioners are owned by system
 	daemon, err := api.Database.UpsertProvisionerDaemon(dbauthz.AsSystemRestricted(dialCtx), database.UpsertProvisionerDaemonParams{
 		Name:           name,
@@ -1788,7 +1742,7 @@ func (api *API) CreateInMemoryTaggedProvisionerDaemon(dialCtx context.Context, n
 		Tags:           provisionersdk.MutateTags(uuid.Nil, provisionerTags),
 		LastSeenAt:     sql.NullTime{Time: dbtime.Now(), Valid: true},
 		Version:        buildinfo.Version(),
-		APIVersion:     apiVersion,
+		APIVersion:     proto.CurrentVersion.String(),
 		KeyID:          keyID,
 	})
 	if err != nil {
@@ -1800,7 +1754,6 @@ func (api *API) CreateInMemoryTaggedProvisionerDaemon(dialCtx context.Context, n
 	logger := api.Logger.Named(fmt.Sprintf("inmem-provisionerd-%s", name))
 	srv, err := provisionerdserver.NewServer(
 		api.ctx, // use the same ctx as the API
-		daemon.APIVersion,
 		api.AccessURL,
 		daemon.ID,
 		defaultOrg.ID,
@@ -1834,7 +1787,6 @@ func (api *API) CreateInMemoryTaggedProvisionerDaemon(dialCtx context.Context, n
 	}
 	server := drpcserver.NewWithOptions(&tracing.DRPCHandler{Handler: mux},
 		drpcserver.Options{
-			Manager: drpcsdk.DefaultDRPCOptions(nil),
 			Log: func(err error) {
 				if xerrors.Is(err, io.EOF) {
 					return

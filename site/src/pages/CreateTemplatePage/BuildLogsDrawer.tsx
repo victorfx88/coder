@@ -1,4 +1,6 @@
 import type { Interpolation, Theme } from "@emotion/react";
+import Close from "@mui/icons-material/Close";
+import WarningOutlined from "@mui/icons-material/WarningOutlined";
 import Button from "@mui/material/Button";
 import Drawer from "@mui/material/Drawer";
 import IconButton from "@mui/material/IconButton";
@@ -6,7 +8,6 @@ import { visuallyHidden } from "@mui/utils";
 import { JobError } from "api/queries/templates";
 import type { TemplateVersion } from "api/typesGenerated";
 import { Loader } from "components/Loader/Loader";
-import { TriangleAlertIcon, XIcon } from "lucide-react";
 import { AlertVariant } from "modules/provisioners/ProvisionerAlert";
 import { ProvisionerStatusAlert } from "modules/provisioners/ProvisionerStatusAlert";
 import { useWatchVersionLogs } from "modules/templates/useWatchVersionLogs";
@@ -28,6 +29,10 @@ export const BuildLogsDrawer: FC<BuildLogsDrawerProps> = ({
 	variablesSectionRef,
 	...drawerProps
 }) => {
+	const matchingProvisioners = templateVersion?.matched_provisioners?.count;
+	const availableProvisioners =
+		templateVersion?.matched_provisioners?.available;
+
 	const logs = useWatchVersionLogs(templateVersion);
 	const logsContainer = useRef<HTMLDivElement>(null);
 
@@ -55,17 +60,13 @@ export const BuildLogsDrawer: FC<BuildLogsDrawerProps> = ({
 		error instanceof JobError &&
 		error.job.error_code === "REQUIRED_TEMPLATE_VARIABLES";
 
-	const matchingProvisioners = templateVersion?.matched_provisioners?.count;
-	const availableProvisioners =
-		templateVersion?.matched_provisioners?.available;
-
 	return (
 		<Drawer anchor="right" {...drawerProps}>
 			<div css={styles.root}>
 				<header css={styles.header}>
 					<h3 css={styles.title}>Creating template...</h3>
 					<IconButton size="small" onClick={drawerProps.onClose}>
-						<XIcon className="size-icon-sm" />
+						<Close css={styles.closeIcon} />
 						<span style={visuallyHidden}>Close build logs</span>
 					</IconButton>
 				</header>
@@ -84,7 +85,7 @@ export const BuildLogsDrawer: FC<BuildLogsDrawerProps> = ({
 							drawerProps.onClose();
 						}}
 					/>
-				) : availableProvisioners && availableProvisioners > 0 && logs ? (
+				) : logs ? (
 					<section ref={logsContainer} css={styles.logs}>
 						<WorkspaceBuildLogs logs={logs} css={{ border: 0 }} />
 					</section>
@@ -112,7 +113,7 @@ const MissingVariablesBanner: FC<MissingVariablesBannerProps> = ({
 	return (
 		<div css={bannerStyles.root}>
 			<div css={bannerStyles.content}>
-				<TriangleAlertIcon className="size-icon-lg" css={bannerStyles.icon} />
+				<WarningOutlined css={bannerStyles.icon} />
 				<h4 css={bannerStyles.title}>Missing variables</h4>
 				<p css={bannerStyles.description}>
 					During the build process, we identified some missing variables. Rest
@@ -151,6 +152,9 @@ const styles = {
 		fontWeight: 500,
 		fontSize: 16,
 	},
+	closeIcon: {
+		fontSize: 20,
+	},
 	logs: (theme) => ({
 		flex: 1,
 		overflow: "auto",
@@ -173,6 +177,7 @@ const bannerStyles = {
 		maxWidth: 360,
 	},
 	icon: (theme) => ({
+		fontSize: 32,
 		color: theme.roles.warning.fill.outline,
 	}),
 	title: {

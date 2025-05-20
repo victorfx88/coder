@@ -1,4 +1,6 @@
 import { useTheme } from "@emotion/react";
+import AddIcon from "@mui/icons-material/AddOutlined";
+import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 import Button from "@mui/material/Button";
 import Table from "@mui/material/Table";
 import TableBody from "@mui/material/TableBody";
@@ -17,7 +19,6 @@ import {
 import { Stack } from "components/Stack/Stack";
 import { TableLoader } from "components/TableLoader/TableLoader";
 import { useClickableTableRow } from "hooks/useClickableTableRow";
-import { ChevronRightIcon, PlusIcon } from "lucide-react";
 import type { FC } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -51,7 +52,7 @@ const OAuth2AppsSettingsPageView: FC<OAuth2AppsSettingsProps> = ({
 				<Button
 					component={Link}
 					to="/deployment/oauth2-provider/apps/add"
-					startIcon={<PlusIcon className="size-icon-sm" />}
+					startIcon={<AddIcon />}
 				>
 					Add application
 				</Button>
@@ -110,7 +111,13 @@ const OAuth2AppRow: FC<OAuth2AppRowProps> = ({ app }) => {
 
 			<TableCell>
 				<div css={{ display: "flex", paddingLeft: 16 }}>
-					<ChevronRightIcon className="size-icon-sm" />
+					<KeyboardArrowRight
+						css={{
+							color: theme.palette.text.secondary,
+							width: 20,
+							height: 20,
+						}}
+					/>
 				</div>
 			</TableCell>
 		</TableRow>

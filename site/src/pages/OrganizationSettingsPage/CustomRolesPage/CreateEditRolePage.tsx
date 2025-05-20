@@ -17,7 +17,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { pageTitle } from "utils/page";
 import CreateEditRolePageView from "./CreateEditRolePageView";
 
-const CreateEditRolePage: FC = () => {
+export const CreateEditRolePage: FC = () => {
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
 

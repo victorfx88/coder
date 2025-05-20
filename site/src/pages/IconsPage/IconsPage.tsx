@@ -1,4 +1,6 @@
 import { useTheme } from "@emotion/react";
+import ClearIcon from "@mui/icons-material/CloseOutlined";
+import SearchIcon from "@mui/icons-material/SearchOutlined";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import Link from "@mui/material/Link";
@@ -13,7 +15,6 @@ import {
 	PageHeaderTitle,
 } from "components/PageHeader/PageHeader";
 import { Stack } from "components/Stack/Stack";
-import { SearchIcon, XIcon } from "lucide-react";
 import { type FC, type ReactNode, useMemo, useState } from "react";
 import { Helmet } from "react-helmet-async";
 import {
@@ -33,7 +34,7 @@ const fuzzyFinder = new uFuzzy({
 	intraDel: 1,
 });
 
-const IconsPage: FC = () => {
+export const IconsPage: FC = () => {
 	const theme = useTheme();
 	const [searchInputText, setSearchInputText] = useState("");
 	const searchText = searchInputText.trim();
@@ -128,8 +129,8 @@ const IconsPage: FC = () => {
 						startAdornment: (
 							<InputAdornment position="start">
 								<SearchIcon
-									className="size-icon-xs"
 									css={{
+										fontSize: 14,
 										color: theme.palette.text.secondary,
 									}}
 								/>
@@ -142,7 +143,7 @@ const IconsPage: FC = () => {
 										size="small"
 										onClick={() => setSearchInputText("")}
 									>
-										<XIcon className="size-icon-xs" />
+										<ClearIcon css={{ fontSize: 14 }} />
 									</IconButton>
 								</Tooltip>
 							</InputAdornment>

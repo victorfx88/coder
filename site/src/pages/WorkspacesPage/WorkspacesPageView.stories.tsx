@@ -21,13 +21,12 @@ import {
 	MockProxyLatencies,
 	MockStoppedWorkspace,
 	MockTemplate,
-	MockUserOwner,
+	MockUser,
 	MockWorkspace,
-	MockWorkspaceAgent,
 	MockWorkspaceAppStatus,
 	mockApiError,
 } from "testHelpers/entities";
-import { withAuthProvider, withDashboardProvider } from "testHelpers/storybook";
+import { withDashboardProvider } from "testHelpers/storybook";
 import { WorkspacesPageView } from "./WorkspacesPageView";
 
 const createWorkspace = (
@@ -106,7 +105,7 @@ const defaultFilterProps = getDefaultFilterProps<FilterProps>({
 		organizations: MockMenu,
 	},
 	values: {
-		owner: MockUserOwner.username,
+		owner: MockUser.username,
 		template: undefined,
 		status: undefined,
 	},
@@ -145,10 +144,8 @@ const meta: Meta<typeof WorkspacesPageView> = {
 				data: MockBuildInfo,
 			},
 		],
-		user: MockUserOwner,
 	},
 	decorators: [
-		withAuthProvider,
 		withDashboardProvider,
 		(Story) => (
 			<ProxyContext.Provider
@@ -297,42 +294,6 @@ export const InvalidPageNumber: Story = {
 		count: 200,
 		limit: 25,
 		page: 1000,
-	},
-};
-
-export const MultipleApps: Story = {
-	args: {
-		workspaces: [
-			{
-				...MockWorkspace,
-				latest_build: {
-					...MockWorkspace.latest_build,
-					resources: [
-						{
-							...MockWorkspace.latest_build.resources[0],
-							agents: [
-								{
-									...MockWorkspaceAgent,
-									apps: [
-										{
-											...MockWorkspaceAgent.apps[0],
-											display_name: "App 1",
-											id: "app-1",
-										},
-										{
-											...MockWorkspaceAgent.apps[0],
-											display_name: "App 2",
-											id: "app-2",
-										},
-									],
-								},
-							],
-						},
-					],
-				},
-			},
-		],
-		count: allWorkspaces.length,
 	},
 };
 

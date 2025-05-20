@@ -20,7 +20,7 @@ import {
 } from "./Content";
 import { DismissWarningButton } from "./DismissWarningButton";
 
-const WorkspaceProxyPage: FC = () => {
+export const WorkspaceProxyPage: FC = () => {
 	const healthStatus = useOutletContext<HealthcheckReport>();
 	const { workspace_proxy } = healthStatus;
 	const { regions } = workspace_proxy.workspace_proxies;

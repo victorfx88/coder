@@ -14,7 +14,7 @@ type Stage = ProvisionerJobLog["stage"];
 type LogsGroupedByStage = Record<Stage, ProvisionerJobLog[]>;
 type GroupLogsByStageFn = (logs: ProvisionerJobLog[]) => LogsGroupedByStage;
 
-const groupLogsByStage: GroupLogsByStageFn = (logs) => {
+export const groupLogsByStage: GroupLogsByStageFn = (logs) => {
 	const logsByStage: LogsGroupedByStage = {};
 
 	for (const log of logs) {

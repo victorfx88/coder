@@ -1,4 +1,6 @@
 import type { Interpolation, Theme } from "@emotion/react";
+import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import Checkbox from "@mui/material/Checkbox";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Table from "@mui/material/Table";
@@ -30,7 +32,6 @@ import {
 import { Spinner } from "components/Spinner/Spinner";
 import { Stack } from "components/Stack/Stack";
 import { useFormik } from "formik";
-import { EyeIcon, EyeOffIcon } from "lucide-react";
 import { type ChangeEvent, type FC, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getFormHelpers, nameValidator } from "utils/formUtils";
@@ -49,7 +50,7 @@ export type CreateEditRolePageViewProps = {
 	allResources?: boolean;
 };
 
-const CreateEditRolePageView: FC<CreateEditRolePageViewProps> = ({
+export const CreateEditRolePageView: FC<CreateEditRolePageViewProps> = ({
 	role,
 	onSubmit,
 	error,
@@ -397,8 +398,8 @@ const ShowAllResourcesCheckbox: FC<ShowAllResourcesCheckboxProps> = ({
 					name="show_all_permissions"
 					checked={showAllResources}
 					onChange={(e) => setShowAllResources(e.currentTarget.checked)}
-					checkedIcon={<EyeIcon className="size-icon-sm" />}
-					icon={<EyeOffIcon className="size-icon-sm" />}
+					checkedIcon={<VisibilityOutlinedIcon />}
+					icon={<VisibilityOffOutlinedIcon />}
 				/>
 			}
 			label={

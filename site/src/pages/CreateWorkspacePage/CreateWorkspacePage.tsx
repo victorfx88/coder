@@ -31,7 +31,7 @@ import {
 	createWorkspaceChecks,
 } from "./permissions";
 
-const createWorkspaceModes = ["form", "auto", "duplicate"] as const;
+export const createWorkspaceModes = ["form", "auto", "duplicate"] as const;
 export type CreateWorkspaceMode = (typeof createWorkspaceModes)[number];
 
 export type ExternalAuthPollingState = "idle" | "polling" | "abandoned";

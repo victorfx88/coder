@@ -11,14 +11,14 @@ import {
 	MockNotificationMethodsResponse,
 	MockNotificationPreferences,
 	MockNotificationTemplates,
-	MockUserOwner,
+	MockUser,
 } from "testHelpers/entities";
 import {
 	withAuthProvider,
 	withDashboardProvider,
 	withGlobalSnackbar,
 } from "testHelpers/storybook";
-import NotificationsPage from "./NotificationsPage";
+import { NotificationsPage } from "./NotificationsPage";
 
 const meta = {
 	title: "pages/UserSettingsPage/NotificationsPage",
@@ -27,7 +27,7 @@ const meta = {
 		experiments: ["notifications"],
 		queries: [
 			{
-				key: userNotificationPreferencesKey(MockUserOwner.id),
+				key: userNotificationPreferencesKey(MockUser.id),
 				data: MockNotificationPreferences,
 			},
 			{
@@ -39,7 +39,7 @@ const meta = {
 				data: MockNotificationMethodsResponse,
 			},
 		],
-		user: MockUserOwner,
+		user: MockUser,
 		permissions: { viewDeploymentConfig: true },
 	},
 	decorators: [withGlobalSnackbar, withAuthProvider, withDashboardProvider],

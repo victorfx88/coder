@@ -1,3 +1,5 @@
+import CheckOutlined from "@mui/icons-material/CheckOutlined";
+import FileCopyOutlined from "@mui/icons-material/FileCopyOutlined";
 import Button from "@mui/material/Button";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import Radio from "@mui/material/Radio";
@@ -8,7 +10,6 @@ import { FormSection, VerticalForm } from "components/Form/Form";
 import { Loader } from "components/Loader/Loader";
 import { RichParameterInput } from "components/RichParameterInput/RichParameterInput";
 import { useClipboard } from "hooks/useClipboard";
-import { CheckIcon, CopyIcon } from "lucide-react";
 import { useTemplateLayoutContext } from "pages/TemplatePage/TemplateLayout";
 import { type FC, useEffect, useState } from "react";
 import { Helmet } from "react-helmet-async";
@@ -186,9 +187,9 @@ export const TemplateEmbedPageView: FC<TemplateEmbedPageViewProps> = ({
 								css={{ borderRadius: 999 }}
 								startIcon={
 									clipboard.showCopiedSuccess ? (
-										<CheckIcon className="size-icon-sm" />
+										<CheckOutlined />
 									) : (
-										<CopyIcon className="size-icon-sm" />
+										<FileCopyOutlined />
 									)
 								}
 								variant="contained"

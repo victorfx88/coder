@@ -72,7 +72,7 @@ const (
 	varDisableDirect           = "disable-direct-connections"
 	varDisableNetworkTelemetry = "disable-network-telemetry"
 
-	notLoggedInMessage = "You are not logged in. Try logging in using '%s login <url>'."
+	notLoggedInMessage = "You are not logged in. Try logging in using 'coder login <url>'."
 
 	envNoVersionCheck   = "CODER_NO_VERSION_WARNING"
 	envNoFeatureWarning = "CODER_NO_FEATURE_WARNING"
@@ -534,11 +534,7 @@ func (r *RootCmd) InitClient(client *codersdk.Client) serpent.MiddlewareFunc {
 				rawURL, err := conf.URL().Read()
 				// If the configuration files are absent, the user is logged out
 				if os.IsNotExist(err) {
-					binPath, err := os.Executable()
-					if err != nil {
-						binPath = "coder"
-					}
-					return xerrors.Errorf(notLoggedInMessage, binPath)
+					return xerrors.New(notLoggedInMessage)
 				}
 				if err != nil {
 					return err

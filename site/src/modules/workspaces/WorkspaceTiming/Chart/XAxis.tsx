@@ -40,11 +40,11 @@ export const XAxis: FC<XAxisProps> = ({ ticks, scale, ...htmlProps }) => {
 	);
 };
 
-const XAxisLabels: FC<HTMLProps<HTMLUListElement>> = (props) => {
+export const XAxisLabels: FC<HTMLProps<HTMLUListElement>> = (props) => {
 	return <ul css={styles.labels} {...props} />;
 };
 
-const XAxisLabel: FC<HTMLProps<HTMLLIElement>> = (props) => {
+export const XAxisLabel: FC<HTMLProps<HTMLLIElement>> = (props) => {
 	return (
 		<li
 			css={[
@@ -56,7 +56,7 @@ const XAxisLabel: FC<HTMLProps<HTMLLIElement>> = (props) => {
 					// Note: This adjustment is not applied to the first element,
 					// as the 0 label/value is not displayed in the chart.
 					width: "calc(var(--x-axis-width) * 2)",
-					"&:not(:first-of-type)": {
+					"&:not(:first-child)": {
 						marginLeft: "calc(-1 * var(--x-axis-width))",
 					},
 				},
@@ -106,7 +106,7 @@ type XGridProps = HTMLProps<HTMLDivElement> & {
 	columns: number;
 };
 
-const XGrid: FC<XGridProps> = ({ columns, ...htmlProps }) => {
+export const XGrid: FC<XGridProps> = ({ columns, ...htmlProps }) => {
 	return (
 		<div css={styles.grid} role="presentation" {...htmlProps}>
 			{[...Array(columns).keys()].map((key) => (

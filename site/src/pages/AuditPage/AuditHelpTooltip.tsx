@@ -10,7 +10,7 @@ import {
 import type { FC } from "react";
 import { docs } from "utils/docs";
 
-const Language = {
+export const Language = {
 	title: "What is an audit log?",
 	body: "An audit log is a record of events and changes made throughout a system.",
 	docs: "Events we track",

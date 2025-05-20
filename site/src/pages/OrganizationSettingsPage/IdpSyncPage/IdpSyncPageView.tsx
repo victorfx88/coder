@@ -28,7 +28,7 @@ interface IdpSyncPageViewProps {
 	onSubmitRoleSyncSettings: (data: RoleSyncSettings) => void;
 }
 
-const IdpSyncPageView: FC<IdpSyncPageViewProps> = ({
+export const IdpSyncPageView: FC<IdpSyncPageViewProps> = ({
 	tab,
 	groupSyncSettings,
 	roleSyncSettings,

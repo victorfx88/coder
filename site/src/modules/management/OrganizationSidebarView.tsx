@@ -62,23 +62,25 @@ export const OrganizationSidebarView: FC<
 					<Button
 						variant="outline"
 						aria-expanded={isPopoverOpen}
-						className="w-60 gap-2 justify-start"
+						className="w-60 justify-between p-2 h-11"
 					>
-						{activeOrganization ? (
-							<>
-								<Avatar
-									size="sm"
-									src={activeOrganization.icon}
-									fallback={activeOrganization.display_name}
-								/>
-								<span className="truncate">
-									{activeOrganization.display_name || activeOrganization.name}
-								</span>
-							</>
-						) : (
-							<span className="truncate">No organization selected</span>
-						)}
-						<ChevronDown className="ml-auto !size-icon-sm" />
+						<div className="flex flex-row gap-2 items-center p-2 truncate">
+							{activeOrganization ? (
+								<>
+									<Avatar
+										size="sm"
+										src={activeOrganization.icon}
+										fallback={activeOrganization.display_name}
+									/>
+									<span className="truncate">
+										{activeOrganization.display_name || activeOrganization.name}
+									</span>
+								</>
+							) : (
+								<span className="truncate">No organization selected</span>
+							)}
+						</div>
+						<ChevronDown />
 					</Button>
 				</PopoverTrigger>
 				<PopoverContent align="start" className="w-60">
@@ -189,11 +191,6 @@ const OrganizationSettingsNavigation: FC<
 								href={urlForSubpage(organization.name, "provisioners")}
 							>
 								Provisioners
-							</SettingsSidebarNavItem>
-							<SettingsSidebarNavItem
-								href={urlForSubpage(organization.name, "provisioner-keys")}
-							>
-								Provisioner Keys
 							</SettingsSidebarNavItem>
 							<SettingsSidebarNavItem
 								href={urlForSubpage(organization.name, "provisioner-jobs")}

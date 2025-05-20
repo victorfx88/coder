@@ -5,20 +5,16 @@ import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { Avatar } from "components/Avatar/Avatar";
 import { Button } from "components/Button/Button";
 import { FeatureStageBadge } from "components/FeatureStageBadge/FeatureStageBadge";
+import { SelectFilter } from "components/Filter/SelectFilter";
 import { Input } from "components/Input/Input";
 import { Label } from "components/Label/Label";
 import { Pill } from "components/Pill/Pill";
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "components/Select/Select";
 import { Spinner } from "components/Spinner/Spinner";
+import { Stack } from "components/Stack/Stack";
 import { Switch } from "components/Switch/Switch";
 import { UserAutocomplete } from "components/UserAutocomplete/UserAutocomplete";
 import { type FormikContextType, useFormik } from "formik";
+import { useDebouncedFunction } from "hooks/debounce";
 import { ArrowLeft, CircleAlert, TriangleAlert } from "lucide-react";
 import {
 	DynamicParameter,
@@ -32,10 +28,9 @@ import {
 	useContext,
 	useEffect,
 	useId,
-	useRef,
 	useState,
 } from "react";
-import { nameValidator } from "utils/formUtils";
+import { getFormHelpers, nameValidator } from "utils/formUtils";
 import type { AutofillBuildParameter } from "utils/richParameters";
 import * as Yup from "yup";
 import type {
@@ -108,32 +103,10 @@ export const CreateWorkspacePageViewExperimental: FC<
 	);
 	const [showPresetParameters, setShowPresetParameters] = useState(false);
 	const id = useId();
-	const workspaceNameInputRef = useRef<HTMLInputElement>(null);
 	const rerollSuggestedName = useCallback(() => {
 		setSuggestedName(() => generateWorkspaceName());
 	}, []);
 
-	const autofillByName = Object.fromEntries(
-		autofillParameters.map((param) => [param.name, param]),
-	);
-
-	// Only touched fields are sent to the websocket
-	// Autofilled parameters are marked as touched since they have been modified
-	const initialTouched = parameters.reduce(
-		(touched, parameter) => {
-			if (autofillByName[parameter.name] !== undefined) {
-				touched[parameter.name] = true;
-			}
-			return touched;
-		},
-		{} as Record<string, boolean>,
-	);
-
-	// The form parameters values hold the working state of the parameters that will be submitted when creating a workspace
-	// 1. The form parameter values are initialized from the websocket response when the form is mounted
-	// 2. Only touched form fields are sent to the websocket, a field is touched if edited by the user or set by autofill
-	// 3. The websocket response may add or remove parameters, these are added or removed from the form values in the useSyncFormParameters hook
-	// 4. All existing form parameters are updated to match the websocket response in the useSyncFormParameters hook
 	const form: FormikContextType<TypesGen.CreateWorkspaceRequest> =
 		useFormik<TypesGen.CreateWorkspaceRequest>({
 			initialValues: {
@@ -144,7 +117,6 @@ export const CreateWorkspacePageViewExperimental: FC<
 					autofillParameters,
 				),
 			},
-			initialTouched,
 			validationSchema: Yup.object({
 				name: nameValidator("Workspace Name"),
 				rich_parameter_values:
@@ -168,22 +140,17 @@ export const CreateWorkspacePageViewExperimental: FC<
 		}
 	}, [error]);
 
-	useEffect(() => {
-		if (form.submitCount > 0 && form.errors) {
-			workspaceNameInputRef.current?.scrollIntoView({
-				behavior: "smooth",
-				block: "center",
-			});
-			workspaceNameInputRef.current?.focus();
-		}
-	}, [form.submitCount, form.errors]);
+	const getFieldHelpers = getFormHelpers<TypesGen.CreateWorkspaceRequest>(
+		form,
+		error,
+	);
 
 	const [presetOptions, setPresetOptions] = useState([
-		{ label: "None", value: "None" },
+		{ label: "None", value: "" },
 	]);
 	useEffect(() => {
 		setPresetOptions([
-			{ label: "None", value: "None" },
+			{ label: "None", value: "" },
 			...presets.map((preset) => ({
 				label: preset.Name,
 				value: preset.ID,
@@ -213,15 +180,6 @@ export const CreateWorkspacePageViewExperimental: FC<
 
 		setPresetParameterNames(selectedPreset.Parameters.map((p) => p.Name));
 
-		const currentValues = form.values.rich_parameter_values ?? [];
-
-		const updates: Array<{
-			field: string;
-			fieldValue: TypesGen.WorkspaceBuildParameter;
-			parameter: PreviewParameter;
-			presetValue: string;
-		}> = [];
-
 		for (const presetParameter of selectedPreset.Parameters) {
 			const parameterIndex = parameters.findIndex(
 				(p) => p.name === presetParameter.Name,
@@ -229,99 +187,65 @@ export const CreateWorkspacePageViewExperimental: FC<
 			if (parameterIndex === -1) continue;
 
 			const parameterField = `rich_parameter_values.${parameterIndex}`;
-			const parameter = parameters[parameterIndex];
-			const currentValue = currentValues.find(
-				(p) => p.name === presetParameter.Name,
-			)?.value;
 
-			if (currentValue !== presetParameter.Value) {
-				updates.push({
-					field: parameterField,
-					fieldValue: {
-						name: presetParameter.Name,
-						value: presetParameter.Value,
-					},
-					parameter,
-					presetValue: presetParameter.Value,
-				});
-			}
-		}
-
-		if (updates.length > 0) {
-			for (const update of updates) {
-				form.setFieldValue(update.field, update.fieldValue);
-				form.setFieldTouched(update.parameter.name, true);
-			}
-
-			sendDynamicParamsRequest(
-				updates.map((update) => ({
-					parameter: update.parameter,
-					value: update.presetValue,
-				})),
-			);
+			form.setFieldValue(parameterField, {
+				name: presetParameter.Name,
+				value: presetParameter.Value,
+			});
 		}
 	}, [
 		presetOptions,
 		selectedPresetIndex,
 		presets,
 		form.setFieldValue,
-		form.setFieldTouched,
 		parameters,
-		form.values.rich_parameter_values,
 	]);
 
-	// send the last user modified parameter and all touched parameters to the websocket
 	const sendDynamicParamsRequest = (
-		parameters: Array<{ parameter: PreviewParameter; value: string }>,
+		parameter: PreviewParameter,
+		value: string,
 	) => {
-		const formInputs: Record<string, string> = {};
-		const formParameters = form.values.rich_parameter_values ?? [];
-
-		for (const { parameter, value } of parameters) {
-			formInputs[parameter.name] = value;
-		}
-
-		for (const [fieldName, isTouched] of Object.entries(form.touched)) {
-			if (
-				isTouched &&
-				!parameters.some((p) => p.parameter.name === fieldName)
-			) {
-				const param = formParameters.find((p) => p.name === fieldName);
-				if (param?.value) {
-					formInputs[fieldName] = param.value;
-				}
-			}
-		}
+		const formInputs = Object.fromEntries(
+			form.values.rich_parameter_values?.map((value) => {
+				return [value.name, value.value];
+			}) ?? [],
+		);
+		// Update the input for the changed parameter
+		formInputs[parameter.name] = value;
 
 		sendMessage(formInputs);
 	};
+
+	const { debounced: handleChangeDebounced } = useDebouncedFunction(
+		async (
+			parameter: PreviewParameter,
+			parameterField: string,
+			value: string,
+		) => {
+			await form.setFieldValue(parameterField, {
+				name: parameter.name,
+				value,
+			});
+			sendDynamicParamsRequest(parameter, value);
+		},
+		500,
+	);
 
 	const handleChange = async (
 		parameter: PreviewParameter,
 		parameterField: string,
 		value: string,
 	) => {
-		const currentFormValue = form.values.rich_parameter_values?.find(
-			(p) => p.name === parameter.name,
-		)?.value;
-
-		await form.setFieldValue(parameterField, {
-			name: parameter.name,
-			value,
-		});
-
-		// Only send the request if the value has changed from the form value
-		if (currentFormValue !== value) {
-			form.setFieldTouched(parameter.name, true);
-			sendDynamicParamsRequest([{ parameter, value }]);
+		if (parameter.form_type === "input" || parameter.form_type === "textarea") {
+			handleChangeDebounced(parameter, parameterField, value);
+		} else {
+			await form.setFieldValue(parameterField, {
+				name: parameter.name,
+				value,
+			});
+			sendDynamicParamsRequest(parameter, value);
 		}
 	};
-
-	useSyncFormParameters({
-		parameters,
-		formValues: form.values.rich_parameter_values ?? [],
-		setFieldValue: form.setFieldValue,
-	});
 
 	return (
 		<>
@@ -368,7 +292,7 @@ export const CreateWorkspacePageViewExperimental: FC<
 				<form
 					onSubmit={form.handleSubmit}
 					aria-label="Create workspace form"
-					className="flex flex-col gap-10 w-full border border-border-default border-solid rounded-lg p-6"
+					className="flex flex-col gap-6 w-full border border-border-default border-solid rounded-lg p-6"
 				>
 					{Boolean(error) && <ErrorAlert error={error} />}
 
@@ -409,10 +333,9 @@ export const CreateWorkspacePageViewExperimental: FC<
 									<Label className="text-sm" htmlFor={`${id}-workspace-name`}>
 										Workspace name
 									</Label>
-									<div className="flex flex-col">
+									<div>
 										<Input
 											id={`${id}-workspace-name`}
-											ref={workspaceNameInputRef}
 											value={form.values.name}
 											onChange={(e) => {
 												form.setFieldValue("name", e.target.value.trim());
@@ -420,11 +343,6 @@ export const CreateWorkspacePageViewExperimental: FC<
 											}}
 											disabled={creatingWorkspace}
 										/>
-										{form.touched.name && form.errors.name && (
-											<div className="text-content-destructive text-xs mt-2">
-												{form.errors.name}
-											</div>
-										)}
 										<div className="flex gap-2 text-xs text-content-secondary items-center">
 											Need a suggestion?
 											<Button
@@ -461,14 +379,14 @@ export const CreateWorkspacePageViewExperimental: FC<
 					{externalAuth && externalAuth.length > 0 && (
 						<section>
 							<hgroup>
-								<h2 className="text-xl font-semibold m-0">
+								<h2 className="text-xl font-semibold mb-0">
 									External Authentication
 								</h2>
 								<p className="text-sm text-content-secondary mt-0">
 									This template uses external services for authentication.
 								</p>
 							</hgroup>
-							<div className="flex flex-col gap-4">
+							<div>
 								{Boolean(error) && !hasAllRequiredExternalAuth && (
 									<Alert severity="error">
 										To create a workspace using this template, please connect to
@@ -490,7 +408,7 @@ export const CreateWorkspacePageViewExperimental: FC<
 					)}
 
 					{parameters.length > 0 && (
-						<section className="flex flex-col gap-9">
+						<section className="flex flex-col gap-6">
 							<hgroup>
 								<h2 className="text-xl font-semibold m-0">Parameters</h2>
 								<p className="text-sm text-content-secondary m-0">
@@ -498,39 +416,30 @@ export const CreateWorkspacePageViewExperimental: FC<
 									parameters cannot be modified once the workspace is created.
 								</p>
 							</hgroup>
-							{diagnostics.length > 0 && (
-								<Diagnostics diagnostics={diagnostics} />
-							)}
+							<Diagnostics diagnostics={diagnostics} />
 							{presets.length > 0 && (
-								<div className="flex flex-col gap-2">
-									<div className="flex gap-2 items-center">
-										<Label className="text-sm">Preset</Label>
-										<FeatureStageBadge contentType={"beta"} size="md" />
-									</div>
-									<div className="flex flex-col gap-4">
-										<div className="max-w-lg">
-											<Select
-												onValueChange={(option) => {
+								<Stack direction="column" spacing={2}>
+									<div className="flex flex-col gap-2">
+										<div className="flex gap-2 items-center">
+											<Label className="text-sm">Preset</Label>
+											<FeatureStageBadge contentType={"beta"} size="md" />
+										</div>
+										<div className="flex">
+											<SelectFilter
+												label="Preset"
+												options={presetOptions}
+												onSelect={(option) => {
 													const index = presetOptions.findIndex(
-														(preset) => preset.value === option,
+														(preset) => preset.value === option?.value,
 													);
 													if (index === -1) {
 														return;
 													}
 													setSelectedPresetIndex(index);
 												}}
-											>
-												<SelectTrigger>
-													<SelectValue placeholder={"Select a preset"} />
-												</SelectTrigger>
-												<SelectContent>
-													{presetOptions.map((option) => (
-														<SelectItem key={option.value} value={option.value}>
-															{option.label}
-														</SelectItem>
-													))}
-												</SelectContent>
-											</Select>
+												placeholder="Select a preset"
+												selectedOption={presetOptions[selectedPresetIndex]}
+											/>
 										</div>
 										<span className="flex items-center gap-3">
 											<Switch
@@ -543,12 +452,13 @@ export const CreateWorkspacePageViewExperimental: FC<
 											</Label>
 										</span>
 									</div>
-								</div>
+								</Stack>
 							)}
 
 							<div className="flex flex-col gap-9">
 								{parameters.map((parameter, index) => {
 									const parameterField = `rich_parameter_values.${index}`;
+									const parameterInputName = `${parameterField}.value`;
 									const isPresetParameter = presetParameterNames.includes(
 										parameter.name,
 									);
@@ -556,7 +466,7 @@ export const CreateWorkspacePageViewExperimental: FC<
 										disabledParams?.includes(
 											parameter.name.toLowerCase().replace(/ /g, "_"),
 										) ||
-										parameter.styling?.disabled ||
+										(parameter.styling as { disabled?: boolean })?.disabled ||
 										creatingWorkspace ||
 										isPresetParameter;
 
@@ -565,11 +475,9 @@ export const CreateWorkspacePageViewExperimental: FC<
 										return null;
 									}
 
-									const formValue =
-										form.values?.rich_parameter_values?.[index]?.value || "";
-
 									return (
 										<DynamicParameter
+											{...getFieldHelpers(parameterInputName)}
 											key={parameter.name}
 											parameter={parameter}
 											onChange={(value) =>
@@ -577,8 +485,6 @@ export const CreateWorkspacePageViewExperimental: FC<
 											}
 											disabled={isDisabled}
 											isPreset={isPresetParameter}
-											autofill={autofillByName[parameter.name] !== undefined}
-											value={formValue}
 										/>
 									);
 								})}
@@ -589,18 +495,7 @@ export const CreateWorkspacePageViewExperimental: FC<
 					<div className="flex flex-row justify-end">
 						<Button
 							type="submit"
-							disabled={
-								creatingWorkspace ||
-								!hasAllRequiredExternalAuth ||
-								diagnostics.some(
-									(diagnostic) => diagnostic.severity === "error",
-								) ||
-								parameters.some((parameter) =>
-									parameter.diagnostics.some(
-										(diagnostic) => diagnostic.severity === "error",
-									),
-								)
-							}
+							disabled={creatingWorkspace || !hasAllRequiredExternalAuth}
 						>
 							<Spinner loading={creatingWorkspace} />
 							Create workspace
@@ -616,88 +511,39 @@ interface DiagnosticsProps {
 	diagnostics: PreviewParameter["diagnostics"];
 }
 
-const Diagnostics: FC<DiagnosticsProps> = ({ diagnostics }) => {
+export const Diagnostics: FC<DiagnosticsProps> = ({ diagnostics }) => {
 	return (
 		<div className="flex flex-col gap-4">
 			{diagnostics.map((diagnostic, index) => (
 				<div
 					key={`diagnostic-${diagnostic.summary}-${index}`}
-					className={`text-xs font-semibold flex flex-col rounded-md border px-3.5 py-3.5 border-solid
+					className={`text-xs flex flex-col rounded-md border px-4 pb-3 border-solid
                         ${
 													diagnostic.severity === "error"
-														? "text-content-primary border-border-destructive bg-content-destructive/15"
-														: "text-content-primary border-border-warning bg-content-warning/15"
+														? " text-content-destructive border-border-destructive"
+														: " text-content-warning border-border-warning"
 												}`}
 				>
-					<div className="flex flex-row items-start">
+					<div className="flex items-center m-0">
 						{diagnostic.severity === "error" && (
 							<CircleAlert
-								className="me-2 inline-flex shrink-0 text-content-destructive size-icon-sm"
+								className="me-2 -mt-0.5 inline-flex opacity-80"
+								size={16}
 								aria-hidden="true"
 							/>
 						)}
 						{diagnostic.severity === "warning" && (
 							<TriangleAlert
-								className="me-2 inline-flex shrink-0 text-content-warning size-icon-sm"
+								className="me-2 -mt-0.5 inline-flex opacity-80"
+								size={16}
 								aria-hidden="true"
 							/>
 						)}
-						<div className="flex flex-col gap-3">
-							<p className="m-0">{diagnostic.summary}</p>
-							{diagnostic.detail && <p className="m-0">{diagnostic.detail}</p>}
-						</div>
+						<p className="font-medium">{diagnostic.summary}</p>
 					</div>
+					{diagnostic.detail && <p className="m-0 pb-0">{diagnostic.detail}</p>}
 				</div>
 			))}
 		</div>
 	);
 };
-
-type UseSyncFormParametersProps = {
-	parameters: readonly PreviewParameter[];
-	formValues: readonly TypesGen.WorkspaceBuildParameter[];
-	setFieldValue: (
-		field: string,
-		value: TypesGen.WorkspaceBuildParameter[],
-	) => void;
-};
-
-function useSyncFormParameters({
-	parameters,
-	formValues,
-	setFieldValue,
-}: UseSyncFormParametersProps) {
-	// Form values only needs to be updated when parameters change
-	// Keep track of form values in a ref to avoid unnecessary updates to rich_parameter_values
-	const formValuesRef = useRef(formValues);
-
-	useEffect(() => {
-		formValuesRef.current = formValues;
-	}, [formValues]);
-
-	useEffect(() => {
-		if (!parameters) return;
-		const currentFormValues = formValuesRef.current;
-
-		const newParameterValues = parameters.map((param) => {
-			return {
-				name: param.name,
-				value: param.value.valid ? param.value.value : "",
-			};
-		});
-
-		const isChanged =
-			currentFormValues.length !== newParameterValues.length ||
-			newParameterValues.some(
-				(p) =>
-					!currentFormValues.find(
-						(formValue) =>
-							formValue.name === p.name && formValue.value === p.value,
-					),
-			);
-
-		if (isChanged) {
-			setFieldValue("rich_parameter_values", newParameterValues);
-		}
-	}, [parameters, setFieldValue]);
-}

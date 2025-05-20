@@ -108,7 +108,7 @@ export const SelectFilter: FC<SelectFilterProps> = ({
 						</div>
 					)
 				) : (
-					<Loader size="sm" />
+					<Loader size={16} />
 				)}
 			</SelectMenuContent>
 		</SelectMenu>

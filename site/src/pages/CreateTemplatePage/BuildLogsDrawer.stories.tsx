@@ -78,10 +78,6 @@ export const Logs: Story = {
 				...MockTemplateVersion.job,
 				status: "running",
 			},
-			matched_provisioners: {
-				count: 1,
-				available: 1,
-			},
 		},
 	},
 	decorators: [withWebSocket],

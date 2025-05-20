@@ -253,8 +253,7 @@ func (api *API) workspaces(rw http.ResponseWriter, r *http.Request) {
 // @Router /users/{user}/workspace/{workspacename} [get]
 func (api *API) workspaceByOwnerAndName(rw http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-
-	mems := httpmw.OrganizationMembersParam(r)
+	owner := httpmw.UserParam(r)
 	workspaceName := chi.URLParam(r, "workspacename")
 	apiKey := httpmw.APIKey(r)
 
@@ -274,12 +273,12 @@ func (api *API) workspaceByOwnerAndName(rw http.ResponseWriter, r *http.Request)
 	}
 
 	workspace, err := api.Database.GetWorkspaceByOwnerIDAndName(ctx, database.GetWorkspaceByOwnerIDAndNameParams{
-		OwnerID: mems.UserID(),
+		OwnerID: owner.ID,
 		Name:    workspaceName,
 	})
 	if includeDeleted && errors.Is(err, sql.ErrNoRows) {
 		workspace, err = api.Database.GetWorkspaceByOwnerIDAndName(ctx, database.GetWorkspaceByOwnerIDAndNameParams{
-			OwnerID: mems.UserID(),
+			OwnerID: owner.ID,
 			Name:    workspaceName,
 			Deleted: includeDeleted,
 		})
@@ -409,7 +408,6 @@ func (api *API) postUserWorkspaces(rw http.ResponseWriter, r *http.Request) {
 		ctx     = r.Context()
 		apiKey  = httpmw.APIKey(r)
 		auditor = api.Auditor.Load()
-		mems    = httpmw.OrganizationMembersParam(r)
 	)
 
 	var req codersdk.CreateWorkspaceRequest
@@ -418,16 +416,17 @@ func (api *API) postUserWorkspaces(rw http.ResponseWriter, r *http.Request) {
 	}
 
 	var owner workspaceOwner
-	if mems.User != nil {
-		// This user fetch is an optimization path for the most common case of creating a
-		// workspace for 'Me'.
-		//
-		// This is also required to allow `owners` to create workspaces for users
-		// that are not in an organization.
+	// This user fetch is an optimization path for the most common case of creating a
+	// workspace for 'Me'.
+	//
+	// This is also required to allow `owners` to create workspaces for users
+	// that are not in an organization.
+	user, ok := httpmw.UserParamOptional(r)
+	if ok {
 		owner = workspaceOwner{
-			ID:        mems.User.ID,
-			Username:  mems.User.Username,
-			AvatarURL: mems.User.AvatarURL,
+			ID:        user.ID,
+			Username:  user.Username,
+			AvatarURL: user.AvatarURL,
 		}
 	} else {
 		// A workspace can still be created if the caller can read the organization
@@ -444,21 +443,35 @@ func (api *API) postUserWorkspaces(rw http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// If the caller can find the organization membership in the same org
-		// as the template, then they can continue.
-		orgIndex := slices.IndexFunc(mems.Memberships, func(mem httpmw.OrganizationMember) bool {
-			return mem.OrganizationID == template.OrganizationID
-		})
-		if orgIndex == -1 {
-			httpapi.ResourceNotFound(rw)
+		// We need to fetch the original user as a system user to fetch the
+		// user_id. 'ExtractUserContext' handles all cases like usernames,
+		// 'Me', etc.
+		// nolint:gocritic // The user_id needs to be fetched. This handles all those cases.
+		user, ok := httpmw.ExtractUserContext(dbauthz.AsSystemRestricted(ctx), api.Database, rw, r)
+		if !ok {
 			return
 		}
 
-		member := mems.Memberships[orgIndex]
+		organizationMember, err := database.ExpectOne(api.Database.OrganizationMembers(ctx, database.OrganizationMembersParams{
+			OrganizationID: template.OrganizationID,
+			UserID:         user.ID,
+			IncludeSystem:  false,
+		}))
+		if httpapi.Is404Error(err) {
+			httpapi.ResourceNotFound(rw)
+			return
+		}
+		if err != nil {
+			httpapi.Write(ctx, rw, http.StatusInternalServerError, codersdk.Response{
+				Message: "Internal error fetching organization member.",
+				Detail:  err.Error(),
+			})
+			return
+		}
 		owner = workspaceOwner{
-			ID:        member.UserID,
-			Username:  member.Username,
-			AvatarURL: member.AvatarURL,
+			ID:        organizationMember.OrganizationMember.UserID,
+			Username:  organizationMember.Username,
+			AvatarURL: organizationMember.AvatarURL,
 		}
 	}
 
@@ -2259,7 +2272,6 @@ func convertWorkspace(
 		TemplateAllowUserCancelWorkspaceJobs: template.AllowUserCancelWorkspaceJobs,
 		TemplateActiveVersionID:              template.ActiveVersionID,
 		TemplateRequireActiveVersion:         template.RequireActiveVersion,
-		TemplateUseClassicParameterFlow:      template.UseClassicParameterFlow,
 		Outdated:                             workspaceBuild.TemplateVersionID.String() != template.ActiveVersionID.String(),
 		Name:                                 workspace.Name,
 		AutostartSchedule:                    autostartSchedule,

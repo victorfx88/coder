@@ -9,7 +9,7 @@ import {
 type SampleProps = Omit<PaginationWidgetBaseProps, "onPageChange">;
 
 describe(PaginationWidgetBase.name, () => {
-	it("Should have its previous button be disabled while on page 1", async () => {
+	it("Should have its previous button be aria-disabled while on page 1", async () => {
 		const sampleProps: SampleProps[] = [
 			{ currentPage: 1, pageSize: 5, totalRecords: 6 },
 			{ currentPage: 1, pageSize: 50, totalRecords: 200 },
@@ -23,7 +23,8 @@ describe(PaginationWidgetBase.name, () => {
 			);
 
 			const prevButton = await screen.findByLabelText("Previous page");
-			expect(prevButton).toBeDisabled();
+			expect(prevButton).not.toBeDisabled();
+			expect(prevButton).toHaveAttribute("aria-disabled", "true");
 
 			await userEvent.click(prevButton);
 			expect(onPageChange).not.toHaveBeenCalled();
@@ -31,7 +32,7 @@ describe(PaginationWidgetBase.name, () => {
 		}
 	});
 
-	it("Should have its next button be disabled while on last page", async () => {
+	it("Should have its next button be aria-disabled while on last page", async () => {
 		const sampleProps: SampleProps[] = [
 			{ currentPage: 2, pageSize: 5, totalRecords: 6 },
 			{ currentPage: 4, pageSize: 50, totalRecords: 200 },
@@ -45,7 +46,8 @@ describe(PaginationWidgetBase.name, () => {
 			);
 
 			const button = await screen.findByLabelText("Next page");
-			expect(button).toBeDisabled();
+			expect(button).not.toBeDisabled();
+			expect(button).toHaveAttribute("aria-disabled", "true");
 
 			await userEvent.click(button);
 			expect(onPageChange).not.toHaveBeenCalled();
@@ -70,11 +72,13 @@ describe(PaginationWidgetBase.name, () => {
 			const nextButton = await screen.findByLabelText("Next page");
 
 			expect(prevButton).not.toBeDisabled();
+			expect(prevButton).toHaveAttribute("aria-disabled", "false");
 
 			await userEvent.click(prevButton);
 			expect(onPageChange).toHaveBeenCalledTimes(1);
 
 			expect(nextButton).not.toBeDisabled();
+			expect(nextButton).toHaveAttribute("aria-disabled", "false");
 
 			await userEvent.click(nextButton);
 			expect(onPageChange).toHaveBeenCalledTimes(2);

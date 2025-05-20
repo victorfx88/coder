@@ -1,8 +1,7 @@
+import LoadingButton from "@mui/lab/LoadingButton";
 import TextField from "@mui/material/TextField";
 import { isApiValidationError, mapApiErrorToFieldErrors } from "api/errors";
 import type * as TypesGen from "api/typesGenerated";
-import { Button } from "components/Button/Button";
-import { Spinner } from "components/Spinner/Spinner";
 import { Stack } from "components/Stack/Stack";
 import type { FC, ReactNode } from "react";
 
@@ -77,10 +76,9 @@ export const OAuth2AppForm: FC<OAuth2AppFormProps> = ({
 				/>
 
 				<Stack direction="row">
-					<Button disabled={isUpdating} type="submit">
-						<Spinner loading={isUpdating} />
+					<LoadingButton loading={isUpdating} type="submit" variant="contained">
 						{app ? "Update application" : "Create application"}
-					</Button>
+					</LoadingButton>
 					{actions}
 				</Stack>
 			</Stack>

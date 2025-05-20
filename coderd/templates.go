@@ -487,9 +487,6 @@ func (api *API) postTemplateByOrganization(rw http.ResponseWriter, r *http.Reque
 }
 
 // @Summary Get templates by organization
-// @Description Returns a list of templates for the specified organization.
-// @Description By default, only non-deprecated templates are returned.
-// @Description To include deprecated templates, specify `deprecated:true` in the search query.
 // @ID get-templates-by-organization
 // @Security CoderSessionToken
 // @Produce json
@@ -509,9 +506,6 @@ func (api *API) templatesByOrganization() http.HandlerFunc {
 }
 
 // @Summary Get all templates
-// @Description Returns a list of templates.
-// @Description By default, only non-deprecated templates are returned.
-// @Description To include deprecated templates, specify `deprecated:true` in the search query.
 // @ID get-all-templates
 // @Security CoderSessionToken
 // @Produce json
@@ -544,14 +538,6 @@ func (api *API) fetchTemplates(mutate func(r *http.Request, arg *database.GetTem
 		args := filter
 		if mutate != nil {
 			mutate(r, &args)
-		}
-
-		// By default, deprecated templates are excluded unless explicitly requested
-		if !args.Deprecated.Valid {
-			args.Deprecated = sql.NullBool{
-				Bool:  false,
-				Valid: true,
-			}
 		}
 
 		// Filter templates based on rbac permissions
@@ -728,12 +714,6 @@ func (api *API) patchTemplateMeta(rw http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Defaults to the existing.
-	classicTemplateFlow := template.UseClassicParameterFlow
-	if req.UseClassicParameterFlow != nil {
-		classicTemplateFlow = *req.UseClassicParameterFlow
-	}
-
 	var updated database.Template
 	err = api.Database.InTx(func(tx database.Store) error {
 		if req.Name == template.Name &&
@@ -753,7 +733,6 @@ func (api *API) patchTemplateMeta(rw http.ResponseWriter, r *http.Request) {
 			req.TimeTilDormantAutoDeleteMillis == time.Duration(template.TimeTilDormantAutoDelete).Milliseconds() &&
 			req.RequireActiveVersion == template.RequireActiveVersion &&
 			(deprecationMessage == template.Deprecated) &&
-			(classicTemplateFlow == template.UseClassicParameterFlow) &&
 			maxPortShareLevel == template.MaxPortSharingLevel {
 			return nil
 		}
@@ -795,7 +774,6 @@ func (api *API) patchTemplateMeta(rw http.ResponseWriter, r *http.Request) {
 			AllowUserCancelWorkspaceJobs: req.AllowUserCancelWorkspaceJobs,
 			GroupACL:                     groupACL,
 			MaxPortSharingLevel:          maxPortShareLevel,
-			UseClassicParameterFlow:      classicTemplateFlow,
 		})
 		if err != nil {
 			return xerrors.Errorf("update template metadata: %w", err)
@@ -1074,11 +1052,10 @@ func (api *API) convertTemplate(
 			DaysOfWeek: codersdk.BitmapToWeekdays(template.AutostartAllowedDays()),
 		},
 		// These values depend on entitlements and come from the templateAccessControl
-		RequireActiveVersion:    templateAccessControl.RequireActiveVersion,
-		Deprecated:              templateAccessControl.IsDeprecated(),
-		DeprecationMessage:      templateAccessControl.Deprecated,
-		MaxPortShareLevel:       maxPortShareLevel,
-		UseClassicParameterFlow: template.UseClassicParameterFlow,
+		RequireActiveVersion: templateAccessControl.RequireActiveVersion,
+		Deprecated:           templateAccessControl.IsDeprecated(),
+		DeprecationMessage:   templateAccessControl.Deprecated,
+		MaxPortShareLevel:    maxPortShareLevel,
 	}
 }
 

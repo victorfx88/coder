@@ -10,7 +10,7 @@ import (
 	"go.uber.org/goleak"
 	"storj.io/drpc/drpcconn"
 
-	"github.com/coder/coder/v2/codersdk/drpcsdk"
+	"github.com/coder/coder/v2/codersdk/drpc"
 	"github.com/coder/coder/v2/provisionersdk"
 	"github.com/coder/coder/v2/provisionersdk/proto"
 	"github.com/coder/coder/v2/testutil"
@@ -24,7 +24,7 @@ func TestProvisionerSDK(t *testing.T) {
 	t.Parallel()
 	t.Run("ServeListener", func(t *testing.T) {
 		t.Parallel()
-		client, server := drpcsdk.MemTransportPipe()
+		client, server := drpc.MemTransportPipe()
 		defer client.Close()
 		defer server.Close()
 
@@ -66,7 +66,7 @@ func TestProvisionerSDK(t *testing.T) {
 
 	t.Run("ServeClosedPipe", func(t *testing.T) {
 		t.Parallel()
-		client, server := drpcsdk.MemTransportPipe()
+		client, server := drpc.MemTransportPipe()
 		_ = client.Close()
 		_ = server.Close()
 
@@ -94,9 +94,7 @@ func TestProvisionerSDK(t *testing.T) {
 			srvErr <- err
 		}()
 
-		api := proto.NewDRPCProvisionerClient(drpcconn.NewWithOptions(client, drpcconn.Options{
-			Manager: drpcsdk.DefaultDRPCOptions(nil),
-		}))
+		api := proto.NewDRPCProvisionerClient(drpcconn.New(client))
 		s, err := api.Session(ctx)
 		require.NoError(t, err)
 		err = s.Send(&proto.Request{Type: &proto.Request_Config{Config: &proto.Config{}}})

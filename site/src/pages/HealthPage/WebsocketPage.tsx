@@ -1,8 +1,8 @@
 import { useTheme } from "@emotion/react";
+import CodeOutlined from "@mui/icons-material/CodeOutlined";
 import Tooltip from "@mui/material/Tooltip";
 import type { HealthcheckReport } from "api/typesGenerated";
 import { Alert } from "components/Alert/Alert";
-import { CodeIcon } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { useOutletContext } from "react-router-dom";
 import { MONOSPACE_FONT_FAMILY } from "theme/constants";
@@ -17,7 +17,7 @@ import {
 } from "./Content";
 import { DismissWarningButton } from "./DismissWarningButton";
 
-const WebsocketPage = () => {
+export const WebsocketPage = () => {
 	const healthStatus = useOutletContext<HealthcheckReport>();
 	const { websocket } = healthStatus;
 	const theme = useTheme();
@@ -49,9 +49,7 @@ const WebsocketPage = () => {
 
 				<section>
 					<Tooltip title="Code">
-						<Pill icon={<CodeIcon className="size-icon-sm" />}>
-							{websocket.code}
-						</Pill>
+						<Pill icon={<CodeOutlined />}>{websocket.code}</Pill>
 					</Tooltip>
 				</section>
 

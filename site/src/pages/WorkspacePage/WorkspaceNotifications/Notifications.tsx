@@ -123,7 +123,7 @@ const styles = {
 		lineHeight: "1.5",
 		borderTop: `1px solid ${theme.palette.divider}`,
 
-		"&:first-of-type": {
+		"&:first-child": {
 			borderTop: 0,
 		},
 	}),

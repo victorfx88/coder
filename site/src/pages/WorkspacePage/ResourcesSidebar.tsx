@@ -86,7 +86,7 @@ export const ResourcesSidebar: FC<ResourcesSidebarProps> = ({
 	);
 };
 
-const ResourceSidebarItemSkeleton: FC = () => {
+export const ResourceSidebarItemSkeleton: FC = () => {
 	return (
 		<div css={[styles.root, { pointerEvents: "none" }]}>
 			<Skeleton variant="circular" width={16} height={16} />

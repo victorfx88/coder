@@ -21,7 +21,7 @@ import { useSearchParamsKey } from "hooks/useSearchParamsKey";
 import { BuildAvatar } from "modules/builds/BuildAvatar/BuildAvatar";
 import { DashboardFullPage } from "modules/dashboard/DashboardLayout";
 import { AgentLogs } from "modules/resources/AgentLogs/AgentLogs";
-import { useAgentLogs } from "modules/resources/useAgentLogs";
+import { useAgentLogs } from "modules/resources/AgentLogs/useAgentLogs";
 import {
 	WorkspaceBuildData,
 	WorkspaceBuildDataSkeleton,
@@ -212,9 +212,13 @@ export const WorkspaceBuildPageView: FC<WorkspaceBuildPageViewProps> = ({
 						</Alert>
 					)}
 
-					{tabState.value === "build" && <BuildLogsContent logs={logs} />}
-					{tabState.value !== "build" && selectedAgent && (
-						<AgentLogsContent agent={selectedAgent} />
+					{tabState.value === "build" ? (
+						<BuildLogsContent logs={logs} />
+					) : (
+						<AgentLogsContent
+							workspaceId={build.workspace_id}
+							agent={selectedAgent!}
+						/>
 					)}
 				</ScrollArea>
 			</div>
@@ -282,12 +286,15 @@ const BuildLogsContent: FC<{ logs?: ProvisionerJobLog[] }> = ({ logs }) => {
 	);
 };
 
-type AgentLogsContentProps = {
-	agent: WorkspaceAgent;
-};
-
-const AgentLogsContent: FC<AgentLogsContentProps> = ({ agent }) => {
-	const logs = useAgentLogs(agent, true);
+const AgentLogsContent: FC<{ workspaceId: string; agent: WorkspaceAgent }> = ({
+	agent,
+	workspaceId,
+}) => {
+	const logs = useAgentLogs({
+		workspaceId,
+		agentId: agent.id,
+		agentLifeCycleState: agent.lifecycle_state,
+	});
 
 	if (!logs) {
 		return <Loader />;

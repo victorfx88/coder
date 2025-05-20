@@ -17,8 +17,7 @@ export const SignInLayout: FC<PropsWithChildren> = ({ children }) => {
 const styles = {
 	container: {
 		flex: 1,
-		// Fallback to 100vh
-		height: ["100vh", "-webkit-fill-available"],
+		height: "-webkit-fill-available",
 		display: "flex",
 		justifyContent: "center",
 		alignItems: "center",

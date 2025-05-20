@@ -2,7 +2,9 @@ import { API } from "api/api";
 import type { OrganizationSyncSettings } from "api/typesGenerated";
 import type { QueryClient } from "react-query";
 
-const getOrganizationIdpSyncSettingsKey = () => ["organizationIdpSyncSettings"];
+export const getOrganizationIdpSyncSettingsKey = () => [
+	"organizationIdpSyncSettings",
+];
 
 export const patchOrganizationSyncSettings = (queryClient: QueryClient) => {
 	return {

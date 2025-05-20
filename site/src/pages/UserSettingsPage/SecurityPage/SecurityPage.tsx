@@ -13,7 +13,7 @@ import {
 	useSingleSignOnSection,
 } from "./SingleSignOnSection";
 
-const SecurityPage: FC = () => {
+export const SecurityPage: FC = () => {
 	const { user: me } = useAuthenticated();
 	const updatePasswordMutation = useMutation(updatePassword());
 	const authMethodsQuery = useQuery(authMethods());

@@ -1,4 +1,6 @@
 import { type Interpolation, type Theme, useTheme } from "@emotion/react";
+import PersonOutlinedIcon from "@mui/icons-material/PersonOutlined";
+import ScheduleIcon from "@mui/icons-material/Schedule";
 import { visuallyHidden } from "@mui/utils";
 import type { Workspace } from "api/typesGenerated";
 import { ConfirmDialog } from "components/Dialogs/ConfirmDialog/ConfirmDialog";
@@ -6,7 +8,6 @@ import { ExternalImage } from "components/ExternalImage/ExternalImage";
 import { Stack } from "components/Stack/Stack";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
-import { ClockIcon, UserIcon } from "lucide-react";
 import { type FC, type ReactNode, useState } from "react";
 import { getResourceIconPath } from "utils/workspace";
 
@@ -189,7 +190,7 @@ const Workspaces: FC<StageProps> = ({ workspaces }) => {
 									>
 										{dayjs(workspace.last_used_at).fromNow()}
 									</span>
-									<ClockIcon className="size-icon-xs" />
+									<ScheduleIcon css={styles.summaryIcon} />
 								</Stack>
 							</Stack>
 						</Stack>
@@ -208,7 +209,7 @@ const Workspaces: FC<StageProps> = ({ workspaces }) => {
 				</Stack>
 				{mostRecent && (
 					<Stack direction="row" alignItems="center" spacing={1}>
-						<ClockIcon className="size-icon-xs" />
+						<ScheduleIcon css={styles.summaryIcon} />
 						<span>Last used {dayjs(mostRecent.last_used_at).fromNow()}</span>
 					</Stack>
 				)}
@@ -263,8 +264,10 @@ const Resources: FC<StageProps> = ({ workspaces }) => {
 };
 
 const PersonIcon: FC = () => {
-	// Using the Lucide icon with appropriate size class
-	return <UserIcon className="size-icon-sm" css={{ margin: -1 }} />;
+	// This size doesn't match the rest of the icons because MUI is just really
+	// inconsistent. We have to make it bigger than the rest, and pull things in
+	// on the sides to compensate.
+	return <PersonOutlinedIcon css={{ width: 18, height: 18, margin: -1 }} />;
 };
 
 const styles = {

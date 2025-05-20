@@ -6,15 +6,15 @@ import {
 	MockGroup,
 	MockMemberRole,
 	MockTemplateAdminRole,
+	MockUser,
+	MockUser2,
 	MockUserAdminRole,
-	MockUserMember,
-	MockUserOwner,
 } from "testHelpers/entities";
 import { UsersTable } from "./UsersTable";
 
 const mockGroupsByUserId = new Map([
-	[MockUserOwner.id, [MockGroup]],
-	[MockUserMember.id, [MockGroup]],
+	[MockUser.id, [MockGroup]],
+	[MockUser2.id, [MockGroup]],
 ]);
 
 const meta: Meta<typeof UsersTable> = {
@@ -31,7 +31,7 @@ type Story = StoryObj<typeof UsersTable>;
 
 export const Example: Story = {
 	args: {
-		users: [MockUserOwner, MockUserMember],
+		users: [MockUser, MockUser2],
 		roles: MockAssignableSiteRoles,
 		canEditUsers: false,
 		groupsByUserId: mockGroupsByUserId,
@@ -41,10 +41,10 @@ export const Example: Story = {
 export const Editable: Story = {
 	args: {
 		users: [
-			MockUserOwner,
-			MockUserMember,
+			MockUser,
+			MockUser2,
 			{
-				...MockUserOwner,
+				...MockUser,
 				username: "John Doe",
 				email: "john.doe@coder.com",
 				roles: [
@@ -56,14 +56,14 @@ export const Editable: Story = {
 				status: "dormant",
 			},
 			{
-				...MockUserOwner,
+				...MockUser,
 				username: "Roger Moore",
 				email: "roger.moore@coder.com",
 				roles: [],
 				status: "suspended",
 			},
 			{
-				...MockUserOwner,
+				...MockUser,
 				username: "OIDC User",
 				email: "oidc.user@coder.com",
 				roles: [],

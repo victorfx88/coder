@@ -55,7 +55,7 @@ export const extractTimezone = (
 };
 
 /** Language used in the schedule components */
-const Language = {
+export const Language = {
 	manual: "Manual",
 	workspaceShuttingDownLabel: "Workspace is shutting down",
 	afterStart: "after start",
@@ -77,7 +77,10 @@ export const autostartDisplay = (schedule: string | undefined): string => {
 	return Language.manual;
 };
 
-const isShuttingDown = (workspace: Workspace, deadline?: Dayjs): boolean => {
+export const isShuttingDown = (
+	workspace: Workspace,
+	deadline?: Dayjs,
+): boolean => {
 	if (!deadline) {
 		if (!workspace.latest_build.deadline) {
 			return false;

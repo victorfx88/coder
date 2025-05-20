@@ -1,4 +1,5 @@
 import { paginatedAudits } from "api/queries/audits";
+import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { useFilter } from "components/Filter/Filter";
 import { useUserFilterMenu } from "components/Filter/UserFilter";
 import { isNonInitialPage } from "components/PaginationWidget/utils";

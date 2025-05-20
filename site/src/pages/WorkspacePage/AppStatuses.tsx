@@ -3,7 +3,10 @@ import { useTheme } from "@emotion/react";
 import AppsIcon from "@mui/icons-material/Apps";
 import CheckCircle from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
+import HelpOutline from "@mui/icons-material/HelpOutline";
+import HourglassEmpty from "@mui/icons-material/HourglassEmpty";
 import InsertDriveFile from "@mui/icons-material/InsertDriveFile";
+import OpenInNew from "@mui/icons-material/OpenInNew";
 import Warning from "@mui/icons-material/Warning";
 import CircularProgress from "@mui/material/CircularProgress";
 import Link from "@mui/material/Link";
@@ -14,12 +17,10 @@ import type {
 	WorkspaceAgent,
 	WorkspaceApp,
 } from "api/typesGenerated";
+import { useProxy } from "contexts/ProxyContext";
 import { formatDistance, formatDistanceToNow } from "date-fns";
-import { ExternalLinkIcon } from "lucide-react";
-import { HourglassIcon } from "lucide-react";
-import { CircleHelpIcon } from "lucide-react";
-import { useAppLink } from "modules/apps/useAppLink";
 import type { FC } from "react";
+import { createAppLinkHref } from "utils/apps";
 
 const getStatusColor = (
 	theme: Theme,
@@ -57,7 +58,7 @@ const getStatusIcon = (
 			return isLatest ? (
 				<CircularProgress size={18} sx={{ color }} />
 			) : (
-				<HourglassIcon className="size-icon-sm" style={{ color }} />
+				<HourglassEmpty sx={{ color, fontSize: 18 }} />
 			);
 		default:
 			return <Warning sx={{ color, fontSize: 18 }} />;
@@ -152,6 +153,9 @@ export const AppStatuses: FC<AppStatusesProps> = ({
 	referenceDate,
 }) => {
 	const theme = useTheme();
+	const { proxy } = useProxy();
+	const preferredPathBase = proxy.preferredPathAppURL;
+	const appsHost = proxy.preferredWildcardHostname;
 
 	// 1. Flatten all statuses and include the parent app object
 	const allStatuses: StatusWithAppInfo[] = apps.flatMap((app) =>
@@ -190,7 +194,22 @@ export const AppStatuses: FC<AppStatusesProps> = ({
 
 				// Get the associated app for this status
 				const currentApp = status.app;
+				let appHref: string | undefined;
 				const agent = agents.find((agent) => agent.id === status.agent_id);
+
+				if (currentApp && agent) {
+					const appSlug = currentApp.slug || currentApp.display_name;
+					appHref = createAppLinkHref(
+						window.location.protocol,
+						preferredPathBase,
+						appsHost,
+						appSlug,
+						workspace.owner_name,
+						workspace,
+						agent,
+						currentApp,
+					);
+				}
 
 				// Determine if app link should be shown
 				const showAppLink =
@@ -224,10 +243,7 @@ export const AppStatuses: FC<AppStatusesProps> = ({
 							}}
 						>
 							{getStatusIcon(theme, status.state, isLatest) || (
-								<CircleHelpIcon
-									className="size-icon-sm"
-									css={{ color: theme.palette.text.disabled }}
-								/>
+								<HelpOutline sx={{ fontSize: 18, color: "text.disabled" }} />
 							)}
 						</div>
 
@@ -265,12 +281,63 @@ export const AppStatuses: FC<AppStatusesProps> = ({
 								}}
 							>
 								{/* Conditional App Link */}
-								{currentApp && agent && showAppLink && (
-									<AppLink
-										app={currentApp}
-										agent={agent}
-										workspace={workspace}
-									/>
+								{currentApp && appHref && showAppLink && (
+									<Tooltip
+										title={`Open ${currentApp.display_name}`}
+										placement="top"
+									>
+										<Link
+											href={appHref}
+											target="_blank"
+											rel="noopener"
+											sx={{
+												...commonStyles,
+												position: "relative",
+												"& .MuiSvgIcon-root": {
+													fontSize: 14,
+													opacity: 0.7,
+													mr: 0.5,
+												},
+												"& img": {
+													opacity: 0.8,
+													marginRight: 0.5,
+												},
+												"&:hover": {
+													...commonStyles["&:hover"],
+													color: theme.palette.text.primary, // Keep consistent hover color
+													"& img": {
+														opacity: 1,
+													},
+													"& .MuiSvgIcon-root": {
+														opacity: 1,
+													},
+												},
+											}}
+										>
+											{currentApp.icon ? (
+												<img
+													src={currentApp.icon}
+													alt={`${currentApp.display_name} icon`}
+													width={14}
+													height={14}
+													style={{ borderRadius: "3px" }}
+												/>
+											) : (
+												<AppsIcon />
+											)}
+											{/* Keep app name short */}
+											<span
+												css={{
+													lineHeight: 1,
+													textOverflow: "ellipsis",
+													overflow: "hidden",
+													whiteSpace: "nowrap",
+												}}
+											>
+												{currentApp.display_name}
+											</span>
+										</Link>
+									</Tooltip>
 								)}
 
 								{/* Existing URI Link */}
@@ -304,10 +371,7 @@ export const AppStatuses: FC<AppStatusesProps> = ({
 													},
 												}}
 											>
-												<ExternalLinkIcon
-													className="size-icon-xs"
-													style={{ marginRight: "4px" }}
-												/>
+												<OpenInNew sx={{ mr: 0.5 }} />
 												<div
 													css={{
 														bgcolor: "transparent",
@@ -344,73 +408,5 @@ export const AppStatuses: FC<AppStatusesProps> = ({
 				);
 			})}
 		</div>
-	);
-};
-
-type AppLinkProps = {
-	app: WorkspaceApp;
-	agent: WorkspaceAgent;
-	workspace: Workspace;
-};
-
-const AppLink: FC<AppLinkProps> = ({ app, agent, workspace }) => {
-	const link = useAppLink(app, { agent, workspace });
-	const theme = useTheme();
-
-	return (
-		<Tooltip title={`Open ${link.label}`} placement="top">
-			<Link
-				href={link.href}
-				onClick={link.onClick}
-				target="_blank"
-				rel="noopener"
-				sx={{
-					...commonStyles,
-					position: "relative",
-					"& .MuiSvgIcon-root": {
-						fontSize: 14,
-						opacity: 0.7,
-						mr: 0.5,
-					},
-					"& img": {
-						opacity: 0.8,
-						marginRight: 0.5,
-					},
-					"&:hover": {
-						...commonStyles["&:hover"],
-						color: theme.palette.text.primary, // Keep consistent hover color
-						"& img": {
-							opacity: 1,
-						},
-						"& .MuiSvgIcon-root": {
-							opacity: 1,
-						},
-					},
-				}}
-			>
-				{app.icon ? (
-					<img
-						src={app.icon}
-						alt={`${link.label} icon`}
-						width={14}
-						height={14}
-						style={{ borderRadius: "3px" }}
-					/>
-				) : (
-					<AppsIcon />
-				)}
-				{/* Keep app name short */}
-				<span
-					css={{
-						lineHeight: 1,
-						textOverflow: "ellipsis",
-						overflow: "hidden",
-						whiteSpace: "nowrap",
-					}}
-				>
-					{link.label}
-				</span>
-			</Link>
-		</Tooltip>
 	);
 };

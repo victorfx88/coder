@@ -31,12 +31,6 @@ export const RBACResourceActions: Partial<
 		create: "create new audit log entries",
 		read: "read audit logs",
 	},
-	chat: {
-		create: "create a chat",
-		delete: "delete a chat",
-		read: "read a chat",
-		update: "update a chat",
-	},
 	crypto_key: {
 		create: "create crypto keys",
 		delete: "delete crypto keys",
@@ -130,9 +124,7 @@ export const RBACResourceActions: Partial<
 		update: "update a provisioner daemon",
 	},
 	provisioner_jobs: {
-		create: "create provisioner jobs",
 		read: "read provisioner jobs",
-		update: "update provisioner jobs",
 	},
 	replicas: {
 		read: "read replicas",

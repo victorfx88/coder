@@ -15,7 +15,7 @@ import {
 } from "./Content";
 import { DismissWarningButton } from "./DismissWarningButton";
 
-const AccessURLPage = () => {
+export const AccessURLPage = () => {
 	const healthStatus = useOutletContext<HealthcheckReport>();
 	const accessUrl = healthStatus.access_url;
 

@@ -3,14 +3,13 @@ import Checkbox from "@mui/material/Checkbox";
 import TableCell from "@mui/material/TableCell";
 import TableRow from "@mui/material/TableRow";
 import type { BannerConfig } from "api/typesGenerated";
-import { Button } from "components/Button/Button";
 import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "components/DropdownMenu/DropdownMenu";
-import { EllipsisVertical } from "lucide-react";
+	MoreMenu,
+	MoreMenuContent,
+	MoreMenuItem,
+	MoreMenuTrigger,
+	ThreeDotsButton,
+} from "components/MoreMenu/MoreMenu";
 import type { FC } from "react";
 
 interface AnnouncementBannerItemProps {
@@ -49,25 +48,17 @@ export const AnnouncementBannerItem: FC<AnnouncementBannerItemProps> = ({
 			</TableCell>
 
 			<TableCell>
-				<DropdownMenu>
-					<DropdownMenuTrigger asChild>
-						<Button size="icon-lg" variant="subtle" aria-label="Open menu">
-							<EllipsisVertical aria-hidden="true" />
-							<span className="sr-only">Open menu</span>
-						</Button>
-					</DropdownMenuTrigger>
-					<DropdownMenuContent align="end">
-						<DropdownMenuItem onClick={() => onEdit()}>
-							Edit&hellip;
-						</DropdownMenuItem>
-						<DropdownMenuItem
-							className="text-content-destructive focus:text-content-destructive"
-							onClick={() => onDelete()}
-						>
+				<MoreMenu>
+					<MoreMenuTrigger>
+						<ThreeDotsButton />
+					</MoreMenuTrigger>
+					<MoreMenuContent>
+						<MoreMenuItem onClick={() => onEdit()}>Edit&hellip;</MoreMenuItem>
+						<MoreMenuItem onClick={() => onDelete()} danger>
 							Delete&hellip;
-						</DropdownMenuItem>
-					</DropdownMenuContent>
-				</DropdownMenu>
+						</MoreMenuItem>
+					</MoreMenuContent>
+				</MoreMenu>
 			</TableCell>
 		</TableRow>
 	);

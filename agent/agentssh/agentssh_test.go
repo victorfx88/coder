@@ -214,11 +214,7 @@ func TestNewServer_CloseActiveConnections(t *testing.T) {
 		}
 
 		for _, ch := range waitConns {
-			select {
-			case <-ctx.Done():
-				t.Fatal("timeout")
-			case <-ch:
-			}
+			<-ch
 		}
 
 		return s, wg.Wait

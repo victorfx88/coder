@@ -11,7 +11,7 @@ import { retrieveRedirect } from "utils/redirect";
 import { sendDeploymentEvent } from "utils/telemetry";
 import { LoginPageView } from "./LoginPageView";
 
-const LoginPage: FC = () => {
+export const LoginPage: FC = () => {
 	const location = useLocation();
 	const {
 		isLoading,

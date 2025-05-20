@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { Response, User } from "api/typesGenerated";
 import { http, HttpResponse } from "msw";
 import { createMemoryRouter } from "react-router-dom";
-import { MockBuildInfo, MockUserOwner } from "testHelpers/entities";
+import { MockBuildInfo, MockUser } from "testHelpers/entities";
 import {
 	renderWithRouter,
 	waitForLoaderToBeRemoved,
@@ -83,7 +83,7 @@ describe("Setup Page", () => {
 						{ status: 401 },
 					);
 				}
-				return HttpResponse.json(MockUserOwner);
+				return HttpResponse.json(MockUser);
 			}),
 			http.get<never, null, User | Response>(
 				"/api/v2/users/first",

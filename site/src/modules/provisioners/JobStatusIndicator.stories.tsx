@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
+import { MockProvisionerJob } from "testHelpers/entities";
 import { JobStatusIndicator } from "./JobStatusIndicator";
 
 const meta: Meta<typeof JobStatusIndicator> = {

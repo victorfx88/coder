@@ -144,7 +144,6 @@ func TestAzureAKPKIWithCoderd(t *testing.T) {
 			return values, nil
 		}),
 		oidctest.WithServing(),
-		oidctest.WithLogging(t, nil),
 	)
 	cfg := fake.OIDCConfig(t, scopes, func(cfg *coderd.OIDCConfig) {
 		cfg.AllowSignups = true

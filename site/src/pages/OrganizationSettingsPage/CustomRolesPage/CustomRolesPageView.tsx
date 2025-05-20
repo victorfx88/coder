@@ -1,16 +1,18 @@
 import type { Interpolation, Theme } from "@emotion/react";
+import AddIcon from "@mui/icons-material/AddOutlined";
+import AddOutlined from "@mui/icons-material/AddOutlined";
 import Button from "@mui/material/Button";
 import Skeleton from "@mui/material/Skeleton";
 import type { AssignableRoles, Role } from "api/typesGenerated";
-import { Button as ShadcnButton } from "components/Button/Button";
 import { ChooseOne, Cond } from "components/Conditionals/ChooseOne";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from "components/DropdownMenu/DropdownMenu";
 import { EmptyState } from "components/EmptyState/EmptyState";
+import {
+	MoreMenu,
+	MoreMenuContent,
+	MoreMenuItem,
+	MoreMenuTrigger,
+	ThreeDotsButton,
+} from "components/MoreMenu/MoreMenu";
 import { Paywall } from "components/Paywall/Paywall";
 import { Stack } from "components/Stack/Stack";
 import {
@@ -25,7 +27,6 @@ import {
 	TableLoaderSkeleton,
 	TableRowSkeleton,
 } from "components/TableLoader/TableLoader";
-import { EllipsisVertical, PlusIcon } from "lucide-react";
 import type { FC } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { docs } from "utils/docs";
@@ -72,11 +73,7 @@ export const CustomRolesPageView: FC<CustomRolesPageViewProps> = ({
 					</span>
 				</span>
 				{canCreateOrgRole && isCustomRolesEnabled && (
-					<Button
-						component={RouterLink}
-						startIcon={<PlusIcon className="size-icon-sm" />}
-						to="create"
-					>
+					<Button component={RouterLink} startIcon={<AddIcon />} to="create">
 						Create custom role
 					</Button>
 				)}
@@ -160,7 +157,7 @@ const RoleTable: FC<RoleTableProps> = ({
 											<Button
 												component={RouterLink}
 												to="create"
-												startIcon={<PlusIcon className="size-icon-sm" />}
+												startIcon={<AddOutlined />}
 												variant="contained"
 											>
 												Create custom role
@@ -216,33 +213,27 @@ const RoleRow: FC<RoleRowProps> = ({
 
 			<TableCell>
 				{!role.built_in && (canUpdateOrgRole || canDeleteOrgRole) && (
-					<DropdownMenu>
-						<DropdownMenuTrigger asChild>
-							<ShadcnButton
-								size="icon-lg"
-								variant="subtle"
-								aria-label="Open menu"
-							>
-								<EllipsisVertical aria-hidden="true" />
-								<span className="sr-only">Open menu</span>
-							</ShadcnButton>
-						</DropdownMenuTrigger>
-						<DropdownMenuContent align="end">
+					<MoreMenu>
+						<MoreMenuTrigger>
+							<ThreeDotsButton />
+						</MoreMenuTrigger>
+						<MoreMenuContent>
 							{canUpdateOrgRole && (
-								<DropdownMenuItem onClick={() => navigate(role.name)}>
+								<MoreMenuItem
+									onClick={() => {
+										navigate(role.name);
+									}}
+								>
 									Edit
-								</DropdownMenuItem>
+								</MoreMenuItem>
 							)}
 							{canDeleteOrgRole && (
-								<DropdownMenuItem
-									className="text-content-destructive focus:text-content-destructive"
-									onClick={onDelete}
-								>
+								<MoreMenuItem danger onClick={onDelete}>
 									Delete&hellip;
-								</DropdownMenuItem>
+								</MoreMenuItem>
 							)}
-						</DropdownMenuContent>
-					</DropdownMenu>
+						</MoreMenuContent>
+					</MoreMenu>
 				)}
 			</TableCell>
 		</TableRow>
@@ -281,3 +272,5 @@ const styles = {
 		lineHeight: "160%",
 	}),
 } satisfies Record<string, Interpolation<Theme>>;
+
+export default CustomRolesPageView;

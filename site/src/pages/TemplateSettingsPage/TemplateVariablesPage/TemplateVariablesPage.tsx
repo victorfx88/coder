@@ -21,7 +21,7 @@ import { pageTitle } from "utils/page";
 import { useTemplateSettings } from "../TemplateSettingsLayout";
 import { TemplateVariablesPageView } from "./TemplateVariablesPageView";
 
-const TemplateVariablesPage: FC = () => {
+export const TemplateVariablesPage: FC = () => {
 	const getLink = useLinks();
 	const { organization = "default", template: templateName } = useParams() as {
 		organization?: string;

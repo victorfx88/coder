@@ -15,7 +15,7 @@ const meta: Meta<typeof DownloadAgentLogsButton> = {
 	parameters: {
 		queries: [
 			{
-				key: agentLogsKey(MockWorkspaceAgent.id),
+				key: agentLogsKey(MockWorkspace.id, MockWorkspaceAgent.id),
 				data: generateLogs(5),
 			},
 		],

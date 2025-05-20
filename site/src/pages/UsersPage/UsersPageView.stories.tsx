@@ -9,8 +9,8 @@ import type { ComponentProps } from "react";
 import {
 	MockAssignableSiteRoles,
 	MockAuthMethodsPasswordOnly,
-	MockUserMember,
-	MockUserOwner,
+	MockUser,
+	MockUser2,
 	mockApiError,
 } from "testHelpers/entities";
 import { UsersPageView } from "./UsersPageView";
@@ -32,7 +32,7 @@ const meta: Meta<typeof UsersPageView> = {
 	component: UsersPageView,
 	args: {
 		isNonInitialPage: false,
-		users: [MockUserOwner, MockUserMember],
+		users: [MockUser, MockUser2],
 		roles: MockAssignableSiteRoles,
 		canEditUsers: true,
 		filterProps: defaultFilterProps,

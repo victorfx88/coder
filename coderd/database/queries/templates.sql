@@ -124,8 +124,7 @@ SET
 	display_name = $6,
 	allow_user_cancel_workspace_jobs = $7,
 	group_acl = $8,
-	max_port_sharing_level = $9,
-	use_classic_parameter_flow = $10
+	max_port_sharing_level = $9
 WHERE
 	id = $1
 ;

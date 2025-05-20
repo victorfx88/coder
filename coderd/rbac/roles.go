@@ -299,8 +299,6 @@ func ReloadBuiltinRoles(opts *RoleOptions) {
 				ResourceOrganizationMember.Type: {policy.ActionRead},
 				// Users can create provisioner daemons scoped to themselves.
 				ResourceProvisionerDaemon.Type: {policy.ActionRead, policy.ActionCreate, policy.ActionRead, policy.ActionUpdate},
-				// Users can create, read, update, and delete their own agentic chat messages.
-				ResourceChat.Type: {policy.ActionCreate, policy.ActionRead, policy.ActionUpdate, policy.ActionDelete},
 			})...,
 		),
 	}.withCachedRegoValue()
@@ -503,7 +501,7 @@ func ReloadBuiltinRoles(opts *RoleOptions) {
 						// the ability to create templates and provisioners has
 						// a lot of overlap.
 						ResourceProvisionerDaemon.Type: {policy.ActionCreate, policy.ActionRead, policy.ActionUpdate, policy.ActionDelete},
-						ResourceProvisionerJobs.Type:   {policy.ActionRead, policy.ActionUpdate, policy.ActionCreate},
+						ResourceProvisionerJobs.Type:   {policy.ActionRead},
 					}),
 				},
 				User: []Permission{},

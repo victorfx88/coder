@@ -580,7 +580,7 @@ func TestRolePermissions(t *testing.T) {
 		},
 		{
 			Name:     "ProvisionerJobs",
-			Actions:  []policy.Action{policy.ActionRead, policy.ActionUpdate, policy.ActionCreate},
+			Actions:  []policy.Action{policy.ActionRead},
 			Resource: rbac.ResourceProvisionerJobs.InOrg(orgID),
 			AuthorizeMap: map[bool][]hasAuthSubjects{
 				true:  {owner, orgTemplateAdmin, orgAdmin},
@@ -828,37 +828,6 @@ func TestRolePermissions(t *testing.T) {
 					orgAuditor, otherOrgAuditor,
 					templateAdmin, orgTemplateAdmin, otherOrgTemplateAdmin,
 					userAdmin, orgUserAdmin, otherOrgUserAdmin,
-				},
-			},
-		},
-		// Members may read their own chats.
-		{
-			Name:     "CreateReadUpdateDeleteMyChats",
-			Actions:  []policy.Action{policy.ActionCreate, policy.ActionRead, policy.ActionUpdate, policy.ActionDelete},
-			Resource: rbac.ResourceChat.WithOwner(currentUser.String()),
-			AuthorizeMap: map[bool][]hasAuthSubjects{
-				true: {memberMe, orgMemberMe, owner},
-				false: {
-					userAdmin, orgUserAdmin, templateAdmin,
-					orgAuditor, orgTemplateAdmin,
-					otherOrgMember, otherOrgAuditor, otherOrgUserAdmin, otherOrgTemplateAdmin,
-					orgAdmin, otherOrgAdmin,
-				},
-			},
-		},
-		// Only owners can create, read, update, and delete other users' chats.
-		{
-			Name:     "CreateReadUpdateDeleteOtherUserChats",
-			Actions:  []policy.Action{policy.ActionCreate, policy.ActionRead, policy.ActionUpdate, policy.ActionDelete},
-			Resource: rbac.ResourceChat.WithOwner(uuid.NewString()), // some other user
-			AuthorizeMap: map[bool][]hasAuthSubjects{
-				true: {owner},
-				false: {
-					memberMe, orgMemberMe,
-					userAdmin, orgUserAdmin, templateAdmin,
-					orgAuditor, orgTemplateAdmin,
-					otherOrgMember, otherOrgAuditor, otherOrgUserAdmin, otherOrgTemplateAdmin,
-					orgAdmin, otherOrgAdmin,
 				},
 			},
 		},

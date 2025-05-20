@@ -11,7 +11,7 @@ import { useMutation, useQuery, useQueryClient } from "react-query";
 import { Section } from "../Section";
 import { ScheduleForm } from "./ScheduleForm";
 
-const SchedulePage: FC = () => {
+export const SchedulePage: FC = () => {
 	const { user: me } = useAuthenticated();
 	const queryClient = useQueryClient();
 

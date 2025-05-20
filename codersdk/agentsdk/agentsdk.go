@@ -26,7 +26,7 @@ import (
 	"github.com/coder/coder/v2/apiversion"
 	"github.com/coder/coder/v2/coderd/httpapi"
 	"github.com/coder/coder/v2/codersdk"
-	"github.com/coder/coder/v2/codersdk/drpcsdk"
+	drpcsdk "github.com/coder/coder/v2/codersdk/drpc"
 	tailnetproto "github.com/coder/coder/v2/tailnet/proto"
 )
 
@@ -246,23 +246,11 @@ func (c *Client) ConnectRPC23(ctx context.Context) (
 }
 
 // ConnectRPC24 returns a dRPC client to the Agent API v2.4.  It is useful when you want to be
-// maximally compatible with Coderd Release Versions from 2.20+
+// maximally compatible with Coderd Release Versions from 2.xx+ // TODO @vincent: define version
 func (c *Client) ConnectRPC24(ctx context.Context) (
 	proto.DRPCAgentClient24, tailnetproto.DRPCTailnetClient24, error,
 ) {
 	conn, err := c.connectRPCVersion(ctx, apiversion.New(2, 4))
-	if err != nil {
-		return nil, nil, err
-	}
-	return proto.NewDRPCAgentClient(conn), tailnetproto.NewDRPCTailnetClient(conn), nil
-}
-
-// ConnectRPC25 returns a dRPC client to the Agent API v2.5.  It is useful when you want to be
-// maximally compatible with Coderd Release Versions from 2.xx+ // TODO(DanielleMaywood): Update version
-func (c *Client) ConnectRPC25(ctx context.Context) (
-	proto.DRPCAgentClient25, tailnetproto.DRPCTailnetClient25, error,
-) {
-	conn, err := c.connectRPCVersion(ctx, apiversion.New(2, 5))
 	if err != nil {
 		return nil, nil, err
 	}

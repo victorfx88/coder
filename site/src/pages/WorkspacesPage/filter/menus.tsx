@@ -147,7 +147,7 @@ export const StatusMenu: FC<StatusMenuProps> = ({ width, menu }) => {
 	);
 };
 
-const getStatusIndicatorVariant = (
+export const getStatusIndicatorVariant = (
 	status: WorkspaceStatus,
 ): StatusIndicatorDotProps["variant"] => {
 	switch (status) {

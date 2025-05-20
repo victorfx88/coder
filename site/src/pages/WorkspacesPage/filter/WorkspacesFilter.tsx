@@ -14,7 +14,7 @@ import {
 	TemplateMenu,
 } from "./menus";
 
-const workspaceFilterQuery = {
+export const workspaceFilterQuery = {
 	me: "owner:me",
 	all: "",
 	running: "status:running",

@@ -132,7 +132,7 @@ var actorLogOrder = []rbac.SubjectType{
 	rbac.SubjectTypeAutostart,
 	rbac.SubjectTypeCryptoKeyReader,
 	rbac.SubjectTypeCryptoKeyRotator,
-	rbac.SubjectTypeJobReaper,
+	rbac.SubjectTypeHangDetector,
 	rbac.SubjectTypeNotifier,
 	rbac.SubjectTypePrebuildsOrchestrator,
 	rbac.SubjectTypeProvisionerd,

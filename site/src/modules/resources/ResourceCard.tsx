@@ -19,7 +19,7 @@ const styles = {
 			borderBottom: 0,
 		},
 
-		"&:first-of-type": {
+		"&:first-child": {
 			borderTopLeftRadius: 8,
 			borderTopRightRadius: 8,
 		},

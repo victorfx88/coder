@@ -1,10 +1,7 @@
+import { action } from "@storybook/addon-actions";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, userEvent, waitFor, within } from "@storybook/test";
-import {
-	MockTemplate,
-	MockTemplateVersion,
-	MockWorkspace,
-} from "testHelpers/entities";
+import { MockTemplate, MockTemplateVersion } from "testHelpers/entities";
 import { withDashboardProvider } from "testHelpers/storybook";
 import { WorkspaceOutdatedTooltip } from "./WorkspaceOutdatedTooltip";
 
@@ -21,11 +18,9 @@ const meta: Meta<typeof WorkspaceOutdatedTooltip> = {
 		],
 	},
 	args: {
-		workspace: {
-			...MockWorkspace,
-			template_name: MockTemplate.display_name,
-			template_active_version_id: MockTemplateVersion.id,
-		},
+		onUpdateVersion: action("onUpdateVersion"),
+		templateName: MockTemplate.display_name,
+		latestVersionId: MockTemplateVersion.id,
 	},
 };
 
@@ -34,12 +29,14 @@ type Story = StoryObj<typeof WorkspaceOutdatedTooltip>;
 
 const Example: Story = {
 	play: async ({ canvasElement, step }) => {
-		const body = within(canvasElement.ownerDocument.body);
+		const screen = within(canvasElement);
 
 		await step("activate hover trigger", async () => {
-			await userEvent.hover(body.getByRole("button"));
+			await userEvent.hover(screen.getByRole("button"));
 			await waitFor(() =>
-				expect(body.getByText(MockTemplateVersion.message)).toBeInTheDocument(),
+				expect(
+					screen.getByText(MockTemplateVersion.message),
+				).toBeInTheDocument(),
 			);
 		});
 	},

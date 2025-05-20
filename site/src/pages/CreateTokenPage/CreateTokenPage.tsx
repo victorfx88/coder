@@ -19,7 +19,7 @@ const initialValues: CreateTokenData = {
 	lifetime: 30,
 };
 
-const CreateTokenPage: FC = () => {
+export const CreateTokenPage: FC = () => {
 	const navigate = useNavigate();
 
 	const {

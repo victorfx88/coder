@@ -1,7 +1,7 @@
 import type { Branding } from "../branding";
 import colors from "../tailwindColors";
 
-const branding: Branding = {
+export const branding: Branding = {
 	enterprise: {
 		background: colors.blue[950],
 		divider: colors.blue[900],

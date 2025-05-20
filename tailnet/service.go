@@ -17,7 +17,6 @@ import (
 
 	"cdr.dev/slog"
 	"github.com/coder/coder/v2/apiversion"
-	"github.com/coder/coder/v2/codersdk/drpcsdk"
 	"github.com/coder/coder/v2/tailnet/proto"
 	"github.com/coder/quartz"
 )
@@ -93,7 +92,6 @@ func NewClientService(options ClientServiceOptions) (
 		return nil, xerrors.Errorf("register DRPC service: %w", err)
 	}
 	server := drpcserver.NewWithOptions(mux, drpcserver.Options{
-		Manager: drpcsdk.DefaultDRPCOptions(nil),
 		Log: func(err error) {
 			if xerrors.Is(err, io.EOF) ||
 				xerrors.Is(err, context.Canceled) ||

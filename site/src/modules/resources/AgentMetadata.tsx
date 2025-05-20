@@ -131,7 +131,7 @@ export const AgentMetadata: FC<AgentMetadataProps> = ({
 	return <AgentMetadataView metadata={activeMetadata} />;
 };
 
-const AgentMetadataSkeleton: FC = () => {
+export const AgentMetadataSkeleton: FC = () => {
 	return (
 		<Stack alignItems="baseline" direction="row" spacing={6}>
 			<div css={styles.metadata}>

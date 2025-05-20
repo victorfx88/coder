@@ -9,7 +9,7 @@ import { useParams } from "react-router-dom";
 import { pageTitle } from "utils/page";
 import { WorkspaceBuildPageView } from "./WorkspaceBuildPageView";
 
-const WorkspaceBuildPage: FC = () => {
+export const WorkspaceBuildPage: FC = () => {
 	const params = useParams() as {
 		username: string;
 		workspace: string;

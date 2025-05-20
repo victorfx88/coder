@@ -1,10 +1,8 @@
 import { watchWorkspace } from "api/api";
+import { checkAuthorization } from "api/queries/authCheck";
 import { template as templateQueryOptions } from "api/queries/templates";
 import { workspaceBuildsKey } from "api/queries/workspaceBuilds";
-import {
-	workspaceByOwnerAndName,
-	workspacePermissions,
-} from "api/queries/workspaces";
+import { workspaceByOwnerAndName } from "api/queries/workspaces";
 import type { Workspace } from "api/typesGenerated";
 import { ErrorAlert } from "components/Alert/ErrorAlert";
 import { displayError } from "components/GlobalSnackbar/utils";
@@ -17,8 +15,9 @@ import { type FC, useEffect } from "react";
 import { useQuery, useQueryClient } from "react-query";
 import { useParams } from "react-router-dom";
 import { WorkspaceReadyPage } from "./WorkspaceReadyPage";
+import { type WorkspacePermissions, workspaceChecks } from "./permissions";
 
-const WorkspacePage: FC = () => {
+export const WorkspacePage: FC = () => {
 	const queryClient = useQueryClient();
 	const params = useParams() as {
 		username: string;
@@ -44,8 +43,13 @@ const WorkspacePage: FC = () => {
 	const template = templateQuery.data;
 
 	// Permissions
-	const permissionsQuery = useQuery(workspacePermissions(workspace));
-	const permissions = permissionsQuery.data;
+	const checks =
+		workspace && template ? workspaceChecks(workspace, template) : {};
+	const permissionsQuery = useQuery({
+		...checkAuthorization({ checks }),
+		enabled: workspace !== undefined && template !== undefined,
+	});
+	const permissions = permissionsQuery.data as WorkspacePermissions | undefined;
 
 	// Watch workspace changes
 	const updateWorkspaceData = useEffectEvent(

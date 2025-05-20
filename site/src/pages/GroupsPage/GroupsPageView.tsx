@@ -1,4 +1,6 @@
 import type { Interpolation, Theme } from "@emotion/react";
+import AddOutlined from "@mui/icons-material/AddOutlined";
+import KeyboardArrowRight from "@mui/icons-material/KeyboardArrowRight";
 import Skeleton from "@mui/material/Skeleton";
 import type { Group } from "api/typesGenerated";
 import { Avatar } from "components/Avatar/Avatar";
@@ -22,7 +24,6 @@ import {
 	TableRowSkeleton,
 } from "components/TableLoader/TableLoader";
 import { useClickableTableRow } from "hooks";
-import { ChevronRightIcon, PlusIcon } from "lucide-react";
 import type { FC } from "react";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
 import { docs } from "utils/docs";
@@ -80,7 +81,7 @@ export const GroupsPageView: FC<GroupsPageViewProps> = ({
 													canCreateGroup && (
 														<Button asChild>
 															<RouterLink to="create">
-																<PlusIcon className="size-icon-sm" />
+																<AddOutlined />
 																Create group
 															</RouterLink>
 														</Button>
@@ -157,7 +158,7 @@ const GroupRow: FC<GroupRowProps> = ({ group }) => {
 
 			<TableCell>
 				<div css={styles.arrowCell}>
-					<ChevronRightIcon className="size-icon-sm" />
+					<KeyboardArrowRight css={styles.arrowRight} />
 				</div>
 			</TableCell>
 		</TableRow>
@@ -194,3 +195,5 @@ const styles = {
 		display: "flex",
 	},
 } satisfies Record<string, Interpolation<Theme>>;
+
+export default GroupsPageView;

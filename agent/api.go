@@ -7,8 +7,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/google/uuid"
-
 	"github.com/coder/coder/v2/agent/agentcontainers"
 	"github.com/coder/coder/v2/coderd/httpapi"
 	"github.com/coder/coder/v2/codersdk"
@@ -42,15 +40,12 @@ func (a *agent) apiHandler() (http.Handler, func() error) {
 	if a.experimentalDevcontainersEnabled {
 		containerAPIOpts := []agentcontainers.Option{
 			agentcontainers.WithExecer(a.execer),
-			agentcontainers.WithScriptLogger(func(logSourceID uuid.UUID) agentcontainers.ScriptLogger {
-				return a.logSender.GetScriptLogger(logSourceID)
-			}),
 		}
 		manifest := a.manifest.Load()
 		if manifest != nil && len(manifest.Devcontainers) > 0 {
 			containerAPIOpts = append(
 				containerAPIOpts,
-				agentcontainers.WithDevcontainers(manifest.Devcontainers, manifest.Scripts),
+				agentcontainers.WithDevcontainers(manifest.Devcontainers),
 			)
 		}
 

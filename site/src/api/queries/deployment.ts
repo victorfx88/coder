@@ -6,7 +6,6 @@ export const deploymentConfig = () => {
 	return {
 		queryKey: deploymentConfigQueryKey,
 		queryFn: API.getDeploymentConfig,
-		staleTime: Number.POSITIVE_INFINITY,
 	};
 };
 
@@ -35,12 +34,5 @@ export const deploymentIdpSyncFieldValues = (field: string) => {
 	return {
 		queryKey: ["deployment", "idpSync", "fieldValues", field],
 		queryFn: () => API.getDeploymentIdpSyncFieldValues(field),
-	};
-};
-
-export const deploymentLanguageModels = () => {
-	return {
-		queryKey: ["deployment", "llms"],
-		queryFn: API.getDeploymentLLMs,
 	};
 };

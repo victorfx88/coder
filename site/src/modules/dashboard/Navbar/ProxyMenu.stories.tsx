@@ -8,7 +8,7 @@ import {
 	MockAuthMethodsAll,
 	MockPermissions,
 	MockProxyLatencies,
-	MockUserOwner,
+	MockUser,
 	MockWorkspaceProxies,
 } from "testHelpers/entities";
 import { withDesktopViewport } from "testHelpers/storybook";
@@ -41,7 +41,7 @@ const meta: Meta<typeof ProxyMenu> = {
 	],
 	parameters: {
 		queries: [
-			{ key: ["me"], data: MockUserOwner },
+			{ key: ["me"], data: MockUser },
 			{ key: ["authMethods"], data: MockAuthMethodsAll },
 			{ key: ["hasFirstUser"], data: true },
 			{

@@ -1,5 +1,10 @@
+import AddIcon from "@mui/icons-material/AddOutlined";
+import DeleteIcon from "@mui/icons-material/DeleteOutlined";
 import EditIcon from "@mui/icons-material/EditOutlined";
+import CopyIcon from "@mui/icons-material/FileCopyOutlined";
+import SettingsIcon from "@mui/icons-material/SettingsOutlined";
 import Button from "@mui/material/Button";
+import Divider from "@mui/material/Divider";
 import { workspaces } from "api/queries/workspaces";
 import type {
 	AuthorizationResponse,
@@ -7,18 +12,17 @@ import type {
 	TemplateVersion,
 } from "api/typesGenerated";
 import { Avatar } from "components/Avatar/Avatar";
-import { Button as ShadcnButton } from "components/Button/Button";
 import { ConfirmDialog } from "components/Dialogs/ConfirmDialog/ConfirmDialog";
 import { DeleteDialog } from "components/Dialogs/DeleteDialog/DeleteDialog";
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuTrigger,
-} from "components/DropdownMenu/DropdownMenu";
 import { Margins } from "components/Margins/Margins";
 import { MemoizedInlineMarkdown } from "components/Markdown/Markdown";
+import {
+	MoreMenu,
+	MoreMenuContent,
+	MoreMenuItem,
+	MoreMenuTrigger,
+	ThreeDotsButton,
+} from "components/MoreMenu/MoreMenu";
 import {
 	PageHeader,
 	PageHeaderSubtitle,
@@ -26,13 +30,6 @@ import {
 } from "components/PageHeader/PageHeader";
 import { Pill } from "components/Pill/Pill";
 import { Stack } from "components/Stack/Stack";
-import { CopyIcon } from "lucide-react";
-import {
-	EllipsisVertical,
-	PlusIcon,
-	SettingsIcon,
-	TrashIcon,
-} from "lucide-react";
 import { linkToTemplate, useLinks } from "modules/navigation";
 import type { WorkspacePermissions } from "modules/permissions/workspaces";
 import type { FC } from "react";
@@ -70,48 +67,44 @@ const TemplateMenu: FC<TemplateMenuProps> = ({
 
 	return (
 		<>
-			<DropdownMenu>
-				<DropdownMenuTrigger asChild>
-					<ShadcnButton size="icon-lg" variant="subtle" aria-label="Open menu">
-						<EllipsisVertical aria-hidden="true" />
-						<span className="sr-only">Open menu</span>
-					</ShadcnButton>
-				</DropdownMenuTrigger>
-				<DropdownMenuContent align="end">
-					<DropdownMenuItem
-						onClick={() => navigate(`${templateLink}/settings`)}
+			<MoreMenu>
+				<MoreMenuTrigger>
+					<ThreeDotsButton />
+				</MoreMenuTrigger>
+				<MoreMenuContent>
+					<MoreMenuItem
+						onClick={() => {
+							navigate(`${templateLink}/settings`);
+						}}
 					>
-						<SettingsIcon className="size-icon-sm" />
+						<SettingsIcon />
 						Settings
-					</DropdownMenuItem>
+					</MoreMenuItem>
 
-					<DropdownMenuItem
-						onClick={() =>
-							navigate(`${templateLink}/versions/${templateVersion}/edit`)
-						}
+					<MoreMenuItem
+						onClick={() => {
+							navigate(`${templateLink}/versions/${templateVersion}/edit`);
+						}}
 					>
 						<EditIcon />
 						Edit files
-					</DropdownMenuItem>
+					</MoreMenuItem>
 
-					<DropdownMenuItem
-						onClick={() =>
-							navigate(`/templates/new?fromTemplate=${templateId}`)
-						}
+					<MoreMenuItem
+						onClick={() => {
+							navigate(`/templates/new?fromTemplate=${templateId}`);
+						}}
 					>
-						<CopyIcon className="size-icon-sm" />
+						<CopyIcon />
 						Duplicate&hellip;
-					</DropdownMenuItem>
-					<DropdownMenuSeparator />
-					<DropdownMenuItem
-						className="text-content-destructive focus:text-content-destructive"
-						onClick={dialogState.openDeleteConfirmation}
-					>
-						<TrashIcon />
+					</MoreMenuItem>
+					<Divider />
+					<MoreMenuItem onClick={dialogState.openDeleteConfirmation} danger>
+						<DeleteIcon />
 						Delete&hellip;
-					</DropdownMenuItem>
-				</DropdownMenuContent>
-			</DropdownMenu>
+					</MoreMenuItem>
+				</MoreMenuContent>
+			</MoreMenu>
 
 			{safeToDeleteTemplate ? (
 				<DeleteDialog
@@ -192,7 +185,7 @@ export const TemplatePageHeader: FC<TemplatePageHeaderProps> = ({
 							workspacePermissions.createWorkspaceForUserID && (
 								<Button
 									variant="contained"
-									startIcon={<PlusIcon className="size-icon-sm" />}
+									startIcon={<AddIcon />}
 									component={RouterLink}
 									to={`${templateLink}/workspace`}
 								>

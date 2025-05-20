@@ -39,8 +39,7 @@ export const CliInstallPageView: FC<CliInstallPageViewProps> = ({ origin }) => {
 const styles = {
 	container: {
 		flex: 1,
-		// Fallback to 100vh
-		height: ["100vh", "-webkit-fill-available"],
+		height: "-webkit-fill-available",
 		display: "flex",
 		flexDirection: "column",
 		justifyContent: "center",

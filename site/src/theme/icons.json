@@ -1,5 +1,4 @@
 [
-	"aider.svg",
 	"almalinux.svg",
 	"android-studio.svg",
 	"apache-guacamole.svg",
@@ -18,7 +17,6 @@
 	"centos.svg",
 	"claude.svg",
 	"clion.svg",
-	"code-insiders.svg",
 	"code.svg",
 	"coder.svg",
 	"conda.svg",
@@ -39,7 +37,6 @@
 	"docker.svg",
 	"dotfiles.svg",
 	"dotnet.svg",
-	"elixir.svg",
 	"fedora.svg",
 	"filebrowser.svg",
 	"fleet.svg",

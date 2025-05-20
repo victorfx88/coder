@@ -1,4 +1,5 @@
 import type { Interpolation, Theme } from "@emotion/react";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import AlertTitle from "@mui/material/AlertTitle";
 import CircularProgress from "@mui/material/CircularProgress";
 import Link from "@mui/material/Link";
@@ -7,7 +8,6 @@ import type { ExternalAuthDevice } from "api/typesGenerated";
 import { isAxiosError } from "axios";
 import { Alert, AlertDetail } from "components/Alert/Alert";
 import { CopyButton } from "components/CopyButton/CopyButton";
-import { ExternalLinkIcon } from "lucide-react";
 import type { FC } from "react";
 
 interface GitDeviceAuthProps {
@@ -134,11 +134,7 @@ export const GitDeviceAuth: FC<GitDeviceAuthProps> = ({
 				Copy your one-time code:&nbsp;
 				<div css={styles.copyCode}>
 					<span css={styles.code}>{externalAuthDevice.user_code}</span>
-					&nbsp;{" "}
-					<CopyButton
-						text={externalAuthDevice.user_code}
-						label="Copy user code"
-					/>
+					&nbsp; <CopyButton text={externalAuthDevice.user_code} />
 				</div>
 				<br />
 				Then open the link below and paste it:
@@ -150,7 +146,7 @@ export const GitDeviceAuth: FC<GitDeviceAuthProps> = ({
 					target="_blank"
 					rel="noreferrer"
 				>
-					<ExternalLinkIcon className="size-icon-xs" />
+					<OpenInNewIcon fontSize="small" />
 					Open and Paste
 				</Link>
 			</div>

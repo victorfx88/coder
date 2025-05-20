@@ -44,7 +44,7 @@ type BooleanKeys<T> = {
 	[K in keyof T]: T[K] extends boolean | null ? K : never;
 }[keyof T];
 
-const DERPPage: FC = () => {
+export const DERPPage: FC = () => {
 	const { derp } = useOutletContext<HealthcheckReport>();
 	const { netcheck, regions, netcheck_logs: logs } = derp;
 	const safeNetcheck = netcheck || ({} as NetcheckReport);

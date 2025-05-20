@@ -7,7 +7,6 @@ import {
 	DashboardContext,
 	type DashboardProvider,
 } from "modules/dashboard/DashboardProvider";
-import type { WorkspacePermissions } from "modules/workspaces/permissions";
 import { http, HttpResponse } from "msw";
 import type { FC } from "react";
 import { type Location, useLocation } from "react-router-dom";
@@ -23,7 +22,7 @@ import {
 	MockTemplate,
 	MockTemplateVersionParameter1,
 	MockTemplateVersionParameter2,
-	MockUserOwner,
+	MockUser,
 	MockWorkspace,
 	MockWorkspaceBuild,
 	MockWorkspaceBuildDelete,
@@ -33,7 +32,7 @@ import {
 	renderWithAuth,
 } from "testHelpers/renderHelpers";
 import { server } from "testHelpers/server";
-import WorkspacePage from "./WorkspacePage";
+import { WorkspacePage } from "./WorkspacePage";
 
 const { API, MissingBuildParameters } = apiModule;
 
@@ -50,7 +49,12 @@ const renderWorkspacePage = async (
 	jest
 		.spyOn(API, "getDeploymentConfig")
 		.mockResolvedValueOnce(MockDeploymentConfig);
-	jest.spyOn(apiModule, "watchWorkspaceAgentLogs");
+	jest
+		.spyOn(apiModule, "watchWorkspaceAgentLogs")
+		.mockImplementation((_, options) => {
+			options.onDone?.();
+			return new WebSocket("");
+		});
 
 	renderWithAuth(<WorkspacePage />, {
 		...options,
@@ -122,14 +126,11 @@ describe("WorkspacePage", () => {
 		// set permissions
 		server.use(
 			http.post("/api/v2/authcheck", async () => {
-				const permissions: WorkspacePermissions = {
-					deleteFailedWorkspace: true,
-					deploymentConfig: true,
-					readWorkspace: true,
+				return HttpResponse.json({
+					updateTemplates: true,
 					updateWorkspace: true,
-					updateWorkspaceVersion: true,
-				};
-				return HttpResponse.json(permissions);
+					updateTemplate: true,
+				});
 			}),
 		);
 
@@ -319,7 +320,7 @@ describe("WorkspacePage", () => {
 	});
 
 	it("restart the workspace with one time parameters when having the confirmation dialog", async () => {
-		localStorage.removeItem(`${MockUserOwner.id}_ignoredWarnings`);
+		localStorage.removeItem(`${MockUser.id}_ignoredWarnings`);
 		jest.spyOn(API, "getWorkspaceParameters").mockResolvedValue({
 			templateVersionRichParameters: [
 				{

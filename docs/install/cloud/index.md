@@ -10,13 +10,10 @@ cloud of choice.
 We publish an EC2 image with Coder pre-installed. Follow the tutorial here:
 
 - [Install Coder on AWS EC2](./ec2.md)
-- [Install Coder on AWS EKS](../kubernetes.md#aws)
 
 Alternatively, install the [CLI binary](../cli.md) on any Linux machine or
 follow our [Kubernetes](../kubernetes.md) documentation to install Coder on an
-existing Kubernetes cluster.
-
-For EKS-specific installation guidance, see the [AWS section in Kubernetes installation docs](../kubernetes.md#aws).
+existing EKS cluster.
 
 ## GCP
 

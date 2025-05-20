@@ -12,7 +12,7 @@ import type { FC } from "react";
 import { TableColumnHelpTooltip } from "../../OrganizationSettingsPage/UserTable/TableColumnHelpTooltip";
 import { UsersTableBody } from "./UsersTableBody";
 
-const Language = {
+export const Language = {
 	usernameLabel: "User",
 	rolesLabel: "Roles",
 	groupsLabel: "Groups",
