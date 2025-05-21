@@ -1,35 +1,30 @@
-import { GlobalErrorBoundary } from "components/ErrorBoundary/GlobalErrorBoundary";
-import { ChatLayout } from "pages/ChatPage/ChatLayout";
-import { ChatMessages } from "pages/ChatPage/ChatMessages";
-import { TemplateRedirectController } from "pages/TemplatePage/TemplateRedirectController";
-import { Suspense, lazy } from "react";
-import {
-	Navigate,
-	Outlet,
-	Route,
-	createBrowserRouter,
-	createRoutesFromChildren,
-} from "react-router-dom";
-import { Loader } from "./components/Loader/Loader";
-import { RequireAuth } from "./contexts/auth/RequireAuth";
-import { DashboardLayout } from "./modules/dashboard/DashboardLayout";
+import {GlobalErrorBoundary} from "components/ErrorBoundary/GlobalErrorBoundary";
+import {ChatLayout} from "pages/ChatPage/ChatLayout";
+import {ChatMessages} from "pages/ChatPage/ChatMessages";
+import {TemplateRedirectController} from "pages/TemplatePage/TemplateRedirectController";
+import {lazy, Suspense} from "react";
+import {createBrowserRouter, createRoutesFromChildren, Navigate, Outlet, Route,} from "react-router-dom";
+import {Loader} from "./components/Loader/Loader";
+import {RequireAuth} from "./contexts/auth/RequireAuth";
+import {DashboardLayout} from "./modules/dashboard/DashboardLayout";
 import AuditPage from "./pages/AuditPage/AuditPage";
-import { HealthLayout } from "./pages/HealthPage/HealthLayout";
+import {HealthLayout} from "./pages/HealthPage/HealthLayout";
 import LoginOAuthDevicePage from "./pages/LoginOAuthDevicePage/LoginOAuthDevicePage";
 import LoginPage from "./pages/LoginPage/LoginPage";
-import { SetupPage } from "./pages/SetupPage/SetupPage";
-import { TemplateLayout } from "./pages/TemplatePage/TemplateLayout";
-import { TemplateSettingsLayout } from "./pages/TemplateSettingsPage/TemplateSettingsLayout";
+import {SetupPage} from "./pages/SetupPage/SetupPage";
+import {TemplateLayout} from "./pages/TemplatePage/TemplateLayout";
+import {TemplateSettingsLayout} from "./pages/TemplateSettingsPage/TemplateSettingsLayout";
 import TemplatesPage from "./pages/TemplatesPage/TemplatesPage";
 import UserSettingsLayout from "./pages/UserSettingsPage/Layout";
 import UsersPage from "./pages/UsersPage/UsersPage";
-import { WorkspaceSettingsLayout } from "./pages/WorkspaceSettingsPage/WorkspaceSettingsLayout";
+import {WorkspaceSettingsLayout} from "./pages/WorkspaceSettingsPage/WorkspaceSettingsLayout";
 import WorkspacesPage from "./pages/WorkspacesPage/WorkspacesPage";
 
 // Lazy load pages
 // - Pages that are secondary, not in the main navigation or not usually accessed
 // - Pages that use heavy dependencies like charts or time libraries
 const NotFoundPage = lazy(() => import("./pages/404Page/404Page"));
+const MainLayout = lazy(() => import("./layouts/MainLayout"));
 const DeploymentSettingsLayout = lazy(
 	() => import("./modules/management/DeploymentSettingsLayout"),
 );
@@ -397,7 +392,8 @@ export const router = createBrowserRouter(
 
 			{/* Dashboard routes */}
 			<Route element={<RequireAuth />}>
-				<Route element={<DashboardLayout />}>
+				<Route element={<MainLayout />}>
+					<Route element={<DashboardLayout />}>
 					<Route index element={<Navigate to="/workspaces" replace />} />
 
 					<Route
@@ -586,7 +582,8 @@ export const router = createBrowserRouter(
 				/>
 				<Route path="/cli-auth" element={<CliAuthPage />} />
 				<Route path="/icons" element={<IconsPage />} />
-			</Route>
-		</Route>,
+				</Route>
+							</Route>
+						</Route>
 	),
 );

@@ -1,0 +1,28 @@
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.layout-transition {
+  transition: all 0.3s ease-in-out;
+}
+
+/* AI Sidebar specific styles */
+.ai-sidebar {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Prevent text selection during sidebar resize operation */
+.sidebar-resizing {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
