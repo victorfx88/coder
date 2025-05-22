@@ -1,23 +1,65 @@
 package httpapi
 
 import (
-	"flag"
 	"reflect"
 
 	"golang.org/x/xerrors"
 )
 
-func ContainsNilMap(v any) error {
-	if flag.Lookup("test.v") == nil {
-		// Always skip this check in production code. Its purpose is to detect potential
-		// problems in api structures. It will have a lot of false positives of errors
-		// that would occur, and it is not worth the performance cost to check in
-		// production.
-		return nil
+func InitNilCollections[T any](v T) {
+	defer func() {
+		recover() // Just incase, do nothing
+	}()
+
+	val := reflect.ValueOf(v)
+	if val.Kind() != reflect.Ptr {
+		return // Can only set pointers
 	}
 
+	val = val.Elem()
+	if val.Kind() != reflect.Struct {
+		return // Only supports structs
+	}
+
+	initValue(val)
+}
+
+func initValue(v reflect.Value) {
+	for i := 0; i < v.NumField(); i++ {
+		field := v.Field(i)
+
+		// Skip unexported fields
+		if !field.CanSet() {
+			continue
+		}
+
+		switch field.Kind() {
+		case reflect.Map:
+			if field.IsNil() {
+				field.Set(reflect.MakeMap(field.Type()))
+			}
+		case reflect.Slice:
+			if field.IsNil() {
+				field.Set(reflect.MakeSlice(field.Type(), 0, 0))
+			}
+		case reflect.Ptr:
+			if field.IsNil() && field.Type().Elem().Kind() == reflect.Struct {
+				ptrToStruct := reflect.New(field.Type().Elem())
+				field.Set(ptrToStruct)
+			}
+			if field.Type().Elem().Kind() == reflect.Struct {
+				initValue(field.Elem())
+			}
+		case reflect.Struct:
+			initValue(field)
+		}
+	}
+}
+
+// ContainsNilCollections is mainly used to validate InitNilCollections
+func ContainsNilCollections(v any) error {
 	visited := make(map[uintptr]bool)
-	if hasNil, field := findNilMapsRec(reflect.ValueOf(v), visited); hasNil {
+	if hasNil, field := findNilCollections(reflect.ValueOf(v), visited); hasNil {
 		ty := reflect.TypeOf(v)
 		extra := ""
 		if field != "" {
@@ -28,7 +70,7 @@ func ContainsNilMap(v any) error {
 	return nil
 }
 
-func findNilMapsRec(val reflect.Value, visited map[uintptr]bool) (bool, string) {
+func findNilCollections(val reflect.Value, visited map[uintptr]bool) (bool, string) {
 	if !val.IsValid() {
 		return false, ""
 	}
@@ -55,7 +97,7 @@ func findNilMapsRec(val reflect.Value, visited map[uintptr]bool) (bool, string) 
 	switch val.Kind() {
 	case reflect.Struct:
 		for i := 0; i < val.NumField(); i++ {
-			if ok, field := findNilMapsRec(val.Field(i), visited); ok {
+			if ok, field := findNilCollections(val.Field(i), visited); ok {
 				fn := val.Type().Field(i).Name
 				if field != "" {
 					field = fn + "." + field
@@ -66,8 +108,11 @@ func findNilMapsRec(val reflect.Value, visited map[uintptr]bool) (bool, string) 
 			}
 		}
 	case reflect.Slice, reflect.Array:
+		if val.IsNil() {
+			return true, ""
+		}
 		for i := 0; i < val.Len(); i++ {
-			if ok, field := findNilMapsRec(val.Index(i), visited); ok {
+			if ok, field := findNilCollections(val.Index(i), visited); ok {
 				return true, field
 			}
 		}

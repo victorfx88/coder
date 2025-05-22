@@ -192,7 +192,7 @@ func RouteNotFound(rw http.ResponseWriter) {
 func Write(ctx context.Context, rw http.ResponseWriter, status int, response interface{}) {
 	// Pretty up JSON when testing.
 	if flag.Lookup("test.v") != nil {
-		if err := ContainsNilMap(response); err != nil {
+		if err := ContainsNilCollections(response); err != nil {
 			// If you are here, you discovered a `nil` map being sent to the api.
 			// An example is `var m map[string]string` not being initialized.
 			//

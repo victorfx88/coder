@@ -10,7 +10,66 @@ import (
 	"github.com/coder/coder/v2/coderd/httpapi"
 )
 
-func TestContainsNilMap(t *testing.T) {
+type TestStruct struct {
+	Slice []string
+	Map   map[string]int
+	Ptr   *Nested
+}
+
+type Nested struct {
+	List []int
+	Dict map[int]string
+}
+
+func TestInitNilCollections(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		input     TestStruct
+		unchanged bool
+	}{
+		{
+			name:  "All nil",
+			input: TestStruct{},
+		},
+		{
+			name: "Partial init",
+			input: TestStruct{
+				Slice: []string{"a", "b"},
+			},
+		},
+		{
+			name: "Nested nil",
+			input: TestStruct{
+				Ptr: &Nested{},
+			},
+		},
+		{
+			name: "All pre-initialized",
+			input: TestStruct{
+				Slice: []string{},
+				Map:   map[string]int{},
+				Ptr: &Nested{
+					List: []int{},
+					Dict: map[int]string{},
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		//nolint:tparallel,paralleltest // no point, so instantaneous
+		t.Run(tt.name, func(t *testing.T) {
+			httpapi.InitNilCollections(&tt.input)
+
+			err := httpapi.ContainsNilCollections(tt.input)
+			require.NoError(t, err)
+		})
+	}
+}
+
+func TestContainsCollections(t *testing.T) {
 	t.Parallel()
 
 	type SimpleStruct struct {
@@ -118,7 +177,7 @@ func TestContainsNilMap(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			t.Parallel()
 
-			result := httpapi.ContainsNilMap(c.input) != nil
+			result := httpapi.ContainsNilCollections(c.input) != nil
 			if c.expected != result {
 				v := reflect.ValueOf(c.input)
 				t.Logf("type=%q does not match expected", v.Type().String())
