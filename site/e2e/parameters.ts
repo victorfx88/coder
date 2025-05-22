@@ -149,6 +149,7 @@ export const firstBuildOption: RichParameter = {
 	defaultValue: "ABCDEF",
 	mutable: true,
 	ephemeral: true,
+	options: []
 };
 
 export const secondBuildOption: RichParameter = {
@@ -161,4 +162,5 @@ export const secondBuildOption: RichParameter = {
 	defaultValue: "false",
 	mutable: true,
 	ephemeral: true,
+	options: []
 };
