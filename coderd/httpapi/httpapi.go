@@ -20,6 +20,7 @@ import (
 	"github.com/coder/websocket/wsjson"
 
 	"github.com/coder/coder/v2/coderd/httpapi/httpapiconstraints"
+	"github.com/coder/coder/v2/coderd/rbac"
 	"github.com/coder/coder/v2/coderd/tracing"
 	"github.com/coder/coder/v2/codersdk"
 )
@@ -191,6 +192,33 @@ func RouteNotFound(rw http.ResponseWriter) {
 func Write(ctx context.Context, rw http.ResponseWriter, status int, response interface{}) {
 	// Pretty up JSON when testing.
 	if flag.Lookup("test.v") != nil {
+		if err := ContainsNilMap(response); err != nil {
+			// If you are here, you discovered a `nil` map being sent to the api.
+			// An example is `var m map[string]string` not being initialized.
+			//
+			// Nil maps passed to the frontend are json serialized as "null".
+			// The frontend expects the map to be initialized as an empty map.
+			// If `null` is sent, and the FE expects it to be a `Record<string, any>`,
+			// the FE will throw an error. This can break pages, and should never
+			// occur.
+			//
+			// To fix this, make sure the map is initialized before being serialized
+			// to JSON.
+			//
+			// Yes this is unfortunate, and annoying. An example error experienced
+			// in production: https://github.com/coder/coder/pull/17430
+			//
+			// This should only fail in tests. In production, we do not want
+			// to incur the overhead of checking for nil maps on all responses.
+			panic(fmt.Sprintf(
+				"Developer error: HTTP API response contains a nil map. "+
+					"This will serialize as `null` and potentially break the frontend. "+
+					"Initialize the map before returning. See `httpapi.go` for details. "+
+					"Error: %v",
+				err,
+			))
+		}
+
 		WriteIndent(ctx, rw, status, response)
 		return
 	}
@@ -198,7 +226,19 @@ func Write(ctx context.Context, rw http.ResponseWriter, status int, response int
 	_, span := tracing.StartSpan(ctx)
 	defer span.End()
 
-	SetAuthzCheckRecorderHeader(ctx, rw)
+	if rec, ok := rbac.GetAuthzCheckRecorder(ctx); ok {
+		// If you're here because you saw this header in a response, and you're
+		// trying to investigate the code, here are a couple of notable things
+		// for you to know:
+		// - If any of the checks are `false`, they might not represent the whole
+		//   picture. There could be additional checks that weren't performed,
+		//   because processing stopped after the failure.
+		// - The checks are recorded by the `authzRecorder` type, which is
+		//   configured on server startup for development and testing builds.
+		// - If this header is missing from a response, make sure the response is
+		//   being written by calling `httpapi.Write`!
+		rw.Header().Set("x-authz-checks", rec.String())
+	}
 
 	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
 	rw.WriteHeader(status)
@@ -215,7 +255,9 @@ func WriteIndent(ctx context.Context, rw http.ResponseWriter, status int, respon
 	_, span := tracing.StartSpan(ctx)
 	defer span.End()
 
-	SetAuthzCheckRecorderHeader(ctx, rw)
+	if rec, ok := rbac.GetAuthzCheckRecorder(ctx); ok {
+		rw.Header().Set("x-authz-checks", rec.String())
+	}
 
 	rw.Header().Set("Content-Type", "application/json; charset=utf-8")
 	rw.WriteHeader(status)
