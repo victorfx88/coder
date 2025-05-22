@@ -3,20 +3,29 @@ package agentcontainers_test
 import (
 	"context"
 	"encoding/json"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"time"
 
+	"github.com/fsnotify/fsnotify"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/mock/gomock"
 	"golang.org/x/xerrors"
 
 	"cdr.dev/slog"
 	"cdr.dev/slog/sloggers/slogtest"
 	"github.com/coder/coder/v2/agent/agentcontainers"
+	"github.com/coder/coder/v2/agent/agentcontainers/acmock"
+	"github.com/coder/coder/v2/agent/agentcontainers/watcher"
 	"github.com/coder/coder/v2/codersdk"
+	"github.com/coder/coder/v2/testutil"
+	"github.com/coder/quartz"
 )
 
 // fakeLister implements the agentcontainers.Lister interface for
@@ -41,8 +50,251 @@ func (f *fakeDevcontainerCLI) Up(_ context.Context, _, _ string, _ ...agentconta
 	return f.id, f.err
 }
 
+// fakeWatcher implements the watcher.Watcher interface for testing.
+// It allows controlling what events are sent and when.
+type fakeWatcher struct {
+	t           testing.TB
+	events      chan *fsnotify.Event
+	closeNotify chan struct{}
+	addedPaths  []string
+	closed      bool
+	nextCalled  chan struct{}
+	nextErr     error
+	closeErr    error
+}
+
+func newFakeWatcher(t testing.TB) *fakeWatcher {
+	return &fakeWatcher{
+		t:           t,
+		events:      make(chan *fsnotify.Event, 10), // Buffered to avoid blocking tests.
+		closeNotify: make(chan struct{}),
+		addedPaths:  make([]string, 0),
+		nextCalled:  make(chan struct{}, 1),
+	}
+}
+
+func (w *fakeWatcher) Add(file string) error {
+	w.addedPaths = append(w.addedPaths, file)
+	return nil
+}
+
+func (w *fakeWatcher) Remove(file string) error {
+	for i, path := range w.addedPaths {
+		if path == file {
+			w.addedPaths = append(w.addedPaths[:i], w.addedPaths[i+1:]...)
+			break
+		}
+	}
+	return nil
+}
+
+func (w *fakeWatcher) clearNext() {
+	select {
+	case <-w.nextCalled:
+	default:
+	}
+}
+
+func (w *fakeWatcher) waitNext(ctx context.Context) bool {
+	select {
+	case <-w.t.Context().Done():
+		return false
+	case <-ctx.Done():
+		return false
+	case <-w.closeNotify:
+		return false
+	case <-w.nextCalled:
+		return true
+	}
+}
+
+func (w *fakeWatcher) Next(ctx context.Context) (*fsnotify.Event, error) {
+	select {
+	case w.nextCalled <- struct{}{}:
+	default:
+	}
+
+	if w.nextErr != nil {
+		err := w.nextErr
+		w.nextErr = nil
+		return nil, err
+	}
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case <-w.closeNotify:
+		return nil, xerrors.New("watcher closed")
+	case event := <-w.events:
+		return event, nil
+	}
+}
+
+func (w *fakeWatcher) Close() error {
+	if w.closed {
+		return nil
+	}
+
+	w.closed = true
+	close(w.closeNotify)
+	return w.closeErr
+}
+
+// sendEvent sends a file system event through the fake watcher.
+func (w *fakeWatcher) sendEventWaitNextCalled(ctx context.Context, event fsnotify.Event) {
+	w.clearNext()
+	w.events <- &event
+	w.waitNext(ctx)
+}
+
 func TestAPI(t *testing.T) {
 	t.Parallel()
+
+	// List tests the API.getContainers method using a mock
+	// implementation. It specifically tests caching behavior.
+	t.Run("List", func(t *testing.T) {
+		t.Parallel()
+
+		fakeCt := fakeContainer(t)
+		fakeCt2 := fakeContainer(t)
+		makeResponse := func(cts ...codersdk.WorkspaceAgentContainer) codersdk.WorkspaceAgentListContainersResponse {
+			return codersdk.WorkspaceAgentListContainersResponse{Containers: cts}
+		}
+
+		type initialDataPayload struct {
+			val codersdk.WorkspaceAgentListContainersResponse
+			err error
+		}
+
+		// Each test case is called multiple times to ensure idempotency
+		for _, tc := range []struct {
+			name string
+			// initialData to be stored in the handler
+			initialData initialDataPayload
+			// function to set up expectations for the mock
+			setupMock func(mcl *acmock.MockLister, preReq *gomock.Call)
+			// expected result
+			expected codersdk.WorkspaceAgentListContainersResponse
+			// expected error
+			expectedErr string
+		}{
+			{
+				name:        "no initial data",
+				initialData: initialDataPayload{makeResponse(), nil},
+				setupMock: func(mcl *acmock.MockLister, preReq *gomock.Call) {
+					mcl.EXPECT().List(gomock.Any()).Return(makeResponse(fakeCt), nil).After(preReq).AnyTimes()
+				},
+				expected: makeResponse(fakeCt),
+			},
+			{
+				name:        "repeat initial data",
+				initialData: initialDataPayload{makeResponse(fakeCt), nil},
+				expected:    makeResponse(fakeCt),
+			},
+			{
+				name:        "lister error always",
+				initialData: initialDataPayload{makeResponse(), assert.AnError},
+				expectedErr: assert.AnError.Error(),
+			},
+			{
+				name:        "lister error only during initial data",
+				initialData: initialDataPayload{makeResponse(), assert.AnError},
+				setupMock: func(mcl *acmock.MockLister, preReq *gomock.Call) {
+					mcl.EXPECT().List(gomock.Any()).Return(makeResponse(fakeCt), nil).After(preReq).AnyTimes()
+				},
+				expected: makeResponse(fakeCt),
+			},
+			{
+				name:        "lister error after initial data",
+				initialData: initialDataPayload{makeResponse(fakeCt), nil},
+				setupMock: func(mcl *acmock.MockLister, preReq *gomock.Call) {
+					mcl.EXPECT().List(gomock.Any()).Return(makeResponse(), assert.AnError).After(preReq).AnyTimes()
+				},
+				expectedErr: assert.AnError.Error(),
+			},
+			{
+				name:        "updated data",
+				initialData: initialDataPayload{makeResponse(fakeCt), nil},
+				setupMock: func(mcl *acmock.MockLister, preReq *gomock.Call) {
+					mcl.EXPECT().List(gomock.Any()).Return(makeResponse(fakeCt2), nil).After(preReq).AnyTimes()
+				},
+				expected: makeResponse(fakeCt2),
+			},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				var (
+					ctx        = testutil.Context(t, testutil.WaitShort)
+					mClock     = quartz.NewMock(t)
+					tickerTrap = mClock.Trap().TickerFunc("updaterLoop")
+					mCtrl      = gomock.NewController(t)
+					mLister    = acmock.NewMockLister(mCtrl)
+					logger     = slogtest.Make(t, &slogtest.Options{IgnoreErrors: true}).Leveled(slog.LevelDebug)
+					r          = chi.NewRouter()
+				)
+
+				initialDataCall := mLister.EXPECT().List(gomock.Any()).Return(tc.initialData.val, tc.initialData.err)
+				if tc.setupMock != nil {
+					tc.setupMock(mLister, initialDataCall.Times(1))
+				} else {
+					initialDataCall.AnyTimes()
+				}
+
+				api := agentcontainers.NewAPI(logger,
+					agentcontainers.WithClock(mClock),
+					agentcontainers.WithLister(mLister),
+				)
+				defer api.Close()
+				r.Mount("/", api.Routes())
+
+				// Make sure the ticker function has been registered
+				// before advancing the clock.
+				tickerTrap.MustWait(ctx).Release()
+				tickerTrap.Close()
+
+				// Initial request returns the initial data.
+				req := httptest.NewRequest(http.MethodGet, "/", nil).
+					WithContext(ctx)
+				rec := httptest.NewRecorder()
+				r.ServeHTTP(rec, req)
+
+				if tc.initialData.err != nil {
+					got := &codersdk.Error{}
+					err := json.NewDecoder(rec.Body).Decode(got)
+					require.NoError(t, err, "unmarshal response failed")
+					require.ErrorContains(t, got, tc.initialData.err.Error(), "want error")
+				} else {
+					var got codersdk.WorkspaceAgentListContainersResponse
+					err := json.NewDecoder(rec.Body).Decode(&got)
+					require.NoError(t, err, "unmarshal response failed")
+					require.Equal(t, tc.initialData.val, got, "want initial data")
+				}
+
+				// Advance the clock to run updaterLoop.
+				_, aw := mClock.AdvanceNext()
+				aw.MustWait(ctx)
+
+				// Second request returns the updated data.
+				req = httptest.NewRequest(http.MethodGet, "/", nil).
+					WithContext(ctx)
+				rec = httptest.NewRecorder()
+				r.ServeHTTP(rec, req)
+
+				if tc.expectedErr != "" {
+					got := &codersdk.Error{}
+					err := json.NewDecoder(rec.Body).Decode(got)
+					require.NoError(t, err, "unmarshal response failed")
+					require.ErrorContains(t, got, tc.expectedErr, "want error")
+					return
+				}
+
+				var got codersdk.WorkspaceAgentListContainersResponse
+				err := json.NewDecoder(rec.Body).Decode(&got)
+				require.NoError(t, err, "unmarshal response failed")
+				require.Equal(t, tc.expected, got, "want updated data")
+			})
+		}
+	})
 
 	t.Run("Recreate", func(t *testing.T) {
 		t.Parallel()
@@ -71,7 +323,7 @@ func TestAPI(t *testing.T) {
 			wantBody        string
 		}{
 			{
-				name:            "Missing ID",
+				name:            "Missing container ID",
 				containerID:     "",
 				lister:          &fakeLister{},
 				devcontainerCLI: &fakeDevcontainerCLI{},
@@ -144,7 +396,7 @@ func TestAPI(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 
-				logger := slogtest.Make(t, nil).Leveled(slog.LevelDebug)
+				logger := slogtest.Make(t, &slogtest.Options{IgnoreErrors: true}).Leveled(slog.LevelDebug)
 
 				// Setup router with the handler under test.
 				r := chi.NewRouter()
@@ -152,11 +404,16 @@ func TestAPI(t *testing.T) {
 					logger,
 					agentcontainers.WithLister(tt.lister),
 					agentcontainers.WithDevcontainerCLI(tt.devcontainerCLI),
+					agentcontainers.WithWatcher(watcher.NewNoop()),
 				)
+				defer api.Close()
 				r.Mount("/", api.Routes())
 
+				ctx := testutil.Context(t, testutil.WaitShort)
+
 				// Simulate HTTP request to the recreate endpoint.
-				req := httptest.NewRequest(http.MethodPost, "/"+tt.containerID+"/recreate", nil)
+				req := httptest.NewRequest(http.MethodPost, "/devcontainers/container/"+tt.containerID+"/recreate", nil).
+					WithContext(ctx)
 				rec := httptest.NewRecorder()
 				r.ServeHTTP(rec, req)
 
@@ -450,22 +707,37 @@ func TestAPI(t *testing.T) {
 			t.Run(tt.name, func(t *testing.T) {
 				t.Parallel()
 
-				logger := slogtest.Make(t, nil).Leveled(slog.LevelDebug)
+				logger := slogtest.Make(t, &slogtest.Options{IgnoreErrors: true}).Leveled(slog.LevelDebug)
 
 				// Setup router with the handler under test.
 				r := chi.NewRouter()
 				apiOptions := []agentcontainers.Option{
 					agentcontainers.WithLister(tt.lister),
+					agentcontainers.WithWatcher(watcher.NewNoop()),
 				}
 
+				// Generate matching scripts for the known devcontainers
+				// (required to extract log source ID).
+				var scripts []codersdk.WorkspaceAgentScript
+				for i := range tt.knownDevcontainers {
+					scripts = append(scripts, codersdk.WorkspaceAgentScript{
+						ID:          tt.knownDevcontainers[i].ID,
+						LogSourceID: uuid.New(),
+					})
+				}
 				if len(tt.knownDevcontainers) > 0 {
-					apiOptions = append(apiOptions, agentcontainers.WithDevcontainers(tt.knownDevcontainers))
+					apiOptions = append(apiOptions, agentcontainers.WithDevcontainers(tt.knownDevcontainers, scripts))
 				}
 
 				api := agentcontainers.NewAPI(logger, apiOptions...)
+				defer api.Close()
+
 				r.Mount("/", api.Routes())
 
-				req := httptest.NewRequest(http.MethodGet, "/devcontainers", nil)
+				ctx := testutil.Context(t, testutil.WaitShort)
+
+				req := httptest.NewRequest(http.MethodGet, "/devcontainers", nil).
+					WithContext(ctx)
 				rec := httptest.NewRecorder()
 				r.ServeHTTP(rec, req)
 
@@ -489,6 +761,229 @@ func TestAPI(t *testing.T) {
 			})
 		}
 	})
+
+	t.Run("List devcontainers running then not running", func(t *testing.T) {
+		t.Parallel()
+
+		container := codersdk.WorkspaceAgentContainer{
+			ID:           "container-id",
+			FriendlyName: "container-name",
+			Running:      true,
+			CreatedAt:    time.Now().Add(-1 * time.Minute),
+			Labels: map[string]string{
+				agentcontainers.DevcontainerLocalFolderLabel: "/home/coder/project",
+				agentcontainers.DevcontainerConfigFileLabel:  "/home/coder/project/.devcontainer/devcontainer.json",
+			},
+		}
+		dc := codersdk.WorkspaceAgentDevcontainer{
+			ID:              uuid.New(),
+			Name:            "test-devcontainer",
+			WorkspaceFolder: "/home/coder/project",
+			ConfigPath:      "/home/coder/project/.devcontainer/devcontainer.json",
+		}
+
+		ctx := testutil.Context(t, testutil.WaitShort)
+
+		logger := slogtest.Make(t, nil).Leveled(slog.LevelDebug)
+		fLister := &fakeLister{
+			containers: codersdk.WorkspaceAgentListContainersResponse{
+				Containers: []codersdk.WorkspaceAgentContainer{container},
+			},
+		}
+		fWatcher := newFakeWatcher(t)
+		mClock := quartz.NewMock(t)
+		mClock.Set(time.Now()).MustWait(ctx)
+		tickerTrap := mClock.Trap().TickerFunc("updaterLoop")
+
+		api := agentcontainers.NewAPI(logger,
+			agentcontainers.WithClock(mClock),
+			agentcontainers.WithLister(fLister),
+			agentcontainers.WithWatcher(fWatcher),
+			agentcontainers.WithDevcontainers(
+				[]codersdk.WorkspaceAgentDevcontainer{dc},
+				[]codersdk.WorkspaceAgentScript{{LogSourceID: uuid.New(), ID: dc.ID}},
+			),
+		)
+		defer api.Close()
+
+		// Make sure the ticker function has been registered
+		// before advancing any use of mClock.Advance.
+		tickerTrap.MustWait(ctx).Release()
+		tickerTrap.Close()
+
+		// Make sure the start loop has been called.
+		fWatcher.waitNext(ctx)
+
+		// Simulate a file modification event to make the devcontainer dirty.
+		fWatcher.sendEventWaitNextCalled(ctx, fsnotify.Event{
+			Name: "/home/coder/project/.devcontainer/devcontainer.json",
+			Op:   fsnotify.Write,
+		})
+
+		// Initially the devcontainer should be running and dirty.
+		req := httptest.NewRequest(http.MethodGet, "/devcontainers", nil).
+			WithContext(ctx)
+		rec := httptest.NewRecorder()
+		api.Routes().ServeHTTP(rec, req)
+
+		require.Equal(t, http.StatusOK, rec.Code)
+		var resp1 codersdk.WorkspaceAgentDevcontainersResponse
+		err := json.NewDecoder(rec.Body).Decode(&resp1)
+		require.NoError(t, err)
+		require.Len(t, resp1.Devcontainers, 1)
+		require.True(t, resp1.Devcontainers[0].Running, "devcontainer should be running initially")
+		require.True(t, resp1.Devcontainers[0].Dirty, "devcontainer should be dirty initially")
+		require.NotNil(t, resp1.Devcontainers[0].Container, "devcontainer should have a container initially")
+
+		// Next, simulate a situation where the container is no longer
+		// running.
+		fLister.containers.Containers = []codersdk.WorkspaceAgentContainer{}
+
+		// Trigger a refresh which will use the second response from mock
+		// lister (no containers).
+		_, aw := mClock.AdvanceNext()
+		aw.MustWait(ctx)
+
+		// Afterwards the devcontainer should not be running and not dirty.
+		req = httptest.NewRequest(http.MethodGet, "/devcontainers", nil).
+			WithContext(ctx)
+		rec = httptest.NewRecorder()
+		api.Routes().ServeHTTP(rec, req)
+
+		require.Equal(t, http.StatusOK, rec.Code)
+		var resp2 codersdk.WorkspaceAgentDevcontainersResponse
+		err = json.NewDecoder(rec.Body).Decode(&resp2)
+		require.NoError(t, err)
+		require.Len(t, resp2.Devcontainers, 1)
+		require.False(t, resp2.Devcontainers[0].Running, "devcontainer should not be running after empty list")
+		require.False(t, resp2.Devcontainers[0].Dirty, "devcontainer should not be dirty after empty list")
+		require.Nil(t, resp2.Devcontainers[0].Container, "devcontainer should not have a container after empty list")
+	})
+
+	t.Run("FileWatcher", func(t *testing.T) {
+		t.Parallel()
+
+		ctx := testutil.Context(t, testutil.WaitShort)
+
+		startTime := time.Date(2025, 1, 1, 12, 0, 0, 0, time.UTC)
+
+		// Create a fake container with a config file.
+		configPath := "/workspace/project/.devcontainer/devcontainer.json"
+		container := codersdk.WorkspaceAgentContainer{
+			ID:           "container-id",
+			FriendlyName: "container-name",
+			Running:      true,
+			CreatedAt:    startTime.Add(-1 * time.Hour), // Created 1 hour before test start.
+			Labels: map[string]string{
+				agentcontainers.DevcontainerLocalFolderLabel: "/workspace/project",
+				agentcontainers.DevcontainerConfigFileLabel:  configPath,
+			},
+		}
+
+		mClock := quartz.NewMock(t)
+		mClock.Set(startTime)
+		tickerTrap := mClock.Trap().TickerFunc("updaterLoop")
+		fWatcher := newFakeWatcher(t)
+		fLister := &fakeLister{
+			containers: codersdk.WorkspaceAgentListContainersResponse{
+				Containers: []codersdk.WorkspaceAgentContainer{container},
+			},
+		}
+
+		logger := slogtest.Make(t, nil).Leveled(slog.LevelDebug)
+		api := agentcontainers.NewAPI(
+			logger,
+			agentcontainers.WithLister(fLister),
+			agentcontainers.WithWatcher(fWatcher),
+			agentcontainers.WithClock(mClock),
+		)
+		defer api.Close()
+
+		r := chi.NewRouter()
+		r.Mount("/", api.Routes())
+
+		// Make sure the ticker function has been registered
+		// before advancing any use of mClock.Advance.
+		tickerTrap.MustWait(ctx).Release()
+		tickerTrap.Close()
+
+		// Call the list endpoint first to ensure config files are
+		// detected and watched.
+		req := httptest.NewRequest(http.MethodGet, "/devcontainers", nil).
+			WithContext(ctx)
+		rec := httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+
+		var response codersdk.WorkspaceAgentDevcontainersResponse
+		err := json.NewDecoder(rec.Body).Decode(&response)
+		require.NoError(t, err)
+		require.Len(t, response.Devcontainers, 1)
+		assert.False(t, response.Devcontainers[0].Dirty,
+			"devcontainer should not be marked as dirty initially")
+		require.NotNil(t, response.Devcontainers[0].Container, "container should not be nil")
+		assert.False(t, response.Devcontainers[0].Container.DevcontainerDirty,
+			"container should not be marked as dirty initially")
+
+		// Verify the watcher is watching the config file.
+		assert.Contains(t, fWatcher.addedPaths, configPath,
+			"watcher should be watching the container's config file")
+
+		// Make sure the start loop has been called.
+		fWatcher.waitNext(ctx)
+
+		// Send a file modification event and check if the container is
+		// marked dirty.
+		fWatcher.sendEventWaitNextCalled(ctx, fsnotify.Event{
+			Name: configPath,
+			Op:   fsnotify.Write,
+		})
+
+		// Advance the clock to run updaterLoop.
+		_, aw := mClock.AdvanceNext()
+		aw.MustWait(ctx)
+
+		// Check if the container is marked as dirty.
+		req = httptest.NewRequest(http.MethodGet, "/devcontainers", nil).
+			WithContext(ctx)
+		rec = httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+
+		err = json.NewDecoder(rec.Body).Decode(&response)
+		require.NoError(t, err)
+		require.Len(t, response.Devcontainers, 1)
+		assert.True(t, response.Devcontainers[0].Dirty,
+			"container should be marked as dirty after config file was modified")
+		require.NotNil(t, response.Devcontainers[0].Container, "container should not be nil")
+		assert.True(t, response.Devcontainers[0].Container.DevcontainerDirty,
+			"container should be marked as dirty after config file was modified")
+
+		container.ID = "new-container-id" // Simulate a new container ID after recreation.
+		container.FriendlyName = "new-container-name"
+		container.CreatedAt = mClock.Now() // Update the creation time.
+		fLister.containers.Containers = []codersdk.WorkspaceAgentContainer{container}
+
+		// Advance the clock to run updaterLoop.
+		_, aw = mClock.AdvanceNext()
+		aw.MustWait(ctx)
+
+		// Check if dirty flag is cleared.
+		req = httptest.NewRequest(http.MethodGet, "/devcontainers", nil).
+			WithContext(ctx)
+		rec = httptest.NewRecorder()
+		r.ServeHTTP(rec, req)
+		require.Equal(t, http.StatusOK, rec.Code)
+
+		err = json.NewDecoder(rec.Body).Decode(&response)
+		require.NoError(t, err)
+		require.Len(t, response.Devcontainers, 1)
+		assert.False(t, response.Devcontainers[0].Dirty,
+			"dirty flag should be cleared on the devcontainer after container recreation")
+		require.NotNil(t, response.Devcontainers[0].Container, "container should not be nil")
+		assert.False(t, response.Devcontainers[0].Container.DevcontainerDirty,
+			"dirty flag should be cleared on the container after container recreation")
+	})
 }
 
 // mustFindDevcontainerByPath returns the devcontainer with the given workspace
@@ -504,4 +999,33 @@ func mustFindDevcontainerByPath(t *testing.T, devcontainers []codersdk.Workspace
 
 	require.Failf(t, "no devcontainer found with workspace folder %q", path)
 	return codersdk.WorkspaceAgentDevcontainer{} // Unreachable, but required for compilation
+}
+
+func fakeContainer(t *testing.T, mut ...func(*codersdk.WorkspaceAgentContainer)) codersdk.WorkspaceAgentContainer {
+	t.Helper()
+	ct := codersdk.WorkspaceAgentContainer{
+		CreatedAt:    time.Now().UTC(),
+		ID:           uuid.New().String(),
+		FriendlyName: testutil.GetRandomName(t),
+		Image:        testutil.GetRandomName(t) + ":" + strings.Split(uuid.New().String(), "-")[0],
+		Labels: map[string]string{
+			testutil.GetRandomName(t): testutil.GetRandomName(t),
+		},
+		Running: true,
+		Ports: []codersdk.WorkspaceAgentContainerPort{
+			{
+				Network:  "tcp",
+				Port:     testutil.RandomPortNoListen(t),
+				HostPort: testutil.RandomPortNoListen(t),
+				//nolint:gosec // this is a test
+				HostIP: []string{"127.0.0.1", "[::1]", "localhost", "0.0.0.0", "[::]", testutil.GetRandomName(t)}[rand.Intn(6)],
+			},
+		},
+		Status:  testutil.MustRandString(t, 10),
+		Volumes: map[string]string{testutil.GetRandomName(t): testutil.GetRandomName(t)},
+	}
+	for _, m := range mut {
+		m(&ct)
+	}
+	return ct
 }

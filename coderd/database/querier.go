@@ -79,6 +79,7 @@ type sqlcQuerier interface {
 	// be recreated.
 	DeleteAllWebpushSubscriptions(ctx context.Context) error
 	DeleteApplicationConnectAPIKeysByUserID(ctx context.Context, userID uuid.UUID) error
+	DeleteChat(ctx context.Context, id uuid.UUID) error
 	DeleteCoordinator(ctx context.Context, id uuid.UUID) error
 	DeleteCryptoKey(ctx context.Context, arg DeleteCryptoKeyParams) (CryptoKey, error)
 	DeleteCustomRole(ctx context.Context, arg DeleteCustomRoleParams) error
@@ -151,6 +152,9 @@ type sqlcQuerier interface {
 	// This function returns roles for authorization purposes. Implied member roles
 	// are included.
 	GetAuthorizationUserRoles(ctx context.Context, userID uuid.UUID) (GetAuthorizationUserRolesRow, error)
+	GetChatByID(ctx context.Context, id uuid.UUID) (Chat, error)
+	GetChatMessagesByChatID(ctx context.Context, chatID uuid.UUID) ([]ChatMessage, error)
+	GetChatsByOwnerID(ctx context.Context, ownerID uuid.UUID) ([]Chat, error)
 	GetCoordinatorResumeTokenSigningKey(ctx context.Context) (string, error)
 	GetCryptoKeyByFeatureAndSequence(ctx context.Context, arg GetCryptoKeyByFeatureAndSequenceParams) (CryptoKey, error)
 	GetCryptoKeys(ctx context.Context) ([]CryptoKey, error)
@@ -192,7 +196,6 @@ type sqlcQuerier interface {
 	GetGroupMembersCountByGroupID(ctx context.Context, arg GetGroupMembersCountByGroupIDParams) (int64, error)
 	GetGroups(ctx context.Context, arg GetGroupsParams) ([]GetGroupsRow, error)
 	GetHealthSettings(ctx context.Context) (string, error)
-	GetHungProvisionerJobs(ctx context.Context, updatedAt time.Time) ([]ProvisionerJob, error)
 	GetInboxNotificationByID(ctx context.Context, id uuid.UUID) (InboxNotification, error)
 	// Fetches inbox notifications for a user filtered by templates and targets
 	// param user_id: The user ID
@@ -238,6 +241,15 @@ type sqlcQuerier interface {
 	GetPresetByWorkspaceBuildID(ctx context.Context, workspaceBuildID uuid.UUID) (TemplateVersionPreset, error)
 	GetPresetParametersByPresetID(ctx context.Context, presetID uuid.UUID) ([]TemplateVersionPresetParameter, error)
 	GetPresetParametersByTemplateVersionID(ctx context.Context, templateVersionID uuid.UUID) ([]TemplateVersionPresetParameter, error)
+	// GetPresetsAtFailureLimit groups workspace builds by preset ID.
+	// Each preset is associated with exactly one template version ID.
+	// For each preset, the query checks the last hard_limit builds.
+	// If all of them failed, the preset is considered to have hit the hard failure limit.
+	// The query returns a list of preset IDs that have reached this failure threshold.
+	// Only active template versions with configured presets are considered.
+	// For each preset, check the last hard_limit builds.
+	// If all of them failed, the preset is considered to have hit the hard failure limit.
+	GetPresetsAtFailureLimit(ctx context.Context, hardLimit int64) ([]GetPresetsAtFailureLimitRow, error)
 	// GetPresetsBackoff groups workspace builds by preset ID.
 	// Each preset is associated with exactly one template version ID.
 	// For each group, the query checks up to N of the most recent jobs that occurred within the
@@ -261,11 +273,16 @@ type sqlcQuerier interface {
 	// Previous job information.
 	GetProvisionerDaemonsWithStatusByOrganization(ctx context.Context, arg GetProvisionerDaemonsWithStatusByOrganizationParams) ([]GetProvisionerDaemonsWithStatusByOrganizationRow, error)
 	GetProvisionerJobByID(ctx context.Context, id uuid.UUID) (ProvisionerJob, error)
+	// Gets a single provisioner job by ID for update.
+	// This is used to securely reap jobs that have been hung/pending for a long time.
+	GetProvisionerJobByIDForUpdate(ctx context.Context, id uuid.UUID) (ProvisionerJob, error)
 	GetProvisionerJobTimingsByJobID(ctx context.Context, jobID uuid.UUID) ([]ProvisionerJobTiming, error)
 	GetProvisionerJobsByIDs(ctx context.Context, ids []uuid.UUID) ([]ProvisionerJob, error)
 	GetProvisionerJobsByIDsWithQueuePosition(ctx context.Context, ids []uuid.UUID) ([]GetProvisionerJobsByIDsWithQueuePositionRow, error)
 	GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisioner(ctx context.Context, arg GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerParams) ([]GetProvisionerJobsByOrganizationAndStatusWithQueuePositionAndProvisionerRow, error)
 	GetProvisionerJobsCreatedAfter(ctx context.Context, createdAt time.Time) ([]ProvisionerJob, error)
+	// To avoid repeatedly attempting to reap the same jobs, we randomly order and limit to @max_jobs.
+	GetProvisionerJobsToBeReaped(ctx context.Context, arg GetProvisionerJobsToBeReapedParams) ([]ProvisionerJob, error)
 	GetProvisionerKeyByHashedSecret(ctx context.Context, hashedSecret []byte) (ProvisionerKey, error)
 	GetProvisionerKeyByID(ctx context.Context, id uuid.UUID) (ProvisionerKey, error)
 	GetProvisionerKeyByName(ctx context.Context, arg GetProvisionerKeyByNameParams) (ProvisionerKey, error)
@@ -396,6 +413,7 @@ type sqlcQuerier interface {
 	GetWorkspaceAgentUsageStats(ctx context.Context, createdAt time.Time) ([]GetWorkspaceAgentUsageStatsRow, error)
 	GetWorkspaceAgentUsageStatsAndLabels(ctx context.Context, createdAt time.Time) ([]GetWorkspaceAgentUsageStatsAndLabelsRow, error)
 	GetWorkspaceAgentsByResourceIDs(ctx context.Context, ids []uuid.UUID) ([]WorkspaceAgent, error)
+	GetWorkspaceAgentsByWorkspaceAndBuildNumber(ctx context.Context, arg GetWorkspaceAgentsByWorkspaceAndBuildNumberParams) ([]WorkspaceAgent, error)
 	GetWorkspaceAgentsCreatedAfter(ctx context.Context, createdAt time.Time) ([]WorkspaceAgent, error)
 	GetWorkspaceAgentsInLatestBuildByWorkspaceID(ctx context.Context, workspaceID uuid.UUID) ([]WorkspaceAgent, error)
 	GetWorkspaceAppByAgentIDAndSlug(ctx context.Context, arg GetWorkspaceAppByAgentIDAndSlugParams) (WorkspaceApp, error)
@@ -413,6 +431,7 @@ type sqlcQuerier interface {
 	GetWorkspaceByAgentID(ctx context.Context, agentID uuid.UUID) (Workspace, error)
 	GetWorkspaceByID(ctx context.Context, id uuid.UUID) (Workspace, error)
 	GetWorkspaceByOwnerIDAndName(ctx context.Context, arg GetWorkspaceByOwnerIDAndNameParams) (Workspace, error)
+	GetWorkspaceByResourceID(ctx context.Context, resourceID uuid.UUID) (Workspace, error)
 	GetWorkspaceByWorkspaceAppID(ctx context.Context, workspaceAppID uuid.UUID) (Workspace, error)
 	GetWorkspaceModulesByJobID(ctx context.Context, jobID uuid.UUID) ([]WorkspaceModule, error)
 	GetWorkspaceModulesCreatedAfter(ctx context.Context, createdAt time.Time) ([]WorkspaceModule, error)
@@ -447,6 +466,8 @@ type sqlcQuerier interface {
 	// every member of the org.
 	InsertAllUsersGroup(ctx context.Context, organizationID uuid.UUID) (Group, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) (AuditLog, error)
+	InsertChat(ctx context.Context, arg InsertChatParams) (Chat, error)
+	InsertChatMessages(ctx context.Context, arg InsertChatMessagesParams) ([]ChatMessage, error)
 	InsertCryptoKey(ctx context.Context, arg InsertCryptoKeyParams) (CryptoKey, error)
 	InsertCustomRole(ctx context.Context, arg InsertCustomRoleParams) (CustomRole, error)
 	InsertDBCryptKey(ctx context.Context, arg InsertDBCryptKeyParams) error
@@ -540,6 +561,7 @@ type sqlcQuerier interface {
 	UnarchiveTemplateVersion(ctx context.Context, arg UnarchiveTemplateVersionParams) error
 	UnfavoriteWorkspace(ctx context.Context, id uuid.UUID) error
 	UpdateAPIKeyByID(ctx context.Context, arg UpdateAPIKeyByIDParams) error
+	UpdateChatByID(ctx context.Context, arg UpdateChatByIDParams) error
 	UpdateCryptoKeyDeletesAt(ctx context.Context, arg UpdateCryptoKeyDeletesAtParams) (CryptoKey, error)
 	UpdateCustomRole(ctx context.Context, arg UpdateCustomRoleParams) (CustomRole, error)
 	UpdateExternalAuthLink(ctx context.Context, arg UpdateExternalAuthLinkParams) (ExternalAuthLink, error)
@@ -555,10 +577,12 @@ type sqlcQuerier interface {
 	UpdateOAuth2ProviderAppSecretByID(ctx context.Context, arg UpdateOAuth2ProviderAppSecretByIDParams) (OAuth2ProviderAppSecret, error)
 	UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) (Organization, error)
 	UpdateOrganizationDeletedByID(ctx context.Context, arg UpdateOrganizationDeletedByIDParams) error
+	UpdatePresetPrebuildStatus(ctx context.Context, arg UpdatePresetPrebuildStatusParams) error
 	UpdateProvisionerDaemonLastSeenAt(ctx context.Context, arg UpdateProvisionerDaemonLastSeenAtParams) error
 	UpdateProvisionerJobByID(ctx context.Context, arg UpdateProvisionerJobByIDParams) error
 	UpdateProvisionerJobWithCancelByID(ctx context.Context, arg UpdateProvisionerJobWithCancelByIDParams) error
 	UpdateProvisionerJobWithCompleteByID(ctx context.Context, arg UpdateProvisionerJobWithCompleteByIDParams) error
+	UpdateProvisionerJobWithCompleteWithStartedAtByID(ctx context.Context, arg UpdateProvisionerJobWithCompleteWithStartedAtByIDParams) error
 	UpdateReplica(ctx context.Context, arg UpdateReplicaParams) (Replica, error)
 	UpdateTailnetPeerStatusByCoordinator(ctx context.Context, arg UpdateTailnetPeerStatusByCoordinatorParams) error
 	UpdateTemplateACLByID(ctx context.Context, arg UpdateTemplateACLByIDParams) error

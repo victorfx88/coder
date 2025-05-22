@@ -183,7 +183,7 @@ networking:
 # Interval to poll for scheduled workspace builds.
 # (default: 1m0s, type: duration)
 autobuildPollInterval: 1m0s
-# Interval to poll for hung jobs and automatically terminate them.
+# Interval to poll for hung and pending jobs and automatically terminate them.
 # (default: 1m0s, type: duration)
 jobHangDetectorInterval: 1m0s
 introspection:
@@ -519,6 +519,9 @@ client:
 # Support links to display in the top right drop down menu.
 # (default: <unset>, type: struct[[]codersdk.LinkConfig])
 supportLinks: []
+# Configure AI providers.
+# (default: <unset>, type: struct[codersdk.AIConfig])
+ai: {}
 # External Authentication providers.
 # (default: <unset>, type: struct[[]codersdk.ExternalAuthConfig])
 externalAuthProviders: []
@@ -688,3 +691,20 @@ notifications:
   # How often to query the database for queued notifications.
   # (default: 15s, type: duration)
   fetchInterval: 15s
+# Configure how workspace prebuilds behave.
+workspace_prebuilds:
+  # How often to reconcile workspace prebuilds state.
+  # (default: 15s, type: duration)
+  reconciliation_interval: 15s
+  # Interval to increase reconciliation backoff by when prebuilds fail, after which
+  # a retry attempt is made.
+  # (default: 15s, type: duration)
+  reconciliation_backoff_interval: 15s
+  # Interval to look back to determine number of failed prebuilds, which influences
+  # backoff.
+  # (default: 1h0m0s, type: duration)
+  reconciliation_backoff_lookback_period: 1h0m0s
+  # Maximum number of consecutive failed prebuilds before a preset hits the hard
+  # limit; disabled when set to zero.
+  # (default: 3, type: int)
+  failure_hard_limit: 3

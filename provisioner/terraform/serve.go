@@ -16,7 +16,7 @@ import (
 	"cdr.dev/slog"
 
 	"github.com/coder/coder/v2/coderd/database"
-	"github.com/coder/coder/v2/coderd/unhanger"
+	"github.com/coder/coder/v2/coderd/jobreaper"
 	"github.com/coder/coder/v2/provisionersdk"
 )
 
@@ -28,7 +28,9 @@ type ServeOptions struct {
 	BinaryPath string
 	// CachePath must not be used by multiple processes at once.
 	CachePath string
-	Tracer    trace.Tracer
+	// CliConfigPath is the path to the Terraform CLI config file.
+	CliConfigPath string
+	Tracer        trace.Tracer
 
 	// ExitTimeout defines how long we will wait for a running Terraform
 	// command to exit (cleanly) if the provision was stopped. This
@@ -37,9 +39,9 @@ type ServeOptions struct {
 	//
 	// This is a no-op on Windows where the process can't be interrupted.
 	//
-	// Default value: 3 minutes (unhanger.HungJobExitTimeout). This value should
+	// Default value: 3 minutes (jobreaper.HungJobExitTimeout). This value should
 	// be kept less than the value that Coder uses to mark hung jobs as failed,
-	// which is 5 minutes (see unhanger package).
+	// which is 5 minutes (see jobreaper package).
 	ExitTimeout time.Duration
 }
 
@@ -129,25 +131,27 @@ func Serve(ctx context.Context, options *ServeOptions) error {
 		options.Tracer = trace.NewNoopTracerProvider().Tracer("noop")
 	}
 	if options.ExitTimeout == 0 {
-		options.ExitTimeout = unhanger.HungJobExitTimeout
+		options.ExitTimeout = jobreaper.HungJobExitTimeout
 	}
 	return provisionersdk.Serve(ctx, &server{
-		execMut:     &sync.Mutex{},
-		binaryPath:  options.BinaryPath,
-		cachePath:   options.CachePath,
-		logger:      options.Logger,
-		tracer:      options.Tracer,
-		exitTimeout: options.ExitTimeout,
+		execMut:       &sync.Mutex{},
+		binaryPath:    options.BinaryPath,
+		cachePath:     options.CachePath,
+		cliConfigPath: options.CliConfigPath,
+		logger:        options.Logger,
+		tracer:        options.Tracer,
+		exitTimeout:   options.ExitTimeout,
 	}, options.ServeOptions)
 }
 
 type server struct {
-	execMut     *sync.Mutex
-	binaryPath  string
-	cachePath   string
-	logger      slog.Logger
-	tracer      trace.Tracer
-	exitTimeout time.Duration
+	execMut       *sync.Mutex
+	binaryPath    string
+	cachePath     string
+	cliConfigPath string
+	logger        slog.Logger
+	tracer        trace.Tracer
+	exitTimeout   time.Duration
 }
 
 func (s *server) startTrace(ctx context.Context, name string, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
@@ -158,12 +162,13 @@ func (s *server) startTrace(ctx context.Context, name string, opts ...trace.Span
 
 func (s *server) executor(workdir string, stage database.ProvisionerJobTimingStage) *executor {
 	return &executor{
-		server:     s,
-		mut:        s.execMut,
-		binaryPath: s.binaryPath,
-		cachePath:  s.cachePath,
-		workdir:    workdir,
-		logger:     s.logger.Named("executor"),
-		timings:    newTimingAggregator(stage),
+		server:        s,
+		mut:           s.execMut,
+		binaryPath:    s.binaryPath,
+		cachePath:     s.cachePath,
+		cliConfigPath: s.cliConfigPath,
+		workdir:       workdir,
+		logger:        s.logger.Named("executor"),
+		timings:       newTimingAggregator(stage),
 	}
 }

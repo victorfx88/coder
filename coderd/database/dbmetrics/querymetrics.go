@@ -249,6 +249,13 @@ func (m queryMetricsStore) DeleteApplicationConnectAPIKeysByUserID(ctx context.C
 	return err
 }
 
+func (m queryMetricsStore) DeleteChat(ctx context.Context, id uuid.UUID) error {
+	start := time.Now()
+	r0 := m.s.DeleteChat(ctx, id)
+	m.queryLatencies.WithLabelValues("DeleteChat").Observe(time.Since(start).Seconds())
+	return r0
+}
+
 func (m queryMetricsStore) DeleteCoordinator(ctx context.Context, id uuid.UUID) error {
 	start := time.Now()
 	r0 := m.s.DeleteCoordinator(ctx, id)
@@ -627,6 +634,27 @@ func (m queryMetricsStore) GetAuthorizationUserRoles(ctx context.Context, userID
 	return row, err
 }
 
+func (m queryMetricsStore) GetChatByID(ctx context.Context, id uuid.UUID) (database.Chat, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetChatByID(ctx, id)
+	m.queryLatencies.WithLabelValues("GetChatByID").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
+func (m queryMetricsStore) GetChatMessagesByChatID(ctx context.Context, chatID uuid.UUID) ([]database.ChatMessage, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetChatMessagesByChatID(ctx, chatID)
+	m.queryLatencies.WithLabelValues("GetChatMessagesByChatID").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
+func (m queryMetricsStore) GetChatsByOwnerID(ctx context.Context, ownerID uuid.UUID) ([]database.Chat, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetChatsByOwnerID(ctx, ownerID)
+	m.queryLatencies.WithLabelValues("GetChatsByOwnerID").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
 func (m queryMetricsStore) GetCoordinatorResumeTokenSigningKey(ctx context.Context) (string, error) {
 	start := time.Now()
 	r0, r1 := m.s.GetCoordinatorResumeTokenSigningKey(ctx)
@@ -835,13 +863,6 @@ func (m queryMetricsStore) GetHealthSettings(ctx context.Context) (string, error
 	r0, r1 := m.s.GetHealthSettings(ctx)
 	m.queryLatencies.WithLabelValues("GetHealthSettings").Observe(time.Since(start).Seconds())
 	return r0, r1
-}
-
-func (m queryMetricsStore) GetHungProvisionerJobs(ctx context.Context, hungSince time.Time) ([]database.ProvisionerJob, error) {
-	start := time.Now()
-	jobs, err := m.s.GetHungProvisionerJobs(ctx, hungSince)
-	m.queryLatencies.WithLabelValues("GetHungProvisionerJobs").Observe(time.Since(start).Seconds())
-	return jobs, err
 }
 
 func (m queryMetricsStore) GetInboxNotificationByID(ctx context.Context, id uuid.UUID) (database.InboxNotification, error) {
@@ -1117,6 +1138,13 @@ func (m queryMetricsStore) GetPresetParametersByTemplateVersionID(ctx context.Co
 	return r0, r1
 }
 
+func (m queryMetricsStore) GetPresetsAtFailureLimit(ctx context.Context, hardLimit int64) ([]database.GetPresetsAtFailureLimitRow, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetPresetsAtFailureLimit(ctx, hardLimit)
+	m.queryLatencies.WithLabelValues("GetPresetsAtFailureLimit").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
 func (m queryMetricsStore) GetPresetsBackoff(ctx context.Context, lookback time.Time) ([]database.GetPresetsBackoffRow, error) {
 	start := time.Now()
 	r0, r1 := m.s.GetPresetsBackoff(ctx, lookback)
@@ -1166,6 +1194,13 @@ func (m queryMetricsStore) GetProvisionerJobByID(ctx context.Context, id uuid.UU
 	return job, err
 }
 
+func (m queryMetricsStore) GetProvisionerJobByIDForUpdate(ctx context.Context, id uuid.UUID) (database.ProvisionerJob, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetProvisionerJobByIDForUpdate(ctx, id)
+	m.queryLatencies.WithLabelValues("GetProvisionerJobByIDForUpdate").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
 func (m queryMetricsStore) GetProvisionerJobTimingsByJobID(ctx context.Context, jobID uuid.UUID) ([]database.ProvisionerJobTiming, error) {
 	start := time.Now()
 	r0, r1 := m.s.GetProvisionerJobTimingsByJobID(ctx, jobID)
@@ -1199,6 +1234,13 @@ func (m queryMetricsStore) GetProvisionerJobsCreatedAfter(ctx context.Context, c
 	jobs, err := m.s.GetProvisionerJobsCreatedAfter(ctx, createdAt)
 	m.queryLatencies.WithLabelValues("GetProvisionerJobsCreatedAfter").Observe(time.Since(start).Seconds())
 	return jobs, err
+}
+
+func (m queryMetricsStore) GetProvisionerJobsToBeReaped(ctx context.Context, arg database.GetProvisionerJobsToBeReapedParams) ([]database.ProvisionerJob, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetProvisionerJobsToBeReaped(ctx, arg)
+	m.queryLatencies.WithLabelValues("GetProvisionerJobsToBeReaped").Observe(time.Since(start).Seconds())
+	return r0, r1
 }
 
 func (m queryMetricsStore) GetProvisionerKeyByHashedSecret(ctx context.Context, hashedSecret []byte) (database.ProvisionerKey, error) {
@@ -1726,6 +1768,13 @@ func (m queryMetricsStore) GetWorkspaceAgentsByResourceIDs(ctx context.Context, 
 	return agents, err
 }
 
+func (m queryMetricsStore) GetWorkspaceAgentsByWorkspaceAndBuildNumber(ctx context.Context, arg database.GetWorkspaceAgentsByWorkspaceAndBuildNumberParams) ([]database.WorkspaceAgent, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetWorkspaceAgentsByWorkspaceAndBuildNumber(ctx, arg)
+	m.queryLatencies.WithLabelValues("GetWorkspaceAgentsByWorkspaceAndBuildNumber").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
 func (m queryMetricsStore) GetWorkspaceAgentsCreatedAfter(ctx context.Context, createdAt time.Time) ([]database.WorkspaceAgent, error) {
 	start := time.Now()
 	agents, err := m.s.GetWorkspaceAgentsCreatedAfter(ctx, createdAt)
@@ -1843,6 +1892,13 @@ func (m queryMetricsStore) GetWorkspaceByOwnerIDAndName(ctx context.Context, arg
 	workspace, err := m.s.GetWorkspaceByOwnerIDAndName(ctx, arg)
 	m.queryLatencies.WithLabelValues("GetWorkspaceByOwnerIDAndName").Observe(time.Since(start).Seconds())
 	return workspace, err
+}
+
+func (m queryMetricsStore) GetWorkspaceByResourceID(ctx context.Context, resourceID uuid.UUID) (database.Workspace, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetWorkspaceByResourceID(ctx, resourceID)
+	m.queryLatencies.WithLabelValues("GetWorkspaceByResourceID").Observe(time.Since(start).Seconds())
+	return r0, r1
 }
 
 func (m queryMetricsStore) GetWorkspaceByWorkspaceAppID(ctx context.Context, workspaceAppID uuid.UUID) (database.Workspace, error) {
@@ -1990,6 +2046,20 @@ func (m queryMetricsStore) InsertAuditLog(ctx context.Context, arg database.Inse
 	log, err := m.s.InsertAuditLog(ctx, arg)
 	m.queryLatencies.WithLabelValues("InsertAuditLog").Observe(time.Since(start).Seconds())
 	return log, err
+}
+
+func (m queryMetricsStore) InsertChat(ctx context.Context, arg database.InsertChatParams) (database.Chat, error) {
+	start := time.Now()
+	r0, r1 := m.s.InsertChat(ctx, arg)
+	m.queryLatencies.WithLabelValues("InsertChat").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
+func (m queryMetricsStore) InsertChatMessages(ctx context.Context, arg database.InsertChatMessagesParams) ([]database.ChatMessage, error) {
+	start := time.Now()
+	r0, r1 := m.s.InsertChatMessages(ctx, arg)
+	m.queryLatencies.WithLabelValues("InsertChatMessages").Observe(time.Since(start).Seconds())
+	return r0, r1
 }
 
 func (m queryMetricsStore) InsertCryptoKey(ctx context.Context, arg database.InsertCryptoKeyParams) (database.CryptoKey, error) {
@@ -2517,6 +2587,13 @@ func (m queryMetricsStore) UpdateAPIKeyByID(ctx context.Context, arg database.Up
 	return err
 }
 
+func (m queryMetricsStore) UpdateChatByID(ctx context.Context, arg database.UpdateChatByIDParams) error {
+	start := time.Now()
+	r0 := m.s.UpdateChatByID(ctx, arg)
+	m.queryLatencies.WithLabelValues("UpdateChatByID").Observe(time.Since(start).Seconds())
+	return r0
+}
+
 func (m queryMetricsStore) UpdateCryptoKeyDeletesAt(ctx context.Context, arg database.UpdateCryptoKeyDeletesAtParams) (database.CryptoKey, error) {
 	start := time.Now()
 	key, err := m.s.UpdateCryptoKeyDeletesAt(ctx, arg)
@@ -2622,6 +2699,13 @@ func (m queryMetricsStore) UpdateOrganizationDeletedByID(ctx context.Context, ar
 	return r0
 }
 
+func (m queryMetricsStore) UpdatePresetPrebuildStatus(ctx context.Context, arg database.UpdatePresetPrebuildStatusParams) error {
+	start := time.Now()
+	r0 := m.s.UpdatePresetPrebuildStatus(ctx, arg)
+	m.queryLatencies.WithLabelValues("UpdatePresetPrebuildStatus").Observe(time.Since(start).Seconds())
+	return r0
+}
+
 func (m queryMetricsStore) UpdateProvisionerDaemonLastSeenAt(ctx context.Context, arg database.UpdateProvisionerDaemonLastSeenAtParams) error {
 	start := time.Now()
 	r0 := m.s.UpdateProvisionerDaemonLastSeenAt(ctx, arg)
@@ -2648,6 +2732,13 @@ func (m queryMetricsStore) UpdateProvisionerJobWithCompleteByID(ctx context.Cont
 	err := m.s.UpdateProvisionerJobWithCompleteByID(ctx, arg)
 	m.queryLatencies.WithLabelValues("UpdateProvisionerJobWithCompleteByID").Observe(time.Since(start).Seconds())
 	return err
+}
+
+func (m queryMetricsStore) UpdateProvisionerJobWithCompleteWithStartedAtByID(ctx context.Context, arg database.UpdateProvisionerJobWithCompleteWithStartedAtByIDParams) error {
+	start := time.Now()
+	r0 := m.s.UpdateProvisionerJobWithCompleteWithStartedAtByID(ctx, arg)
+	m.queryLatencies.WithLabelValues("UpdateProvisionerJobWithCompleteWithStartedAtByID").Observe(time.Since(start).Seconds())
+	return r0
 }
 
 func (m queryMetricsStore) UpdateReplica(ctx context.Context, arg database.UpdateReplicaParams) (database.Replica, error) {

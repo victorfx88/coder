@@ -169,7 +169,9 @@ Status Code **200**
 | `action`        | `application_connect`              |
 | `action`        | `assign`                           |
 | `action`        | `create`                           |
+| `action`        | `create_agent`                     |
 | `action`        | `delete`                           |
+| `action`        | `delete_agent`                     |
 | `action`        | `read`                             |
 | `action`        | `read_personal`                    |
 | `action`        | `ssh`                              |
@@ -185,6 +187,7 @@ Status Code **200**
 | `resource_type` | `assign_org_role`                  |
 | `resource_type` | `assign_role`                      |
 | `resource_type` | `audit_log`                        |
+| `resource_type` | `chat`                             |
 | `resource_type` | `crypto_key`                       |
 | `resource_type` | `debug_info`                       |
 | `resource_type` | `deployment_config`                |
@@ -335,7 +338,9 @@ Status Code **200**
 | `action`        | `application_connect`              |
 | `action`        | `assign`                           |
 | `action`        | `create`                           |
+| `action`        | `create_agent`                     |
 | `action`        | `delete`                           |
+| `action`        | `delete_agent`                     |
 | `action`        | `read`                             |
 | `action`        | `read_personal`                    |
 | `action`        | `ssh`                              |
@@ -351,6 +356,7 @@ Status Code **200**
 | `resource_type` | `assign_org_role`                  |
 | `resource_type` | `assign_role`                      |
 | `resource_type` | `audit_log`                        |
+| `resource_type` | `chat`                             |
 | `resource_type` | `crypto_key`                       |
 | `resource_type` | `debug_info`                       |
 | `resource_type` | `deployment_config`                |
@@ -501,7 +507,9 @@ Status Code **200**
 | `action`        | `application_connect`              |
 | `action`        | `assign`                           |
 | `action`        | `create`                           |
+| `action`        | `create_agent`                     |
 | `action`        | `delete`                           |
+| `action`        | `delete_agent`                     |
 | `action`        | `read`                             |
 | `action`        | `read_personal`                    |
 | `action`        | `ssh`                              |
@@ -517,6 +525,7 @@ Status Code **200**
 | `resource_type` | `assign_org_role`                  |
 | `resource_type` | `assign_role`                      |
 | `resource_type` | `audit_log`                        |
+| `resource_type` | `chat`                             |
 | `resource_type` | `crypto_key`                       |
 | `resource_type` | `debug_info`                       |
 | `resource_type` | `deployment_config`                |
@@ -636,7 +645,9 @@ Status Code **200**
 | `action`        | `application_connect`              |
 | `action`        | `assign`                           |
 | `action`        | `create`                           |
+| `action`        | `create_agent`                     |
 | `action`        | `delete`                           |
+| `action`        | `delete_agent`                     |
 | `action`        | `read`                             |
 | `action`        | `read_personal`                    |
 | `action`        | `ssh`                              |
@@ -652,6 +663,7 @@ Status Code **200**
 | `resource_type` | `assign_org_role`                  |
 | `resource_type` | `assign_role`                      |
 | `resource_type` | `audit_log`                        |
+| `resource_type` | `chat`                             |
 | `resource_type` | `crypto_key`                       |
 | `resource_type` | `debug_info`                       |
 | `resource_type` | `deployment_config`                |
@@ -993,7 +1005,9 @@ Status Code **200**
 | `action`        | `application_connect`              |
 | `action`        | `assign`                           |
 | `action`        | `create`                           |
+| `action`        | `create_agent`                     |
 | `action`        | `delete`                           |
+| `action`        | `delete_agent`                     |
 | `action`        | `read`                             |
 | `action`        | `read_personal`                    |
 | `action`        | `ssh`                              |
@@ -1009,6 +1023,7 @@ Status Code **200**
 | `resource_type` | `assign_org_role`                  |
 | `resource_type` | `assign_role`                      |
 | `resource_type` | `audit_log`                        |
+| `resource_type` | `chat`                             |
 | `resource_type` | `crypto_key`                       |
 | `resource_type` | `debug_info`                       |
 | `resource_type` | `deployment_config`                |

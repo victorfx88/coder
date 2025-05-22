@@ -1,4 +1,6 @@
 import { GlobalErrorBoundary } from "components/ErrorBoundary/GlobalErrorBoundary";
+import { ChatLayout } from "pages/ChatPage/ChatLayout";
+import { ChatMessages } from "pages/ChatPage/ChatMessages";
 import { TemplateRedirectController } from "pages/TemplatePage/TemplateRedirectController";
 import { Suspense, lazy } from "react";
 import {
@@ -31,6 +33,7 @@ const NotFoundPage = lazy(() => import("./pages/404Page/404Page"));
 const DeploymentSettingsLayout = lazy(
 	() => import("./modules/management/DeploymentSettingsLayout"),
 );
+const ChatLanding = lazy(() => import("./pages/ChatPage/ChatLanding"));
 const DeploymentConfigProvider = lazy(
 	() => import("./modules/management/DeploymentConfigProvider"),
 );
@@ -79,10 +82,10 @@ const WorkspaceSchedulePage = lazy(
 			"./pages/WorkspaceSettingsPage/WorkspaceSchedulePage/WorkspaceSchedulePage"
 		),
 );
-const WorkspaceParametersPage = lazy(
+const WorkspaceParametersExperimentRouter = lazy(
 	() =>
 		import(
-			"./pages/WorkspaceSettingsPage/WorkspaceParametersPage/WorkspaceParametersPage"
+			"./pages/WorkspaceSettingsPage/WorkspaceParametersPage/WorkspaceParametersExperimentRouter"
 		),
 );
 const TerminalPage = lazy(() => import("./pages/TerminalPage/TerminalPage"));
@@ -92,8 +95,9 @@ const TemplatePermissionsPage = lazy(
 			"./pages/TemplateSettingsPage/TemplatePermissionsPage/TemplatePermissionsPage"
 		),
 );
-const TemplateSummaryPage = lazy(
-	() => import("./pages/TemplatePage/TemplateSummaryPage/TemplateSummaryPage"),
+const TemplateResourcesPage = lazy(
+	() =>
+		import("./pages/TemplatePage/TemplateResourcesPage/TemplateResourcesPage"),
 );
 const CreateWorkspaceExperimentRouter = lazy(
 	() => import("./pages/CreateWorkspacePage/CreateWorkspaceExperimentRouter"),
@@ -309,6 +313,12 @@ const ChangePasswordPage = lazy(
 const IdpOrgSyncPage = lazy(
 	() => import("./pages/DeploymentSettingsPage/IdpOrgSyncPage/IdpOrgSyncPage"),
 );
+const ProvisionerKeysPage = lazy(
+	() =>
+		import(
+			"./pages/OrganizationSettingsPage/OrganizationProvisionerKeysPage/OrganizationProvisionerKeysPage"
+		),
+);
 const ProvisionerJobsPage = lazy(
 	() =>
 		import(
@@ -329,9 +339,10 @@ const templateRouter = () => {
 		<Route path=":template">
 			<Route element={<TemplateRedirectController />}>
 				<Route element={<TemplateLayout />}>
-					<Route index element={<TemplateSummaryPage />} />
+					<Route index element={<Navigate to="docs" replace />} />
 					<Route path="docs" element={<TemplateDocsPage />} />
 					<Route path="files" element={<TemplateFilesPage />} />
+					<Route path="resources" element={<TemplateResourcesPage />} />
 					<Route path="versions" element={<TemplateVersionsPage />} />
 					<Route path="embed" element={<TemplateEmbedPage />} />
 					<Route path="insights" element={<TemplateInsightsPage />} />
@@ -420,6 +431,11 @@ export const router = createBrowserRouter(
 
 					<Route path="/audit" element={<AuditPage />} />
 
+					<Route path="/chat" element={<ChatLayout />}>
+						<Route index element={<ChatLanding />} />
+						<Route path=":chatID" element={<ChatMessages />} />
+					</Route>
+
 					<Route path="/organizations" element={<OrganizationSettingsLayout />}>
 						<Route path="new" element={<CreateOrganizationPage />} />
 
@@ -438,6 +454,10 @@ export const router = createBrowserRouter(
 							<Route
 								path="provisioner-jobs"
 								element={<ProvisionerJobsPage />}
+							/>
+							<Route
+								path="provisioner-keys"
+								element={<ProvisionerKeysPage />}
 							/>
 							<Route path="idp-sync" element={<OrganizationIdPSyncPage />} />
 							<Route path="settings" element={<OrganizationSettingsPage />} />
@@ -521,7 +541,10 @@ export const router = createBrowserRouter(
 						element={<WorkspaceSettingsLayout />}
 					>
 						<Route index element={<WorkspaceSettingsPage />} />
-						<Route path="parameters" element={<WorkspaceParametersPage />} />
+						<Route
+							path="parameters"
+							element={<WorkspaceParametersExperimentRouter />}
+						/>
 						<Route path="schedule" element={<WorkspaceSchedulePage />} />
 					</Route>
 
