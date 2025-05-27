@@ -487,6 +487,7 @@ require (
 	github.com/anthropics/anthropic-sdk-go v0.2.0-beta.3
 	github.com/coder/preview v0.0.2-0.20250521212114-e6a60ffa74f2
 	github.com/fsnotify/fsnotify v1.9.0
+	github.com/gorilla/websocket v1.5.3
 	github.com/kylecarbs/aisdk-go v0.0.8
 	github.com/mark3labs/mcp-go v0.30.0
 	github.com/openai/openai-go v0.1.0-beta.10
@@ -513,7 +514,6 @@ require (
 	github.com/dgryski/go-farm v0.0.0-20240924180020-3414d57e47da // indirect
 	github.com/envoyproxy/go-control-plane/envoy v1.32.4 // indirect
 	github.com/envoyproxy/protoc-gen-validate v1.2.1 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/go-getter v1.7.8 // indirect
 	github.com/hashicorp/go-safetemp v1.0.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
