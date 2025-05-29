@@ -88,6 +88,13 @@ func (m queryMetricsStore) DeleteOrganization(ctx context.Context, id uuid.UUID)
 	return r0
 }
 
+func (m queryMetricsStore) InsertPresetPrebuildSchedules(ctx context.Context, arg database.InsertPresetPrebuildSchedulesParams) ([]database.TemplateVersionPresetPrebuildSchedule, error) {
+	start := time.Now()
+	r0, r1 := m.s.InsertPresetPrebuildSchedules(ctx, arg)
+	m.queryLatencies.WithLabelValues("InsertPresetPrebuildSchedules").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
 func (m queryMetricsStore) AcquireLock(ctx context.Context, pgAdvisoryXactLock int64) error {
 	start := time.Now()
 	err := m.s.AcquireLock(ctx, pgAdvisoryXactLock)
@@ -2227,6 +2234,13 @@ func (m queryMetricsStore) InsertPresetParameters(ctx context.Context, arg datab
 	start := time.Now()
 	r0, r1 := m.s.InsertPresetParameters(ctx, arg)
 	m.queryLatencies.WithLabelValues("InsertPresetParameters").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
+func (m queryMetricsStore) InsertPresetPrebuildSchedule(ctx context.Context, arg database.InsertPresetPrebuildScheduleParams) ([]database.TemplateVersionPresetPrebuildSchedule, error) {
+	start := time.Now()
+	r0, r1 := m.s.InsertPresetPrebuildSchedule(ctx, arg)
+	m.queryLatencies.WithLabelValues("InsertPresetPrebuildSchedule").Observe(time.Since(start).Seconds())
 	return r0, r1
 }
 
