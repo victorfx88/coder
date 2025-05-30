@@ -6511,6 +6511,8 @@ SELECT
 		tvp.id,
 		tvp.name,
 		tvp.desired_instances       AS desired_instances,
+		tvp.autoscaling_enabled,
+		tvp.autoscaling_timezone,
 		tvp.invalidate_after_secs 	AS ttl,
 		tvp.prebuild_status,
 		t.deleted,
@@ -6535,6 +6537,8 @@ type GetTemplatePresetsWithPrebuildsRow struct {
 	ID                  uuid.UUID      `db:"id" json:"id"`
 	Name                string         `db:"name" json:"name"`
 	DesiredInstances    sql.NullInt32  `db:"desired_instances" json:"desired_instances"`
+	AutoscalingEnabled  bool           `db:"autoscaling_enabled" json:"autoscaling_enabled"`
+	AutoscalingTimezone string         `db:"autoscaling_timezone" json:"autoscaling_timezone"`
 	Ttl                 sql.NullInt32  `db:"ttl" json:"ttl"`
 	PrebuildStatus      PrebuildStatus `db:"prebuild_status" json:"prebuild_status"`
 	Deleted             bool           `db:"deleted" json:"deleted"`
@@ -6564,6 +6568,8 @@ func (q *sqlQuerier) GetTemplatePresetsWithPrebuilds(ctx context.Context, templa
 			&i.ID,
 			&i.Name,
 			&i.DesiredInstances,
+			&i.AutoscalingEnabled,
+			&i.AutoscalingTimezone,
 			&i.Ttl,
 			&i.PrebuildStatus,
 			&i.Deleted,
@@ -6710,6 +6716,38 @@ func (q *sqlQuerier) GetPresetParametersByTemplateVersionID(ctx context.Context,
 			&i.TemplateVersionPresetID,
 			&i.Name,
 			&i.Value,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPresetPrebuildSchedules = `-- name: GetPresetPrebuildSchedules :many
+SELECT id, preset_id, cron_expression, instances FROM template_version_preset_prebuild_schedules
+`
+
+func (q *sqlQuerier) GetPresetPrebuildSchedules(ctx context.Context) ([]TemplateVersionPresetPrebuildSchedule, error) {
+	rows, err := q.db.QueryContext(ctx, getPresetPrebuildSchedules)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TemplateVersionPresetPrebuildSchedule
+	for rows.Next() {
+		var i TemplateVersionPresetPrebuildSchedule
+		if err := rows.Scan(
+			&i.ID,
+			&i.PresetID,
+			&i.CronExpression,
+			&i.Instances,
 		); err != nil {
 			return nil, err
 		}

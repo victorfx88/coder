@@ -1145,6 +1145,13 @@ func (m queryMetricsStore) GetPresetParametersByTemplateVersionID(ctx context.Co
 	return r0, r1
 }
 
+func (m queryMetricsStore) GetPresetPrebuildSchedules(ctx context.Context) ([]database.TemplateVersionPresetPrebuildSchedule, error) {
+	start := time.Now()
+	r0, r1 := m.s.GetPresetPrebuildSchedules(ctx)
+	m.queryLatencies.WithLabelValues("GetPresetPrebuildSchedules").Observe(time.Since(start).Seconds())
+	return r0, r1
+}
+
 func (m queryMetricsStore) GetPresetsAtFailureLimit(ctx context.Context, hardLimit int64) ([]database.GetPresetsAtFailureLimitRow, error) {
 	start := time.Now()
 	r0, r1 := m.s.GetPresetsAtFailureLimit(ctx, hardLimit)
