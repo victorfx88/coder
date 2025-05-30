@@ -1104,10 +1104,6 @@ func (q *querier) customRoleCheck(ctx context.Context, role database.CustomRole)
 	return nil
 }
 
-func (q *querier) InsertPresetPrebuildSchedules(ctx context.Context, arg database.InsertPresetPrebuildSchedulesParams) ([]database.TemplateVersionPresetPrebuildSchedule, error) {
-	panic("not implemented")
-}
-
 func (q *querier) AcquireLock(ctx context.Context, id int64) error {
 	return q.db.AcquireLock(ctx, id)
 }
@@ -3623,7 +3619,12 @@ func (q *querier) InsertPresetParameters(ctx context.Context, arg database.Inser
 }
 
 func (q *querier) InsertPresetPrebuildSchedule(ctx context.Context, arg database.InsertPresetPrebuildScheduleParams) ([]database.TemplateVersionPresetPrebuildSchedule, error) {
-	panic("not implemented")
+	err := q.authorizeContext(ctx, policy.ActionUpdate, rbac.ResourceTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	return q.db.InsertPresetPrebuildSchedule(ctx, arg)
 }
 
 func (q *querier) InsertProvisionerJob(ctx context.Context, arg database.InsertProvisionerJobParams) (database.ProvisionerJob, error) {
