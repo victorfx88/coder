@@ -532,3 +532,5 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.35.0 // indirect
 	k8s.io/utils v0.0.0-20241104100929-3ea5e8cea738 // indirect
 )
+
+replace github.com/coder/terraform-provider-coder/v2 => /home/coder/terraform-provider-coder
