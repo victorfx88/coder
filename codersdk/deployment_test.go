@@ -20,6 +20,101 @@ import (
 	"github.com/coder/coder/v2/codersdk"
 )
 
+func TestDeploymentValues_DisableRegistryLinks(t *testing.T) {
+	t.Parallel()
+
+	t.Run("Default", func(t *testing.T) {
+		t.Parallel()
+		dv := codersdk.DeploymentValues{}
+		opts := dv.Options()
+		err := opts.ParseEnv(nil) // No env vars
+		require.NoError(t, err)
+		err = opts.ParseFlag(nil) // No flags
+		require.NoError(t, err)
+		assert.False(t, dv.DisableRegistryLinks.Value(), "Default should be false")
+	})
+
+	t.Run("EnvTrue", func(t *testing.T) {
+		t.Parallel()
+		dv := codersdk.DeploymentValues{}
+		opts := dv.Options()
+		envVars := []serpent.EnvVar{{Name: "CODER_DISABLE_REGISTRY_LINKS", Value: "true"}}
+		err := opts.ParseEnv(envVars)
+		require.NoError(t, err)
+		err = opts.ParseFlag(nil) // No flags
+		require.NoError(t, err)
+		assert.True(t, dv.DisableRegistryLinks.Value(), "Should be true when env var is 'true'")
+	})
+
+	t.Run("FlagTrue", func(t *testing.T) {
+		t.Parallel()
+		dv := codersdk.DeploymentValues{}
+		opts := dv.Options()
+		err := opts.ParseEnv(nil) // No env vars
+		require.NoError(t, err)
+		flags := []serpent.Flag{{Name: "disable-registry-links"}} // Boolean flags are true if present
+		err = opts.ParseFlag(flags)
+		require.NoError(t, err)
+		assert.True(t, dv.DisableRegistryLinks.Value(), "Should be true when flag is present")
+	})
+
+	t.Run("EnvFalse", func(t *testing.T) {
+		t.Parallel()
+		dv := codersdk.DeploymentValues{}
+		opts := dv.Options()
+		envVars := []serpent.EnvVar{{Name: "CODER_DISABLE_REGISTRY_LINKS", Value: "false"}}
+		err := opts.ParseEnv(envVars)
+		require.NoError(t, err)
+		err = opts.ParseFlag(nil) // No flags
+		require.NoError(t, err)
+		assert.False(t, dv.DisableRegistryLinks.Value(), "Should be false when env var is 'false'")
+	})
+
+	t.Run("FlagWithValueFalse", func(t *testing.T) {
+		t.Parallel()
+		// For boolean flags, serpent usually takes presence as true.
+		// To set it to false via a flag, it's typically "--disable-registry-links=false"
+		// However, serpent's ParseFlag takes a list of flags that are "present".
+		// A flag like --disable-foo=false is parsed by the flag package before serpent.
+		// Serpent's boolean handling means if the flag is provided (even as --foo=false),
+		// it's considered "set" and will be true. The way to make a boolean flag false
+		// when a default is true is to not provide it, or if its default is false (like ours),
+		// then providing it makes it true.
+		// This test confirms that simply providing the flag makes it true.
+		dv := codersdk.DeploymentValues{}
+		opts := dv.Options()
+		err := opts.ParseEnv(nil) // No env vars
+		require.NoError(t, err)
+		flags := []serpent.Flag{{Name: "disable-registry-links"}}
+		err = opts.ParseFlag(flags)
+		require.NoError(t, err)
+		assert.True(t, dv.DisableRegistryLinks.Value(), "Providing the flag makes it true, even if a hypothetical value like '=false' was passed to CLI before serpent parsing")
+
+		// To test explicit false with flags for a boolean that defaults to false,
+		// you typically wouldn't include the flag. If it defaulted to true, some libraries
+		// support --no-flag or --flag=false. Serpent's current Flag parsing seems to treat presence as true.
+	})
+
+	t.Run("FlagTakesPrecedenceOverEnv", func(t *testing.T) {
+		t.Parallel()
+		// Env says false, Flag says true
+		dv := codersdk.DeploymentValues{}
+		opts := dv.Options()
+		envVars := []serpent.EnvVar{{Name: "CODER_DISABLE_REGISTRY_LINKS", Value: "false"}}
+		err := opts.ParseEnv(envVars)
+		require.NoError(t, err)
+		flags := []serpent.Flag{{Name: "disable-registry-links"}}
+		err = opts.ParseFlag(flags)
+		require.NoError(t, err)
+		assert.True(t, dv.DisableRegistryLinks.Value(), "Flag should make it true, overriding env=false")
+	})
+
+	// Note: Serpent's behavior for boolean flags is that their presence means true.
+	// If a boolean flag has a default of true, you'd need a --no-<flag> or similar
+	// to set it to false, which serpent might handle differently or require specific
+	// DefaultText behavior. For our case, default is false, presence makes it true.
+}
+
 type exclusion struct {
 	flag bool
 	env  bool

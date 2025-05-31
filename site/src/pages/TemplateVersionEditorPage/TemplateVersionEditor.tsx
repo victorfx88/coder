@@ -507,13 +507,34 @@ export const TemplateVersionEditor: FC<TemplateVersionEditorProps> = ({
 								flexDirection: "column",
 							}}
 						>
+							{/* Conditionally render the link above the tabs */}
+							{typeof window !== "undefined" && !window.CODER_BUILDINFO?.disable_registry_links && (
+								<div css={{ textAlign: "right", padding: "8px 16px", borderBottom: `1px solid ${theme.palette.divider}` }}>
+									<a
+										href="https://registry.coder.com"
+										target="_blank"
+										rel="noopener noreferrer"
+										css={{
+											fontSize: "12px", // Smaller font size as seen in image
+											color: theme.palette.text.secondary, // Subdued color
+											textDecoration: "none",
+											"&:hover": {
+												textDecoration: "underline",
+											},
+										}}
+									>
+										Browse modules on Coder Registry
+									</a>
+								</div>
+							)}
 							<div
 								css={{
 									display: "flex",
 									alignItems: "center",
-									borderBottom: selectedTab
+									borderBottom: selectedTab // Only add border if a tab is selected AND the above link isn't there (or if it is, this border might be redundant/adjusted)
 										? `1px solid ${theme.palette.divider}`
-										: 0,
+										: (typeof window !== "undefined" && !window.CODER_BUILDINFO?.disable_registry_links ? 0 : `1px solid ${theme.palette.divider}`),
+
 								}}
 							>
 								<div

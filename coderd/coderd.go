@@ -613,6 +613,7 @@ func New(options *Options) *API {
 		DeploymentID:          api.DeploymentID,
 		WebPushPublicKey:      api.WebpushDispatcher.PublicKey(),
 		Telemetry:             api.Telemetry.Enabled(),
+		DisableRegistryLinks:  options.DeploymentValues.DisableRegistryLinks.Value(),
 	}
 	api.SiteHandler = site.New(&site.Options{
 		BinFS:             binFS,

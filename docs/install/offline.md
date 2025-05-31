@@ -15,6 +15,7 @@ offline with Kubernetes or Docker.
 | PostgreSQL         | If no [PostgreSQL connection URL](../reference/cli/server.md#--postgres-url) is specified, Coder will download Postgres from [repo1.maven.org](https://repo1.maven.org)                                                                                            | An external database is required, you must specify a [PostgreSQL connection URL](../reference/cli/server.md#--postgres-url)                                                                                                                                                                          |
 | Telemetry          | Telemetry is on by default, and [can be disabled](../reference/cli/server.md#--telemetry)                                                                                                                                                                          | Telemetry [can be disabled](../reference/cli/server.md#--telemetry)                                                                                                                                                                                                                                  |
 | Update check       | By default, Coder checks for updates from [GitHub releases](https://github.com/coder/coder/releases)                                                                                                                                                               | Update checks [can be disabled](../reference/cli/server.md#--update-check)                                                                                                                                                                                                                           |
+| Registry Links     | UI links to the public Coder Registry for templates and modules are enabled by default.                                                                                                                                                                            | UI links to the public Coder Registry can be disabled by setting `CODER_DISABLE_REGISTRY_LINKS` to `true`. This is useful if the public registry is not accessible.                                                                                                                                    |
 
 ## Offline container images
 
@@ -170,6 +171,7 @@ services:
     CODER_BLOCK_DIRECT: "true" # force SSH traffic through control plane's DERP proxy
     CODER_DERP_SERVER_STUN_ADDRESSES: "disable" # Only use relayed connections
     CODER_UPDATE_CHECK: "false" # Disable automatic update checks
+    CODER_DISABLE_REGISTRY_LINKS: "true" # Disable links to the public Coder Registry in the UI
   database:
     image: registry.example.com/postgres:17
     # ...
@@ -200,6 +202,9 @@ coder:
     # Disable automatic update checks
     - name: "CODER_UPDATE_CHECK"
       value: "false"
+    # Disable links to the public Coder Registry in the UI
+    - name: "CODER_DISABLE_REGISTRY_LINKS"
+      value: "true"
     # force SSH traffic through control plane's DERP proxy
     - name: CODER_BLOCK_DIRECT
       value: "true"

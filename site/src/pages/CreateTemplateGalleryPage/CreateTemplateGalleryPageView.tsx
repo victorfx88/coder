@@ -80,6 +80,27 @@ export const CreateTemplateGalleryPageView: FC<
 				{Boolean(!starterTemplatesByTag) && <Loader />}
 
 				<StarterTemplates starterTemplatesByTag={starterTemplatesByTag} />
+
+				{/* Add the conditional link here, after StarterTemplates */}
+				{typeof window !== "undefined" && !window.CODER_BUILDINFO?.disable_registry_links && (
+					<div css={{ textAlign: "right", marginTop: 16 }}> {/* Aligns link to the right and adds some margin */}
+						<a
+							href="https://registry.coder.com"
+							target="_blank"
+							rel="noopener noreferrer"
+							css={(theme) => ({
+								fontSize: "14px", // Typical link size
+								color: theme.palette.primary.main, // Standard link color
+								textDecoration: "none",
+								"&:hover": {
+									textDecoration: "underline",
+								},
+							})}
+						>
+							Browse Coder Registry
+						</a>
+					</div>
+				)}
 			</Stack>
 		</Margins>
 	);

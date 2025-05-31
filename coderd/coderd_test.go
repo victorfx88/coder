@@ -55,6 +55,57 @@ func TestBuildInfo(t *testing.T) {
 	require.Equal(t, buildinfo.Version(), buildInfo.Version, "version")
 }
 
+func TestBuildInfo_DisableRegistryLinks(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name          string
+		disableLinks  bool
+		expectedValue bool
+	}{
+		{
+			name:          "EnabledByDefault",
+			disableLinks:  false, // Explicitly false, or rely on default
+			expectedValue: false,
+		},
+		{
+			name:          "DisabledViaDeploymentValue",
+			disableLinks:  true,
+			expectedValue: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			dv := coderdtest.DeploymentValues(t)
+			dv.DisableRegistryLinks = serpent.BoolOf(tc.disableLinks)
+
+			opts := &coderdtest.Options{
+				DeploymentValues: dv,
+			}
+			_, _, api := coderdtest.NewWithAPI(t, opts)
+
+			// Accessing BuildInfo from the SiteHandler as it's populated there
+			// The SiteHandler itself is public on API, and BuildInfo is public on SiteHandler.
+			require.NotNil(t, api.SiteHandler, "SiteHandler should be initialized")
+			buildInfoFromSiteHandler := api.SiteHandler.BuildInfo
+			assert.Equal(t, tc.expectedValue, buildInfoFromSiteHandler.DisableRegistryLinks)
+
+			// Also check the one used for /api/v2/buildinfo if it's different
+			// In the current coderd.New, they are the same instance initially.
+			// This is more of a sanity check.
+			client := codersdk.New(api.URL)
+			ctx, cancel := context.WithTimeout(context.Background(), testutil.WaitLong)
+			defer cancel()
+			buildInfoFromAPIEndpoint, err := client.BuildInfo(ctx)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedValue, buildInfoFromAPIEndpoint.DisableRegistryLinks)
+		})
+	}
+}
+
 func TestDERP(t *testing.T) {
 	t.Parallel()
 	ctx := testutil.Context(t, testutil.WaitMedium)

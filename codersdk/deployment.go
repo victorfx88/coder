@@ -399,6 +399,7 @@ type DeploymentValues struct {
 	AdditionalCSPPolicy             serpent.StringArray                  `json:"additional_csp_policy,omitempty" typescript:",notnull"`
 	WorkspaceHostnameSuffix         serpent.String                       `json:"workspace_hostname_suffix,omitempty" typescript:",notnull"`
 	Prebuilds                       PrebuildsConfig                      `json:"workspace_prebuilds,omitempty" typescript:",notnull"`
+	DisableRegistryLinks            serpent.Bool                         `json:"disable_registry_links,omitempty" typescript:",notnull"`
 
 	Config      serpent.YAMLConfigPath `json:"config,omitempty" typescript:",notnull"`
 	WriteConfig serpent.Bool           `json:"write_config,omitempty" typescript:",notnull"`
@@ -3103,6 +3104,14 @@ Write out the current server config as YAML to stdout.`,
 			YAML:        "failure_hard_limit",
 			Hidden:      true,
 		},
+		{
+			Name:        "Disable Registry Links",
+			Description: "Disable links to the public Coder registry for templates and modules.",
+			Flag:        "disable-registry-links",
+			Env:         "CODER_DISABLE_REGISTRY_LINKS",
+			Value:       &c.DisableRegistryLinks,
+			YAML:        "disableRegistryLinks",
+		},
 	}
 
 	return opts
@@ -3300,6 +3309,8 @@ type BuildInfoResponse struct {
 
 	// WebPushPublicKey is the public key for push notifications via Web Push.
 	WebPushPublicKey string `json:"webpush_public_key,omitempty"`
+	// DisableRegistryLinks indicates whether links to the public Coder registry should be disabled.
+	DisableRegistryLinks bool `json:"disable_registry_links"`
 }
 
 type WorkspaceProxyBuildInfo struct {
