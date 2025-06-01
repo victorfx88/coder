@@ -1,0 +1,29 @@
+forex-signal-app/
+├── backend/
+│   ├── app.py                  # FastAPI or Flask server
+│   ├── forex_api.py            # Integration with forex data API
+│   ├── signals.py              # Signal generation logic
+│   ├── requirements.txt        # Python dependencies
+│   └── .env                    # API keys and config
+│
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── App.jsx
+│   │   ├── components/
+│   │   │   └── SignalCard.jsx
+│   │   ├── services/
+│   │   │   └── api.js
+│   │   └── websocket.js        # For real-time updates
+│   ├── package.json
+│   └── .env
+│
+├── mobile-app/ (optional)
+│   └── forex_app/              # Flutter or React Native
+│
+├── .github/
+│   └── workflows/
+│       └── deploy.yml          # GitHub Actions for CI/CD
+│
+├── README.md
+└── LICENSE
